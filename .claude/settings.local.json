@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx tsc *)",
+      "Bash(npx vite *)",
+      "Bash(Get-Content \"C:\\\\Users\\\\GIGABY~1\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\f--dev-equipment-complect\\\\79eacfeb-60ec-4fd0-a15f-25097a5ff907\\\\tasks\\\\b7s3p8ys5.output\")"
+    ]
+  }
+}

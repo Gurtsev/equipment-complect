@@ -1,0 +1,482 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  background: #f7fafc;
+  color: #2d3748;
+  line-height: 1.6;
+  min-height: 100vh;
+}
+
+/* === УНИВЕРСАЛЬНЫЕ СТИЛИ === */
+h1, h2, h3 {
+  font-weight: 700;
+  color: #1a202c;
+}
+
+h1 {
+  font-size: 28px;
+}
+
+h2 {
+  font-size: 22px;
+}
+
+h3 {
+  font-size: 18px;
+}
+
+p {
+  font-size: 15px;
+  color: #4a5568;
+}
+
+/* === ПОИСК === */
+.search-container {
+  margin-bottom: 20px;
+  padding: 0 16px;
+}
+
+#searchInput {
+  width: 100%;
+  max-width: 500px;
+  margin: 0 auto;
+  padding: 12px 16px;
+  border: 1px solid #cbd5e0;
+  border-radius: 12px;
+  font-size: 15px;
+  color: #2d3748;
+  background: white;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+#searchInput:focus {
+  outline: none;
+  border-color: #4f46e5;
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.15);
+}
+
+/* === УЛУЧШЕННЫЕ КАТЕГОРИИ === */
+
+/* Иконки категорий */
+.category-icon {
+  font-size: 18px;
+  margin-right: 6px;
+  transition: transform 0.2s;
+}
+
+.category-btn:hover .category-icon {
+  transform: scale(1.2);
+}
+
+/* Фильтр с бейджами */
+.category-filter {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-bottom: 28px;
+  padding: 0 16px;
+}
+
+.category-btn {
+  padding: 10px 16px;
+  border: none;
+  background: #f7fafc;
+  border-radius: 30px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #4a5568;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+  position: relative;
+  overflow: hidden;
+}
+
+.category-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 100%;
+  background: var(--category-color);
+  transition: width 0.3s ease;
+  border-radius: 2px 0 0 2px;
+}
+
+.category-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+}
+
+.category-btn.active {
+  background: var(--category-color);
+  color: white;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.category-btn.active::before {
+  width: 100%;
+  border-radius: 30px 0 0 30px;
+}
+
+/* Цвета категорий */
+.category-btn[data-category="camera"] { --category-color: #3b82f6; }
+.category-btn[data-category="microphone"] { --category-color: #ec4899; }
+.category-btn[data-category="light"] { --category-color: #f59e0b; }
+.category-btn[data-category="computer"] { --category-color: #10b981; }
+.category-btn[data-category="audio"] { --category-color: #8b5cf6; }
+.category-btn[data-category="accessory"] { --category-color: #6b7280; }
+
+/* Счётчики */
+.category-btn .count {
+  font-size: 12px;
+  background: rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.9);
+  padding: 2px 8px;
+  border-radius: 20px;
+  margin-left: 8px;
+  font-weight: 600;
+}
+
+/* === КАТАЛОГ ОБОРУДОВАНИЯ === */
+.catalog {
+  max-width: 900px;
+  margin: 40px auto;
+  padding: 20px;
+}
+
+.catalog h1 {
+  text-align: center;
+  margin-bottom: 10px;
+}
+
+.catalog p {
+  text-align: center;
+  color: #718096;
+  font-size: 14px;
+  margin-bottom: 20px;
+}
+
+/* === КАРТОЧКИ ОБОРУДОВАНИЯ === */
+.equipment-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
+}
+
+.equipment-item {
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  overflow: hidden;
+  background: white;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  border-left: 5px solid var(--category-color);
+}
+
+.equipment-item::before {
+  content: attr(data-category);
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 4px 8px;
+  border-radius: 12px;
+  background: var(--category-color);
+  color: white;
+  transform: translateY(-8px);
+  opacity: 0;
+  transition: all 0.3s ease;
+}
+
+.equipment-item:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.12);
+  border-color: var(--category-color);
+}
+
+.equipment-item:hover::before {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+.equipment-photo {
+  width: 100%;
+  height: 180px;
+  background-size: cover;
+  background-position: center;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.equipment-info {
+  padding: 16px;
+}
+
+.equipment-info strong {
+  font-size: 16px;
+  display: block;
+  margin-bottom: 4px;
+  color: #1a202c;
+}
+
+.equipment-info small {
+  font-size: 14px;
+  color: #718096;
+  display: block;
+  margin-bottom: 6px;
+}
+
+.equipment-info code {
+  font-size: 12px;
+  background: #f7fafc;
+  color: #4a5568;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-family: monospace;
+}
+
+/* === КАРТОЧКА ОБОРУДОВАНИЯ (card.html) === */
+#equipmentCard {
+  max-width: 900px;
+  margin: 40px auto;
+  background: white;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+}
+
+.card-header {
+  position: relative;
+  height: 300px;
+  background-size: cover;
+  background-position: center;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.card-overlay {
+  width: 100%;
+  padding: 20px;
+  background: linear-gradient(transparent, rgba(0, 0, 0, 0.8));
+  color: white;
+  text-align: center;
+}
+
+.card-overlay h2 {
+  color: white;
+  margin-bottom: 6px;
+}
+
+.card-overlay p {
+  color: #e2e8f0;
+  font-size: 16px;
+}
+
+.card-body {
+  padding: 30px;
+}
+
+.card-section {
+  margin-bottom: 24px;
+}
+
+.card-section h3 {
+  margin-bottom: 12px;
+  color: #2d3748;
+  font-weight: 600;
+}
+
+/* Таблица истории */
+.history-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.history-table th {
+  text-align: left;
+  padding: 10px 12px;
+  background: #f7fafc;
+  color: #4a5568;
+  font-weight: 600;
+  border-bottom: 2px solid #e2e8f0;
+}
+
+.history-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #e2e8f0;
+  color: #4a5568;
+}
+
+/* Комплектация */
+#equipmentCarousel {
+  display: flex;
+  gap: 10px;
+  padding: 10px 0;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.equipment-tag {
+  flex: 0 0 auto;
+  padding: 8px 14px;
+  background: #f7fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 20px;
+  font-size: 13px;
+  color: #4a5568;
+  white-space: nowrap;
+}
+
+/* Форма обновления статуса */
+.status-form {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-top: 16px;
+}
+
+.status-form select,
+.status-form button {
+  font-size: 14px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid #cbd5e0;
+}
+
+.status-form select {
+  flex: 1;
+  min-width: 160px;
+}
+
+.status-form button {
+  background: #4f46e5;
+  color: white;
+  border: none;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.status-form button:hover {
+  background: #4338ca;
+}
+
+/* === QR-МОДАЛЬНОЕ ОКНО === */
+#qrModal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.7);
+  display: none;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.qr-container {
+  background: white;
+  padding: 30px;
+  border-radius: 16px;
+  text-align: center;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+}
+
+.qr-container h3 {
+  margin-bottom: 16px;
+  color: #1a202c;
+}
+
+#qrcode {
+  margin: 0 auto;
+  padding: 16px;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+}
+
+.qr-close {
+  margin-top: 16px;
+  padding: 8px 16px;
+  background: #e2e8f0;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  color: #4a5568;
+  font-size: 14px;
+}
+
+.qr-close:hover {
+  background: #cbd5e0;
+}
+
+/* === АДАПТИВ === */
+@media (max-width: 600px) {
+  .catalog {
+    padding: 16px;
+  }
+
+  .catalog h1 {
+    font-size: 24px;
+  }
+
+  #equipmentList {
+    grid-template-columns: 1fr;
+  }
+
+  .category-filter {
+    gap: 8px;
+  }
+
+  .category-btn {
+    padding: 9px 14px;
+    font-size: 13px;
+  }
+
+  .category-btn .count {
+    font-size: 11px;
+    padding: 2px 6px;
+  }
+
+  .equipment-item::before {
+    font-size: 10px;
+    padding: 3px 6px;
+  }
+
+  .card-header {
+    height: 220px;
+  }
+
+  .card-body {
+    padding: 20px;
+  }
+
+  .status-form {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .status-form select,
+  .status-form button {
+    width: 100%;
+  }
+}
