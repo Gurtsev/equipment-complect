@@ -26,11 +26,12 @@ function formatDateRange(start: Date, end: Date): string {
 interface Props {
   projects: Project[];
   selected: Project | null;
+  canEdit: boolean;
   onSelect: (project: Project) => void;
   onAdd: () => void;
 }
 
-export function ProjectsSidebar({ projects, selected, onSelect, onAdd }: Props) {
+export function ProjectsSidebar({ projects, selected, canEdit, onSelect, onAdd }: Props) {
   const [statusFilter, setStatusFilter] = useState<ProjectStatus | 'all'>('all');
 
   const filtered = projects.filter(
@@ -45,9 +46,11 @@ export function ProjectsSidebar({ projects, selected, onSelect, onAdd }: Props) 
           <Text strong style={{ fontSize: 15 }}>
             Проекты
           </Text>
-          <Button type="primary" size="small" icon={<PlusOutlined />} onClick={onAdd}>
-            Создать
-          </Button>
+          {canEdit && (
+            <Button type="primary" size="small" icon={<PlusOutlined />} onClick={onAdd}>
+              Создать
+            </Button>
+          )}
         </Flex>
         <Select
           size="small"

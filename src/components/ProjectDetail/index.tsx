@@ -67,6 +67,7 @@ function exportCompletion(project: Project, equipment: Equipment[]) {
 interface Props {
   project: Project;
   allEquipment: Equipment[];
+  canEdit: boolean;
   onEdit: () => void;
   onUpdate: (project: Project) => void;
   onEquipmentChange: () => void;
@@ -76,6 +77,7 @@ interface Props {
 export function ProjectDetail({
   project,
   allEquipment,
+  canEdit,
   onEdit,
   onUpdate,
   onEquipmentChange,
@@ -217,7 +219,7 @@ export function ProjectDetail({
       key: 'action',
       width: 48,
       render: (_: unknown, eq: Equipment) =>
-        project.status !== 'Завершён' ? (
+        canEdit && project.status !== 'Завершён' ? (
           <Popconfirm
             title="Убрать из проекта?"
             okText="Убрать"
@@ -259,7 +261,7 @@ export function ProjectDetail({
             </Descriptions>
           </div>
           <Flex gap={8} wrap style={{ flexShrink: 0 }}>
-            {project.status !== 'Завершён' && (
+            {canEdit && project.status !== 'Завершён' && (
               <Button icon={<EditOutlined />} onClick={onEdit}>
                 Изменить
               </Button>
@@ -271,12 +273,12 @@ export function ProjectDetail({
             >
               Экспорт
             </Button>
-            {project.status === 'Планируется' && projectEquipment.length > 0 && (
+            {canEdit && project.status === 'Планируется' && projectEquipment.length > 0 && (
               <Button type="primary" icon={<SendOutlined />} onClick={handleActivate}>
                 Выдать всё
               </Button>
             )}
-            {project.status === 'Активен' && (
+            {canEdit && project.status === 'Активен' && (
               <Button danger icon={<CheckOutlined />} onClick={handleFinish}>
                 Завершить проект
               </Button>
@@ -290,7 +292,7 @@ export function ProjectDetail({
         title={`Комплект оборудования (${projectEquipment.length} ед.)`}
         size="small"
         extra={
-          project.status !== 'Завершён' && (
+          canEdit && project.status !== 'Завершён' && (
             <Button
               size="small"
               type="dashed"

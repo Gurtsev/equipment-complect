@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Layout, App as AntApp, Spin } from 'antd';
+import { Layout, App as AntApp, Spin, Button, Flex, Typography } from 'antd';
+import { LogoutOutlined } from '@ant-design/icons';
 import { CatalogSidebar } from './components/CatalogSidebar';
 import { EquipmentDetail } from './components/EquipmentDetail';
 import { CreateEquipmentDrawer } from './components/CreateEquipmentDrawer';
@@ -7,6 +8,8 @@ import { Dashboard } from './components/Dashboard';
 import { ProjectsSidebar } from './components/ProjectsSidebar';
 import { ProjectDetail } from './components/ProjectDetail';
 import { CreateProjectDrawer } from './components/CreateProjectDrawer';
+import { LoginPage } from './components/LoginPage';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { equipmentService } from './services/equipmentService';
 import { historyService } from './services/historyService';
 import { projectService } from './services/projectService';
@@ -14,8 +17,15 @@ import { Equipment, EquipmentLocation, EquipmentStatus } from './models/Equipmen
 import { Project } from './models/Project';
 
 const { Sider, Content } = Layout;
+const { Text } = Typography;
 
 type ActiveTab = 'catalog' | 'projects';
+
+const ROLE_LABEL: Record<string, string> = {
+  admin: 'Администратор',
+  operator: 'Оператор',
+  viewer: 'Наблюдатель',
+};
 
 const TAB_STYLE_BASE: React.CSSProperties = {
   flex: 1,
@@ -29,15 +39,19 @@ const TAB_STYLE_BASE: React.CSSProperties = {
 
 function AppInner() {
   const { message } = AntApp.useApp();
+  const { user, role, userName, loading: authLoading, signOut } = useAuth();
+
   const [items, setItems] = useState<Equipment[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [dataLoading, setDataLoading] = useState(true);
   const [selectedEquipment, setSelectedEquipment] = useState<Equipment | null>(null);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [activeTab, setActiveTab] = useState<ActiveTab>('catalog');
   const [detailKey, setDetailKey] = useState(0);
   const [equipmentDrawerMode, setEquipmentDrawerMode] = useState<'create' | 'edit' | null>(null);
   const [projectDrawerMode, setProjectDrawerMode] = useState<'create' | 'edit' | null>(null);
+
+  const canEdit = role === 'admin' || role === 'operator';
 
   const loadAll = useCallback(async () => {
     const [newItems, newProjects] = await Promise.all([
@@ -50,8 +64,23 @@ function AppInner() {
   }, []);
 
   useEffect(() => {
-    void loadAll().finally(() => setLoading(false));
-  }, [loadAll]);
+    if (!user) return;
+    const timeout = setTimeout(() => {
+      setDataLoading(false);
+      void message.error('Не удалось загрузить данные. Проверьте соединение или консоль браузера (F12).');
+    }, 12000);
+
+    void loadAll()
+      .catch(() => {
+        void message.error('Ошибка загрузки. Проверьте соединение.');
+      })
+      .finally(() => {
+        clearTimeout(timeout);
+        setDataLoading(false);
+      });
+
+    return () => clearTimeout(timeout);
+  }, [loadAll, user, message]);
 
   // --- Equipment handlers ---
 
@@ -96,7 +125,6 @@ function AppInner() {
     }
   };
 
-  // Вызывается когда ProjectDetail меняет статус оборудования
   const handleEquipmentChange = async () => {
     try {
       const { newItems, newProjects } = await loadAll();
@@ -130,7 +158,6 @@ function AppInner() {
     }
   };
 
-  // Вызывается из CreateProjectDrawer после редактирования
   const handleProjectUpdated = async (project: Project) => {
     try {
       await projectService.update(project);
@@ -141,7 +168,6 @@ function AppInner() {
     }
   };
 
-  // Вызывается из ProjectDetail (он уже записал в БД сам)
   const handleProjectUpdate = async (project: Project) => {
     try {
       const { newProjects } = await loadAll();
@@ -164,19 +190,23 @@ function AppInner() {
         (p.status === 'Планируется' || p.status === 'Активен'),
     );
 
-  if (loading) {
+  if (authLoading || (!!user && dataLoading)) {
     return (
-      <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <Spin size="large" tip="Загрузка..." />
+      <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
+        <Spin size="large" />
+        <Typography.Text type="secondary">Загрузка...</Typography.Text>
       </div>
     );
   }
+
+  if (!user) return <LoginPage />;
 
   const rightPane = selectedProject ? (
     <ProjectDetail
       key={selectedProject.id}
       project={selectedProject}
       allEquipment={items}
+      canEdit={canEdit}
       onEdit={() => setProjectDrawerMode('edit')}
       onUpdate={handleProjectUpdate}
       onEquipmentChange={handleEquipmentChange}
@@ -186,6 +216,7 @@ function AppInner() {
     <EquipmentDetail
       key={`${selectedEquipment.id}-${detailKey}`}
       equipment={selectedEquipment}
+      canEdit={canEdit}
       onEdit={() => setEquipmentDrawerMode('edit')}
       project={getEquipmentProject(selectedEquipment.id) ?? null}
       onProjectClick={handleProjectClick}
@@ -235,6 +266,7 @@ function AppInner() {
             <CatalogSidebar
               items={items}
               selected={selectedEquipment}
+              canEdit={canEdit}
               onSelect={handleEquipmentSelect}
               onAdd={() => setEquipmentDrawerMode('create')}
             />
@@ -243,10 +275,31 @@ function AppInner() {
             <ProjectsSidebar
               projects={projects}
               selected={selectedProject}
+              canEdit={canEdit}
               onSelect={handleProjectSelect}
               onAdd={() => setProjectDrawerMode('create')}
             />
           </div>
+        </div>
+
+        {/* Пользователь */}
+        <div style={{ padding: '10px 16px', borderTop: '1px solid #f0f0f0', flexShrink: 0 }}>
+          <Flex justify="space-between" align="center">
+            <div style={{ minWidth: 0 }}>
+              <Text strong style={{ fontSize: 13, display: 'block' }} ellipsis>
+                {userName}
+              </Text>
+              <Text type="secondary" style={{ fontSize: 11 }}>
+                {ROLE_LABEL[role ?? ''] ?? role}
+              </Text>
+            </div>
+            <Button
+              size="small"
+              icon={<LogoutOutlined />}
+              onClick={() => void signOut()}
+              title="Выйти"
+            />
+          </Flex>
         </div>
       </Sider>
 
@@ -275,8 +328,10 @@ function AppInner() {
 
 export default function App() {
   return (
-    <AntApp>
-      <AppInner />
-    </AntApp>
+    <AuthProvider>
+      <AntApp>
+        <AppInner />
+      </AntApp>
+    </AuthProvider>
   );
 }

@@ -93,13 +93,14 @@ const historyColumns = [
 
 interface Props {
   equipment: Equipment;
+  canEdit: boolean;
   onEdit: () => void;
   project?: Project | null;
   onProjectClick?: (project: Project) => void;
   onStatusUpdate?: (status: EquipmentStatus, location: EquipmentLocation, responsible: string) => Promise<void>;
 }
 
-export function EquipmentDetail({ equipment, onEdit, project, onProjectClick, onStatusUpdate }: Props) {
+export function EquipmentDetail({ equipment, canEdit, onEdit, project, onProjectClick, onStatusUpdate }: Props) {
   const { message } = App.useApp();
   const [status, setStatus] = useState<EquipmentStatus>(equipment.currentStatus);
   const [location, setLocation] = useState<EquipmentLocation>(equipment.currentLocation);
@@ -158,9 +159,11 @@ export function EquipmentDetail({ equipment, onEdit, project, onProjectClick, on
             </Text>
           </div>
           <Flex gap={8} className="no-print">
-            <Button icon={<EditOutlined />} onClick={onEdit}>
-              Изменить
-            </Button>
+            {canEdit && (
+              <Button icon={<EditOutlined />} onClick={onEdit}>
+                Изменить
+              </Button>
+            )}
             <Button icon={<PrinterOutlined />} onClick={() => window.print()}>
               Печать
             </Button>
@@ -224,7 +227,7 @@ export function EquipmentDetail({ equipment, onEdit, project, onProjectClick, on
       </Card>
 
       {/* Status update */}
-      <Card title="Обновить статус" size="small" style={{ marginBottom: 16 }} className="no-print">
+      {canEdit && <Card title="Обновить статус" size="small" style={{ marginBottom: 16 }} className="no-print">
         <Space size={8} wrap>
           <Select<EquipmentStatus>
             value={status}
@@ -249,7 +252,7 @@ export function EquipmentDetail({ equipment, onEdit, project, onProjectClick, on
             Сохранить
           </Button>
         </Space>
-      </Card>
+      </Card>}
 
       {/* History */}
       <Card title="История перемещений" size="small">

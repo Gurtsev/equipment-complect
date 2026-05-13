@@ -152,11 +152,12 @@ function exportExcel(items: Equipment[]) {
 interface Props {
   items: Equipment[];
   selected: Equipment | null;
+  canEdit: boolean;
   onSelect: (equipment: Equipment) => void;
   onAdd: () => void;
 }
 
-export function CatalogSidebar({ items, selected, onSelect, onAdd }: Props) {
+export function CatalogSidebar({ items, selected, canEdit, onSelect, onAdd }: Props) {
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<EquipmentCategory | 'all'>('all');
   const [statusFilter, setStatusFilter] = useState<EquipmentStatus | undefined>(undefined);
@@ -203,9 +204,11 @@ export function CatalogSidebar({ items, selected, onSelect, onAdd }: Props) {
             <Dropdown menu={{ items: exportMenuItems }} placement="bottomRight">
               <Button size="small" icon={<DownloadOutlined />} disabled={items.length === 0} />
             </Dropdown>
-            <Button type="primary" size="small" icon={<PlusOutlined />} onClick={onAdd}>
-              Добавить
-            </Button>
+            {canEdit && (
+              <Button type="primary" size="small" icon={<PlusOutlined />} onClick={onAdd}>
+                Добавить
+              </Button>
+            )}
           </Flex>
         </Flex>
         <Input
