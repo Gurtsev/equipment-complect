@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Studio equipment inventory management SPA built with React 18 + TypeScript + Vite + Ant Design 5. Single-page layout: sidebar on the left (two tabs: catalog and projects), detail panel on the right. No backend — all data is in-memory for the current session.
+Studio equipment inventory management SPA built with React 18 + TypeScript + Vite + Ant Design 5. Two-tab sidebar (Каталог / Проекты) on the left, detail panel on the right. Backend: Supabase (PostgreSQL + Storage).
 
 ## Development Commands
 
@@ -14,69 +14,137 @@ npm run build    # tsc + vite build
 npm run preview  # preview the production build
 ```
 
+Requires `.env` with `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`. See `.env.example`.
+
 There are no tests and no linting tools configured.
 
 ## Architecture
 
 ```
 src/
+  services/
+    supabase.ts          # createClient() — единственное место с URL и anon key
+    equipmentService.ts  # CRUD для таблицы equipment + equipment_history
+    historyService.ts    # INSERT в equipment_history
+    projectService.ts    # CRUD для таблицы projects + project_equipment
   models/
-    Equipment.ts           # Equipment class + TypeScript types
-    EquipmentRepository.ts # In-memory store: getAll/getById/filter/add/replace
-    Project.ts             # Project class + ProjectStatus type
-    ProjectRepository.ts   # In-memory store: getAll/getById/getByEquipmentId/add/replace/remove
-  data/
-    equipmentData.ts       # Exports singleton `repository` (starts empty)
-    projectData.ts         # Exports singleton `projectRepository` (starts empty)
+    Equipment.ts         # Equipment class + TypeScript types
+    Project.ts           # Project class + ProjectStatus type
   components/
-    CatalogSidebar/        # Left pane tab 1: search, category filter, equipment list
-    ProjectsSidebar/       # Left pane tab 2: project list with status badges
-    EquipmentDetail/       # Right pane: equipment info, status update, history, QR modal
-    ProjectDetail/         # Right pane: project info, equipment kit management, XLSX export
-    Dashboard/             # Right pane default (no selection): inventory summary stats
-    CreateEquipmentDrawer/ # Ant Design Drawer: create or edit equipment
-    CreateProjectDrawer/   # Ant Design Drawer: create or edit project
-  App.tsx                  # Root layout; owns all state; two-tab sidebar + right pane routing
-  main.tsx                 # React entry point
+    CatalogSidebar/      # Вкладка «Каталог»: поиск, фильтры, список, экспорт
+    ProjectsSidebar/     # Вкладка «Проекты»: список проектов со статусами
+    EquipmentDetail/     # Правая панель: карточка оборудования
+    ProjectDetail/       # Правая панель: карточка проекта
+    Dashboard/           # Правая панель по умолчанию: сводная статистика
+    CreateEquipmentDrawer/ # Drawer: создание и редактирование оборудования
+    CreateProjectDrawer/   # Drawer: создание и редактирование проекта
+  App.tsx                # Root: весь стейт, async загрузка, роутинг правой панели
+  main.tsx               # React entry point
+  print.css              # @media print стили
+  vite-env.d.ts          # Типы для import.meta.env
+supabase/
+  migrations/
+    001_initial.sql      # SQL-схема: equipment, equipment_history, projects, project_equipment
 ```
 
-**State flow:** `App` owns `items`, `projects`, `selectedEquipment`, `selectedProject`, `activeTab`, `detailKey`, `equipmentDrawerMode`, `projectDrawerMode`. Both drawers use a mode of `'create' | 'edit' | null`; passing `initialEquipment`/`initialProject` switches them to edit mode.
+## Services
 
-**Right pane routing:** `selectedProject` takes priority → `ProjectDetail`; else `selectedEquipment` → `EquipmentDetail`; else → `Dashboard`.
+### `equipmentService`
+- `getAll()` — загружает все записи `equipment` + их историю из `equipment_history`, собирает `Equipment[]`. История сортируется по `recorded_at desc` — первая запись становится `currentStatus`/`currentLocation`.
+- `add(equipment)` — INSERT в `equipment`, затем INSERT первой записи истории в `equipment_history`.
+- `update(equipment)` — UPDATE полей `equipment` (кроме `id` и `inv_number`). Историю не трогает.
 
-**Data is in-memory only.** Singletons `repository` and `projectRepository` hold live arrays. After mutation, `App` calls `setItems([...repository.getAll()])` or `setProjects([...projectRepository.getAll()])` to trigger re-render.
+### `historyService`
+- `addEntry(equipmentId, status, location, responsible)` — INSERT в `equipment_history`. Вызывается из `App` (смена статуса через форму в `EquipmentDetail`) и из `ProjectDetail` (массовые операции с комплектом).
 
-### Key types
+### `projectService`
+- `getAll()` — загружает все `projects` с вложенным `project_equipment(equipment_id)`. Суpabase возвращает join одним запросом; `equipmentIds` собирается из массива `project_equipment`.
+- `add(project)` — INSERT в `projects`, затем bulk INSERT в `project_equipment`.
+- `update(project)` — UPDATE `projects` + DELETE всех строк `project_equipment` для этого проекта + bulk INSERT новых. Это гарантирует синхронизацию `equipmentIds` с БД.
+- `remove(id)` — DELETE из `projects` (cascade удаляет `project_equipment`).
+
+## State Flow (App.tsx)
+
+`App` загружает данные при монтировании через `loadAll()` (параллельный вызов `equipmentService.getAll()` + `projectService.getAll()`). Все мутации следуют паттерну: **вызов сервиса → `loadAll()` → обновление стейта**.
+
+**Ключевые обработчики:**
+- `handleEquipmentCreated` — `equipmentService.add()` → `loadAll()` → `setSelectedEquipment`
+- `handleEquipmentUpdated` — `equipmentService.update()` → `loadAll()` → `setSelectedEquipment`
+- `handleStatusUpdate(status, location, responsible)` — `historyService.addEntry()` → `equipmentService.getAll()` → `setItems`. Вызывается из `EquipmentDetail` через prop `onStatusUpdate`.
+- `handleEquipmentChange` — `loadAll()` + инкремент `detailKey`. Вызывается из `ProjectDetail` после массовых операций с оборудованием.
+- `handleProjectCreated` — `projectService.add()` → `loadAll()` → `setSelectedProject`
+- `handleProjectUpdated` — вызывается из `CreateProjectDrawer`; `projectService.update()` → `loadAll()`
+- `handleProjectUpdate` — вызывается из `ProjectDetail` (он сам уже записал в БД); просто `loadAll()`
+
+**Роутинг правой панели:** `selectedProject` → `ProjectDetail`; `selectedEquipment` → `EquipmentDetail`; ничего → `Dashboard`.
+
+**`getEquipmentProject(equipmentId)`** — синхронная функция, ищет в стейте `projects` активный/планируемый проект с данным equipmentId. Передаётся в `EquipmentDetail` (показать метку проекта) и `ProjectDetail` (блокировать занятое оборудование в пикере).
+
+## Components
+
+### `CatalogSidebar`
+Получает `items: Equipment[]` от `App`. Фильтрует и сортирует локально (не через сервис). Имеет собственную функцию `filterItems` — намеренно дублирует логику фильтрации репозитория, чтобы не зависеть от сервисов.
+
+- Фильтры: текстовый поиск (модель / инв. номер), категория, статус, локация, сортировка.
+- `exportCsv(items)` — генерирует CSV через нативный `Blob`, скачивает без зависимостей.
+- `exportExcel(items)` — два листа через `xlsx`: «Оборудование» + «История» (все записи `equipment_history`).
+
+### `EquipmentDetail`
+Принимает `equipment` как prop. Локальный стейт: `status`, `location`, `changedBy`, `history`.
+
+- `handleSave()` — делает in-memory мутацию (`equipment.addHistoryEntry()`) для мгновенного обновления UI, затем вызывает `onStatusUpdate` prop (который пишет в БД и обновляет `items` в App).
+- Кнопка «Печать» — `window.print()`. Классы `no-print` / `print-only` управляют видимостью через `print.css`.
+- QR-код кодирует `equipment:<id>` и показывается в Modal и при печати.
+- `'Забронировано'` исключён из списка статусов для ручного выбора — только через проект.
+
+### `ProjectDetail`
+Импортирует `historyService` и `projectService` напрямую. Все мутирующие хендлеры async.
+
+- `handleActivate()` — переводит проект в «Активен», каждую единицу в «В Работе». `Promise.all`: параллельно `historyService.addEntry()` для каждой единицы + `projectService.update(project)`.
+- `handleFinish()` — переводит проект в «Завершён», возвращает оборудование на склад, очищает `equipmentIds`. Тот же паттерн.
+- `handleRemoveEquipment(eq)` — убирает единицу из проекта; если статус «Забронировано» или «В Работе» — возвращает на склад через `historyService.addEntry()`.
+- `handlePickerConfirm()` — добавляет выбранные единицы, ставит статус «Забронировано», сохраняет через сервисы.
+- Экспорт комплекта через `xlsx` в функции `exportCompletion()`.
+
+### `CreateEquipmentDrawer`
+Работает в двух режимах: создание (нет `initialEquipment`) и редактирование (есть `initialEquipment`).
+
+- Поле «Фотография»: компонент `<Upload>` с `customRequest` — загружает файл в Supabase Storage bucket `equipment-images`, получает публичный URL, записывает в скрытый `Form.Item name="image"`.
+- В режиме редактирования `inv_number` задизейблен — инвентарный номер не меняется.
+- При создании всегда устанавливает начальный статус `'На Складе'` / локацию `'Склад'`.
+
+## Key Types (`src/models/`)
 
 ```ts
-// src/models/Equipment.ts
+// Equipment.ts
 EquipmentStatus   = 'В Работе' | 'На Складе' | 'В Ремонте' | 'Списано' | 'В Пути' | 'Забронировано'
 EquipmentLocation = 'Студия Медиа Крыша' | 'Студия на Романовом' | 'Склад' | 'Ремонт' | 'В пути'
 EquipmentCategory = 'camera' | 'microphone' | 'light' | 'computer' | 'audio' | 'accessory' | 'optics'
 
-// src/models/Project.ts
+// Project.ts
 ProjectStatus = 'Планируется' | 'Активен' | 'Завершён'
 ```
 
-`Equipment.currentStatus` and `Equipment.currentLocation` derive from `history[0]` (most-recent-first).
+`Equipment.currentStatus` и `Equipment.currentLocation` — геттеры, возвращают `history[0].status/location` (история хранится в порядке most-recent-first).
 
-### Conventions
+`Equipment.addHistoryEntry(status, location, responsible)` — prepend в `history[]`. Используется для немедленного обновления UI; параллельно вызывается `historyService.addEntry()` для записи в БД.
 
-- **IDs:** `EQP-####` (random 4-digit) for equipment, `INV-YYYY-####` for inventory numbers, `SN-[BRAND]-########` for serial numbers. Projects use a similar random-digit scheme.
-- **QR codes:** `qrcode.react` (`QRCodeSVG`); encodes `equipment:<id>`.
-- **Dates:** `date.toLocaleString('ru-RU')` for datetime, `date.toLocaleDateString('ru-RU')` for date-only. No utility wrapper needed.
-- **Ant Design `App` context:** `message`, `modal`, and `notification` must be accessed via `App.useApp()` inside `<AntApp>` (already wrapping the tree in `App.tsx`).
-- **Images:** external URLs (Yandex CDN); local asset at `assets/sonyfx6.webp`.
-- **XLSX export:** `xlsx` library — used in `ProjectDetail` to export the equipment kit.
+## Conventions
 
-### Non-obvious details
+- **IDs:** `EQP-####` (random 4-digit) для оборудования, `INV-YYYY-####` для инвентарных номеров, `PRJ-####` для проектов.
+- **Dates:** `date.toLocaleString('ru-RU')` для datetime, `date.toLocaleDateString('ru-RU')` для date-only.
+- **Ant Design context:** `message`, `modal` — только через `App.useApp()` внутри `<AntApp>`.
+- **`STATUS_COLOR`** определён в трёх местах: `CatalogSidebar` (plain strings), `EquipmentDetail` (Ant Design preset), `Dashboard` (plain strings). При добавлении нового `EquipmentStatus` обновить все три.
+- **`'В Ремонте'` auto-location:** выбор этого статуса автоматически ставит локацию `'Ремонт'` и блокирует dropdown. Реализовано в `EquipmentDetail` и `CreateEquipmentDrawer`.
+- **`detailKey`** — инкрементируется при внешних изменениях статуса оборудования (из `ProjectDetail`), вызывая полный remount `EquipmentDetail` и сброс его локального стейта.
 
-- **`EquipmentDetail` forced remount:** `App` renders `<EquipmentDetail key={`${selectedEquipment.id}-${detailKey}`} .../>`. The compound key ensures remount both on equipment selection change *and* when `ProjectDetail` mutates equipment status externally (via `handleEquipmentChange` which increments `detailKey`).
-- **`'В Ремонте'` auto-location:** Selecting status `"В Ремонте"` auto-sets location to `"Ремонт"` and **disables** the location dropdown. Enforced in both `EquipmentDetail` and `CreateEquipmentDrawer`.
-- **`'Забронировано'` is project-managed:** This status is set automatically by `ProjectDetail` when equipment is added to a project. It is not selectable manually in `EquipmentDetail` (filtered from the dropdown). When equipment is removed from a project or a project is finished, the status reverts to `'На Складе'`.
-- **Filter duplication:** `CatalogSidebar` has its own `filterItems` function that mirrors `EquipmentRepository.filter()`. Intentional — the sidebar receives a plain `items: Equipment[]` prop. If you change filter logic, update both places.
-- **`STATUS_COLOR` in three places:** `CatalogSidebar` (plain color strings), `EquipmentDetail` (Ant Design preset statuses), and `Dashboard` (plain color strings). Adding a new `EquipmentStatus` requires updating all three maps.
-- **`responsible` on status update:** `EquipmentDetail`'s status update form always uses `equipment.responsible` (the original owner). History entries therefore always carry the original responsible person.
-- **New equipment initial state:** `CreateEquipmentDrawer` always creates equipment with `status: 'На Складе'` and `location: 'Склад'`.
-- **Project lifecycle:** `Планируется` → add equipment (sets `'Забронировано'`) → "Выдать всё" → `Активен` (equipment → `'В Работе'`) → "Завершить проект" → `Завершён` (equipment → `'На Складе'`, `equipmentIds` cleared).
-- **`getEquipmentProject`:** `App` passes this helper (wrapping `projectRepository.getByEquipmentId`) down to both `EquipmentDetail` (to show which project owns the item) and `ProjectDetail` (to block adding already-occupied equipment in the picker).
+## Database Schema
+
+Таблицы в Supabase (PostgreSQL). Миграция: `supabase/migrations/001_initial.sql`.
+
+- `equipment` — основные данные оборудования. `accessories` хранится как `text[]`.
+- `equipment_history` — история перемещений. `recorded_at desc` = текущий статус.
+- `projects` — проекты. `start_date`/`end_date` тип `date` (без времени), приходят строкой `"YYYY-MM-DD"`, конвертируются в `new Date(row.start_date)`.
+- `project_equipment` — join-таблица M:M. При `projectService.update()` синхронизируется через DELETE + INSERT.
+
+RLS отключён (включится в 3.2 вместе с авторизацией). Storage bucket `equipment-images` — публичный.

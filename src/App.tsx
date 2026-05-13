@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Layout, App as AntApp } from 'antd';
+import { useState, useEffect, useCallback } from 'react';
+import { Layout, App as AntApp, Spin } from 'antd';
 import { CatalogSidebar } from './components/CatalogSidebar';
 import { EquipmentDetail } from './components/EquipmentDetail';
 import { CreateEquipmentDrawer } from './components/CreateEquipmentDrawer';
@@ -7,9 +7,10 @@ import { Dashboard } from './components/Dashboard';
 import { ProjectsSidebar } from './components/ProjectsSidebar';
 import { ProjectDetail } from './components/ProjectDetail';
 import { CreateProjectDrawer } from './components/CreateProjectDrawer';
-import { repository } from './data/equipmentData';
-import { projectRepository } from './data/projectData';
-import { Equipment } from './models/Equipment';
+import { equipmentService } from './services/equipmentService';
+import { historyService } from './services/historyService';
+import { projectService } from './services/projectService';
+import { Equipment, EquipmentLocation, EquipmentStatus } from './models/Equipment';
 import { Project } from './models/Project';
 
 const { Sider, Content } = Layout;
@@ -27,15 +28,30 @@ const TAB_STYLE_BASE: React.CSSProperties = {
 };
 
 function AppInner() {
-  const [items, setItems] = useState<Equipment[]>(() => repository.getAll());
-  const [projects, setProjects] = useState<Project[]>(() => projectRepository.getAll());
+  const { message } = AntApp.useApp();
+  const [items, setItems] = useState<Equipment[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [loading, setLoading] = useState(true);
   const [selectedEquipment, setSelectedEquipment] = useState<Equipment | null>(null);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [activeTab, setActiveTab] = useState<ActiveTab>('catalog');
-  // detailKey: принудительный ремаунт EquipmentDetail после внешних изменений статуса
   const [detailKey, setDetailKey] = useState(0);
   const [equipmentDrawerMode, setEquipmentDrawerMode] = useState<'create' | 'edit' | null>(null);
   const [projectDrawerMode, setProjectDrawerMode] = useState<'create' | 'edit' | null>(null);
+
+  const loadAll = useCallback(async () => {
+    const [newItems, newProjects] = await Promise.all([
+      equipmentService.getAll(),
+      projectService.getAll(),
+    ]);
+    setItems(newItems);
+    setProjects(newProjects);
+    return { newItems, newProjects };
+  }, []);
+
+  useEffect(() => {
+    void loadAll().finally(() => setLoading(false));
+  }, [loadAll]);
 
   // --- Equipment handlers ---
 
@@ -44,23 +60,56 @@ function AppInner() {
     setSelectedProject(null);
   };
 
-  const handleEquipmentCreated = (equipment: Equipment) => {
-    repository.add(equipment);
-    setItems([...repository.getAll()]);
-    setSelectedEquipment(equipment);
-    setSelectedProject(null);
+  const handleEquipmentCreated = async (equipment: Equipment) => {
+    try {
+      await equipmentService.add(equipment);
+      const { newItems } = await loadAll();
+      setSelectedEquipment(newItems.find((e) => e.id === equipment.id) ?? null);
+      setSelectedProject(null);
+    } catch {
+      void message.error('Ошибка при сохранении оборудования');
+    }
   };
 
-  const handleEquipmentUpdated = (equipment: Equipment) => {
-    repository.replace(equipment.id, equipment);
-    setItems([...repository.getAll()]);
-    setSelectedEquipment(equipment);
+  const handleEquipmentUpdated = async (equipment: Equipment) => {
+    try {
+      await equipmentService.update(equipment);
+      const { newItems } = await loadAll();
+      setSelectedEquipment(newItems.find((e) => e.id === equipment.id) ?? null);
+    } catch {
+      void message.error('Ошибка при обновлении оборудования');
+    }
   };
 
-  // Вызывается когда проект меняет статус оборудования извне
-  const handleEquipmentChange = () => {
-    setItems([...repository.getAll()]);
-    setDetailKey((k) => k + 1);
+  const handleStatusUpdate = async (
+    status: EquipmentStatus,
+    location: EquipmentLocation,
+    responsible: string,
+  ) => {
+    if (!selectedEquipment) return;
+    try {
+      await historyService.addEntry(selectedEquipment.id, status, location, responsible);
+      const newItems = await equipmentService.getAll();
+      setItems(newItems);
+    } catch {
+      void message.error('Ошибка при обновлении статуса');
+    }
+  };
+
+  // Вызывается когда ProjectDetail меняет статус оборудования
+  const handleEquipmentChange = async () => {
+    try {
+      const { newItems, newProjects } = await loadAll();
+      setDetailKey((k) => k + 1);
+      if (selectedEquipment) {
+        setSelectedEquipment(newItems.find((e) => e.id === selectedEquipment.id) ?? null);
+      }
+      if (selectedProject) {
+        setSelectedProject(newProjects.find((p) => p.id === selectedProject.id) ?? null);
+      }
+    } catch {
+      void message.error('Ошибка при обновлении данных');
+    }
   };
 
   // --- Project handlers ---
@@ -70,23 +119,36 @@ function AppInner() {
     setSelectedEquipment(null);
   };
 
-  const handleProjectCreated = (project: Project) => {
-    projectRepository.add(project);
-    setProjects([...projectRepository.getAll()]);
-    setSelectedProject(project);
-    setSelectedEquipment(null);
+  const handleProjectCreated = async (project: Project) => {
+    try {
+      await projectService.add(project);
+      const { newProjects } = await loadAll();
+      setSelectedProject(newProjects.find((p) => p.id === project.id) ?? null);
+      setSelectedEquipment(null);
+    } catch {
+      void message.error('Ошибка при создании проекта');
+    }
   };
 
-  const handleProjectUpdated = (project: Project) => {
-    projectRepository.replace(project.id, project);
-    setProjects([...projectRepository.getAll()]);
-    setSelectedProject(project);
+  // Вызывается из CreateProjectDrawer после редактирования
+  const handleProjectUpdated = async (project: Project) => {
+    try {
+      await projectService.update(project);
+      const { newProjects } = await loadAll();
+      setSelectedProject(newProjects.find((p) => p.id === project.id) ?? null);
+    } catch {
+      void message.error('Ошибка при обновлении проекта');
+    }
   };
 
-  const handleProjectUpdate = (project: Project) => {
-    projectRepository.replace(project.id, project);
-    setProjects([...projectRepository.getAll()]);
-    setSelectedProject(project);
+  // Вызывается из ProjectDetail (он уже записал в БД сам)
+  const handleProjectUpdate = async (project: Project) => {
+    try {
+      const { newProjects } = await loadAll();
+      setSelectedProject(newProjects.find((p) => p.id === project.id) ?? null);
+    } catch {
+      void message.error('Ошибка при обновлении данных');
+    }
   };
 
   const handleProjectClick = (project: Project) => {
@@ -96,9 +158,20 @@ function AppInner() {
   };
 
   const getEquipmentProject = (equipmentId: string) =>
-    projectRepository.getByEquipmentId(equipmentId);
+    projects.find(
+      (p) =>
+        p.equipmentIds.includes(equipmentId) &&
+        (p.status === 'Планируется' || p.status === 'Активен'),
+    );
 
-  // Правая панель
+  if (loading) {
+    return (
+      <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <Spin size="large" tip="Загрузка..." />
+      </div>
+    );
+  }
+
   const rightPane = selectedProject ? (
     <ProjectDetail
       key={selectedProject.id}
@@ -116,6 +189,7 @@ function AppInner() {
       onEdit={() => setEquipmentDrawerMode('edit')}
       project={getEquipmentProject(selectedEquipment.id) ?? null}
       onProjectClick={handleProjectClick}
+      onStatusUpdate={handleStatusUpdate}
     />
   ) : (
     <Dashboard items={items} />
@@ -134,13 +208,7 @@ function AppInner() {
         }}
       >
         {/* Вкладки */}
-        <div
-          style={{
-            display: 'flex',
-            borderBottom: '1px solid #f0f0f0',
-            flexShrink: 0,
-          }}
-        >
+        <div style={{ display: 'flex', borderBottom: '1px solid #f0f0f0', flexShrink: 0 }}>
           {(['catalog', 'projects'] as ActiveTab[]).map((tab) => {
             const label = tab === 'catalog' ? 'Каталог' : 'Проекты';
             const isActive = activeTab === tab;
@@ -163,12 +231,7 @@ function AppInner() {
 
         {/* Контент вкладок */}
         <div style={{ flex: 1, overflow: 'hidden', position: 'relative' }}>
-          <div
-            style={{
-              height: '100%',
-              display: activeTab === 'catalog' ? 'block' : 'none',
-            }}
-          >
+          <div style={{ height: '100%', display: activeTab === 'catalog' ? 'block' : 'none' }}>
             <CatalogSidebar
               items={items}
               selected={selectedEquipment}
@@ -176,12 +239,7 @@ function AppInner() {
               onAdd={() => setEquipmentDrawerMode('create')}
             />
           </div>
-          <div
-            style={{
-              height: '100%',
-              display: activeTab === 'projects' ? 'block' : 'none',
-            }}
-          >
+          <div style={{ height: '100%', display: activeTab === 'projects' ? 'block' : 'none' }}>
             <ProjectsSidebar
               projects={projects}
               selected={selectedProject}
@@ -200,9 +258,7 @@ function AppInner() {
         open={equipmentDrawerMode !== null}
         onClose={() => setEquipmentDrawerMode(null)}
         onCreated={handleEquipmentCreated}
-        initialEquipment={
-          equipmentDrawerMode === 'edit' ? (selectedEquipment ?? undefined) : undefined
-        }
+        initialEquipment={equipmentDrawerMode === 'edit' ? (selectedEquipment ?? undefined) : undefined}
         onUpdated={handleEquipmentUpdated}
       />
 
@@ -210,9 +266,7 @@ function AppInner() {
         open={projectDrawerMode !== null}
         onClose={() => setProjectDrawerMode(null)}
         onCreated={handleProjectCreated}
-        initialProject={
-          projectDrawerMode === 'edit' ? (selectedProject ?? undefined) : undefined
-        }
+        initialProject={projectDrawerMode === 'edit' ? (selectedProject ?? undefined) : undefined}
         onUpdated={handleProjectUpdated}
       />
     </Layout>

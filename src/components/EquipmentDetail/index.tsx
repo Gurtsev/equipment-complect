@@ -96,9 +96,10 @@ interface Props {
   onEdit: () => void;
   project?: Project | null;
   onProjectClick?: (project: Project) => void;
+  onStatusUpdate?: (status: EquipmentStatus, location: EquipmentLocation, responsible: string) => Promise<void>;
 }
 
-export function EquipmentDetail({ equipment, onEdit, project, onProjectClick }: Props) {
+export function EquipmentDetail({ equipment, onEdit, project, onProjectClick, onStatusUpdate }: Props) {
   const { message } = App.useApp();
   const [status, setStatus] = useState<EquipmentStatus>(equipment.currentStatus);
   const [location, setLocation] = useState<EquipmentLocation>(equipment.currentLocation);
@@ -111,9 +112,10 @@ export function EquipmentDetail({ equipment, onEdit, project, onProjectClick }: 
     if (val === 'В Ремонте') setLocation('Ремонт');
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     equipment.addHistoryEntry(status, location, changedBy);
     setHistory([...equipment.history]);
+    await onStatusUpdate?.(status, location, changedBy);
     void message.success('Статус обновлён');
   };
 
@@ -243,7 +245,7 @@ export function EquipmentDetail({ equipment, onEdit, project, onProjectClick }: 
             placeholder="Кто меняет статус"
             style={{ width: 180 }}
           />
-          <Button type="primary" onClick={handleSave}>
+          <Button type="primary" onClick={() => void handleSave()}>
             Сохранить
           </Button>
         </Space>

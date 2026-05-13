@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Drawer,
   Form,
@@ -6,10 +6,13 @@ import {
   Select,
   Button,
   Space,
+  Upload,
   App,
 } from 'antd';
-import { PlusOutlined, MinusCircleOutlined } from '@ant-design/icons';
+import type { UploadFile, UploadProps } from 'antd';
+import { PlusOutlined, MinusCircleOutlined, UploadOutlined } from '@ant-design/icons';
 import { Equipment, EquipmentCategory, EquipmentLocation, EquipmentStatus } from '../../models/Equipment';
+import { supabase } from '../../services/supabase';
 
 const CATEGORIES: Array<{ label: string; value: EquipmentCategory }> = [
   { label: '📹 Камера', value: 'camera' },
@@ -50,6 +53,7 @@ export function CreateEquipmentDrawer({ open, onClose, onCreated, initialEquipme
   const { message } = App.useApp();
   const [form] = Form.useForm<FormValues>();
   const isEdit = !!initialEquipment;
+  const [fileList, setFileList] = useState<UploadFile[]>([]);
 
   useEffect(() => {
     if (!open) return;
@@ -65,10 +69,42 @@ export function CreateEquipmentDrawer({ open, onClose, onCreated, initialEquipme
         responsible: initialEquipment.responsible,
         accessories: initialEquipment.accessories.map((name) => ({ name })),
       });
+      setFileList(
+        initialEquipment.image
+          ? [{ uid: '-1', name: 'photo', status: 'done', url: initialEquipment.image }]
+          : [],
+      );
     } else {
       form.resetFields();
+      setFileList([]);
     }
   }, [open, initialEquipment, form]);
+
+  const uploadProps: UploadProps = {
+    listType: 'picture',
+    maxCount: 1,
+    fileList,
+    onChange: ({ fileList: newList, file }) => {
+      setFileList(newList);
+      if (file.status === 'removed') form.setFieldValue('image', '');
+    },
+    customRequest: async ({ file, onSuccess, onError }) => {
+      const f = file as File;
+      const ext = f.name.split('.').pop() ?? 'jpg';
+      const path = `${Date.now()}.${ext}`;
+      const { error } = await supabase.storage
+        .from('equipment-images')
+        .upload(path, f, { cacheControl: '3600', upsert: false });
+      if (error) {
+        onError?.(new Error(error.message));
+        void message.error('Ошибка загрузки фото');
+        return;
+      }
+      const { data } = supabase.storage.from('equipment-images').getPublicUrl(path);
+      form.setFieldValue('image', data.publicUrl);
+      onSuccess?.({});
+    },
+  };
 
   const handleFinish = (values: FormValues) => {
     if (isEdit && initialEquipment && onUpdated) {
@@ -163,8 +199,15 @@ export function CreateEquipmentDrawer({ open, onClose, onCreated, initialEquipme
           <Input.TextArea rows={2} placeholder="Краткое описание характеристик" />
         </Form.Item>
 
-        <Form.Item name="image" label="URL фотографии">
-          <Input placeholder="https://..." />
+        <Form.Item label="Фотография">
+          <Upload {...uploadProps}>
+            {fileList.length === 0 && (
+              <Button icon={<UploadOutlined />}>Загрузить фото</Button>
+            )}
+          </Upload>
+        </Form.Item>
+        <Form.Item name="image" hidden>
+          <Input />
         </Form.Item>
 
         <Form.Item

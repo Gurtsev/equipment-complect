@@ -25,6 +25,8 @@ import {
 import * as XLSX from 'xlsx';
 import { Project, ProjectStatus } from '../../models/Project';
 import { Equipment, EquipmentStatus } from '../../models/Equipment';
+import { historyService } from '../../services/historyService';
+import { projectService } from '../../services/projectService';
 
 const { Title, Text } = Typography;
 
@@ -95,11 +97,17 @@ export function ProjectDetail({
       content: `Статус всех единиц изменится на «В Работе», локация — «${project.location}»`,
       okText: 'Выдать',
       cancelText: 'Отмена',
-      onOk: () => {
+      onOk: async () => {
         projectEquipment.forEach((eq) =>
           eq.addHistoryEntry('В Работе', project.location, project.responsible),
         );
         project.status = 'Активен';
+        await Promise.all([
+          ...projectEquipment.map((eq) =>
+            historyService.addEntry(eq.id, 'В Работе', project.location, project.responsible),
+          ),
+          projectService.update(project),
+        ]);
         onUpdate(project);
         onEquipmentChange();
         void message.success('Оборудование выдано, проект активен');
@@ -115,12 +123,18 @@ export function ProjectDetail({
       okText: 'Завершить',
       okType: 'danger',
       cancelText: 'Отмена',
-      onOk: () => {
+      onOk: async () => {
         projectEquipment.forEach((eq) =>
           eq.addHistoryEntry('На Складе', 'Склад', project.responsible),
         );
         project.status = 'Завершён';
         project.equipmentIds = [];
+        await Promise.all([
+          ...projectEquipment.map((eq) =>
+            historyService.addEntry(eq.id, 'На Складе', 'Склад', project.responsible),
+          ),
+          projectService.update(project),
+        ]);
         onUpdate(project);
         onEquipmentChange();
         void message.success('Проект завершён, оборудование возвращено на склад');
@@ -129,18 +143,20 @@ export function ProjectDetail({
   };
 
   // Убрать единицу из проекта
-  const handleRemoveEquipment = (eq: Equipment) => {
+  const handleRemoveEquipment = async (eq: Equipment) => {
     if (eq.currentStatus === 'Забронировано' || eq.currentStatus === 'В Работе') {
       eq.addHistoryEntry('На Складе', 'Склад', project.responsible);
+      await historyService.addEntry(eq.id, 'На Складе', 'Склад', project.responsible);
     }
     project.equipmentIds = project.equipmentIds.filter((id) => id !== eq.id);
+    await projectService.update(project);
     onUpdate(project);
     onEquipmentChange();
     void message.success(`${eq.model} убрано из проекта`);
   };
 
   // Добавить оборудование: подтверждение в пикере
-  const handlePickerConfirm = () => {
+  const handlePickerConfirm = async () => {
     if (pickerSelected.length === 0) {
       setPickerOpen(false);
       return;
@@ -150,6 +166,12 @@ export function ProjectDetail({
       eq.addHistoryEntry('Забронировано', eq.currentLocation, project.responsible),
     );
     project.equipmentIds = [...new Set([...project.equipmentIds, ...pickerSelected])];
+    await Promise.all([
+      ...toAdd.map((eq) =>
+        historyService.addEntry(eq.id, 'Забронировано', eq.currentLocation, project.responsible),
+      ),
+      projectService.update(project),
+    ]);
     onUpdate(project);
     onEquipmentChange();
     setPickerSelected([]);
@@ -200,7 +222,7 @@ export function ProjectDetail({
             title="Убрать из проекта?"
             okText="Убрать"
             cancelText="Отмена"
-            onConfirm={() => handleRemoveEquipment(eq)}
+            onConfirm={() => void handleRemoveEquipment(eq)}
           >
             <Button type="text" danger size="small" icon={<DeleteOutlined />} />
           </Popconfirm>
@@ -299,7 +321,7 @@ export function ProjectDetail({
         title="Добавить оборудование в проект"
         open={pickerOpen}
         onCancel={() => setPickerOpen(false)}
-        onOk={handlePickerConfirm}
+        onOk={() => void handlePickerConfirm()}
         okText={`Добавить${pickerSelected.length > 0 ? ` (${pickerSelected.length})` : ''}`}
         cancelText="Отмена"
         width={560}
