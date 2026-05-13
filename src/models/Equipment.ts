@@ -1,4 +1,4 @@
-export type EquipmentStatus = 'В Работе' | 'На Складе' | 'В Ремонте' | 'Списано' | 'В Пути';
+export type EquipmentStatus = 'В Работе' | 'На Складе' | 'В Ремонте' | 'Списано' | 'В Пути' | 'Забронировано';
 export type EquipmentLocation =
   | 'Студия Медиа Крыша'
   | 'Студия на Романовом'

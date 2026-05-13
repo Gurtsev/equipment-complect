@@ -1,0 +1,42 @@
+.print-only {
+  display: none;
+}
+
+@media print {
+  /* Скрыть сайдбар */
+  .ant-layout-sider {
+    display: none !important;
+  }
+
+  /* Контент на всю ширину */
+  .ant-layout-content {
+    height: auto !important;
+    overflow: visible !important;
+    background: white !important;
+  }
+
+  /* Скрыть UI-элементы, ненужные на печати */
+  .no-print {
+    display: none !important;
+  }
+
+  /* Показать элементы только для печати */
+  .print-only {
+    display: block !important;
+  }
+
+  /* Убрать тени и лишние фоны у карточек */
+  .ant-card {
+    box-shadow: none !important;
+    break-inside: avoid;
+  }
+
+  /* Таблица истории — без пагинации, всё на одной странице */
+  .ant-table-pagination {
+    display: none !important;
+  }
+
+  @page {
+    margin: 1.5cm;
+  }
+}

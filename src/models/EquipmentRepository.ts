@@ -34,4 +34,9 @@ export class EquipmentRepository {
   add(equipment: Equipment): void {
     this.items.push(equipment);
   }
+
+  replace(id: string, equipment: Equipment): void {
+    const index = this.items.findIndex((item) => item.id === id);
+    if (index !== -1) this.items[index] = equipment;
+  }
 }

@@ -37,6 +37,8 @@ interface Props {
   open: boolean;
   onClose: () => void;
   onCreated: (equipment: Equipment) => void;
+  initialEquipment?: Equipment;
+  onUpdated?: (equipment: Equipment) => void;
 }
 
 function generateId(): string {
@@ -44,15 +46,51 @@ function generateId(): string {
   return `EQP-${num}`;
 }
 
-export function CreateEquipmentDrawer({ open, onClose, onCreated }: Props) {
+export function CreateEquipmentDrawer({ open, onClose, onCreated, initialEquipment, onUpdated }: Props) {
   const { message } = App.useApp();
   const [form] = Form.useForm<FormValues>();
+  const isEdit = !!initialEquipment;
 
   useEffect(() => {
-    if (open) form.resetFields();
-  }, [open, form]);
+    if (!open) return;
+    if (initialEquipment) {
+      form.setFieldsValue({
+        model: initialEquipment.model,
+        subtitle: initialEquipment.subtitle,
+        category: initialEquipment.category,
+        description: initialEquipment.description,
+        image: initialEquipment.image,
+        invNumber: initialEquipment.invNumber,
+        serialNumber: initialEquipment.serialNumber,
+        responsible: initialEquipment.responsible,
+        accessories: initialEquipment.accessories.map((name) => ({ name })),
+      });
+    } else {
+      form.resetFields();
+    }
+  }, [open, initialEquipment, form]);
 
   const handleFinish = (values: FormValues) => {
+    if (isEdit && initialEquipment && onUpdated) {
+      const updated = new Equipment({
+        id: initialEquipment.id,
+        model: values.model.trim(),
+        subtitle: values.subtitle?.trim() ?? '',
+        category: values.category,
+        description: values.description?.trim() ?? '',
+        image: values.image?.trim() ?? '',
+        invNumber: initialEquipment.invNumber,
+        serialNumber: values.serialNumber?.trim() ?? '',
+        responsible: values.responsible.trim(),
+        accessories: (values.accessories ?? []).map((a) => a.name).filter(Boolean),
+        history: initialEquipment.history,
+      });
+      onUpdated(updated);
+      void message.success(`${updated.model} обновлено`);
+      onClose();
+      return;
+    }
+
     const equipment = new Equipment({
       id: generateId(),
       model: values.model.trim(),
@@ -81,7 +119,7 @@ export function CreateEquipmentDrawer({ open, onClose, onCreated }: Props) {
 
   return (
     <Drawer
-      title="Новое оборудование"
+      title={isEdit ? 'Редактировать оборудование' : 'Новое оборудование'}
       open={open}
       onClose={onClose}
       width={480}
@@ -89,7 +127,7 @@ export function CreateEquipmentDrawer({ open, onClose, onCreated }: Props) {
         <Space style={{ display: 'flex', justifyContent: 'flex-end' }}>
           <Button onClick={onClose}>Отмена</Button>
           <Button type="primary" onClick={() => form.submit()}>
-            Создать
+            {isEdit ? 'Сохранить' : 'Создать'}
           </Button>
         </Space>
       }
@@ -134,7 +172,7 @@ export function CreateEquipmentDrawer({ open, onClose, onCreated }: Props) {
           label="Инвентарный номер"
           rules={[{ required: true, message: 'Введите инвентарный номер' }]}
         >
-          <Input placeholder="INV-2024-0001" />
+          <Input placeholder="INV-2024-0001" disabled={isEdit} />
         </Form.Item>
 
         <Form.Item name="serialNumber" label="Серийный номер">

@@ -7,12 +7,13 @@ import {
   Table,
   Select,
   Button,
+  Input,
   Space,
   Modal,
   Flex,
   App,
 } from 'antd';
-import { QrcodeOutlined } from '@ant-design/icons';
+import { QrcodeOutlined, EditOutlined, PrinterOutlined } from '@ant-design/icons';
 import { QRCodeSVG } from 'qrcode.react';
 import {
   Equipment,
@@ -20,9 +21,11 @@ import {
   EquipmentLocation,
   HistoryEntry,
 } from '../../models/Equipment';
+import { Project } from '../../models/Project';
 
 const { Title, Text } = Typography;
 
+// 'Забронировано' не включён — статус проставляется только через проекты
 const STATUSES: EquipmentStatus[] = ['В Работе', 'На Складе', 'В Ремонте', 'Списано', 'В Пути'];
 const LOCATIONS: EquipmentLocation[] = [
   'Студия Медиа Крыша',
@@ -38,6 +41,7 @@ const STATUS_COLOR: Record<EquipmentStatus, string> = {
   'В Ремонте': 'warning',
   'Списано': 'error',
   'В Пути': 'purple',
+  'Забронировано': 'cyan',
 };
 
 const CATEGORY_LABEL: Record<Equipment['category'], string> = {
@@ -73,7 +77,7 @@ const historyColumns = [
     dataIndex: 'status',
     key: 'status',
     render: (s: EquipmentStatus) => <Tag color={STATUS_COLOR[s]}>{s}</Tag>,
-    width: 130,
+    width: 145,
   },
   {
     title: 'Местоположение',
@@ -89,12 +93,16 @@ const historyColumns = [
 
 interface Props {
   equipment: Equipment;
+  onEdit: () => void;
+  project?: Project | null;
+  onProjectClick?: (project: Project) => void;
 }
 
-export function EquipmentDetail({ equipment }: Props) {
+export function EquipmentDetail({ equipment, onEdit, project, onProjectClick }: Props) {
   const { message } = App.useApp();
   const [status, setStatus] = useState<EquipmentStatus>(equipment.currentStatus);
   const [location, setLocation] = useState<EquipmentLocation>(equipment.currentLocation);
+  const [changedBy, setChangedBy] = useState(equipment.responsible);
   const [history, setHistory] = useState<HistoryEntry[]>(equipment.history);
   const [qrOpen, setQrOpen] = useState(false);
 
@@ -104,7 +112,7 @@ export function EquipmentDetail({ equipment }: Props) {
   };
 
   const handleSave = () => {
-    equipment.addHistoryEntry(status, location, equipment.responsible);
+    equipment.addHistoryEntry(status, location, changedBy);
     setHistory([...equipment.history]);
     void message.success('Статус обновлён');
   };
@@ -115,6 +123,7 @@ export function EquipmentDetail({ equipment }: Props) {
       <Card style={{ marginBottom: 16 }}>
         <Flex gap={20} align="flex-start">
           <div
+            className="equipment-image"
             style={{
               width: 180,
               height: 130,
@@ -146,10 +155,26 @@ export function EquipmentDetail({ equipment }: Props) {
               📍 {equipment.currentLocation}
             </Text>
           </div>
-          <Button icon={<QrcodeOutlined />} onClick={() => setQrOpen(true)}>
-            QR-код
-          </Button>
+          <Flex gap={8} className="no-print">
+            <Button icon={<EditOutlined />} onClick={onEdit}>
+              Изменить
+            </Button>
+            <Button icon={<PrinterOutlined />} onClick={() => window.print()}>
+              Печать
+            </Button>
+            <Button icon={<QrcodeOutlined />} onClick={() => setQrOpen(true)}>
+              QR-код
+            </Button>
+          </Flex>
         </Flex>
+
+        {/* QR для печати */}
+        <div className="print-only" style={{ marginTop: 16, textAlign: 'center' }}>
+          <QRCodeSVG value={`equipment:${equipment.id}`} size={120} />
+          <div style={{ fontSize: 11, color: '#666', marginTop: 4 }}>
+            {equipment.id} · {equipment.invNumber}
+          </div>
+        </div>
       </Card>
 
       {/* Info */}
@@ -165,6 +190,23 @@ export function EquipmentDetail({ equipment }: Props) {
             <Text code>{equipment.id}</Text>
           </Descriptions.Item>
           <Descriptions.Item label="Ответственный">{equipment.responsible}</Descriptions.Item>
+          {project && (
+            <Descriptions.Item label="Проект" span={2}>
+              <Flex align="center" gap={8}>
+                <Tag color="cyan">{project.name}</Tag>
+                {onProjectClick && (
+                  <Button
+                    type="link"
+                    size="small"
+                    style={{ padding: 0, height: 'auto', fontSize: 12 }}
+                    onClick={() => onProjectClick(project)}
+                  >
+                    Перейти →
+                  </Button>
+                )}
+              </Flex>
+            </Descriptions.Item>
+          )}
         </Descriptions>
       </Card>
 
@@ -180,7 +222,7 @@ export function EquipmentDetail({ equipment }: Props) {
       </Card>
 
       {/* Status update */}
-      <Card title="Обновить статус" size="small" style={{ marginBottom: 16 }}>
+      <Card title="Обновить статус" size="small" style={{ marginBottom: 16 }} className="no-print">
         <Space size={8} wrap>
           <Select<EquipmentStatus>
             value={status}
@@ -194,6 +236,12 @@ export function EquipmentDetail({ equipment }: Props) {
             disabled={status === 'В Ремонте'}
             style={{ width: 210 }}
             options={LOCATIONS.map((l) => ({ label: l, value: l }))}
+          />
+          <Input
+            value={changedBy}
+            onChange={(e) => setChangedBy(e.target.value)}
+            placeholder="Кто меняет статус"
+            style={{ width: 180 }}
           />
           <Button type="primary" onClick={handleSave}>
             Сохранить
