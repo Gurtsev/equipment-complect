@@ -36,21 +36,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   useEffect(() => {
-    // Проверить существующую сессию при монтировании
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (session?.user) {
-        setUser(session.user);
-        applyProfile(await fetchProfile(session.user.id));
-      }
-      setLoading(false);
-    });
+    const timer = setTimeout(() => setLoading(false), 10000);
+
+    supabase.auth.getSession()
+      .then(async ({ data: { session } }) => {
+        if (session?.user) {
+          setUser(session.user);
+          applyProfile(await fetchProfile(session.user.id).catch(() => null));
+        }
+      })
+      .catch(() => {})
+      .finally(() => {
+        clearTimeout(timer);
+        setLoading(false);
+      });
 
     // Слушать смену состояния авторизации (login / logout / token refresh)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
         if (session?.user) {
           setUser(session.user);
-          applyProfile(await fetchProfile(session.user.id));
+          applyProfile(await fetchProfile(session.user.id).catch(() => null));
         } else {
           setUser(null);
           applyProfile(null);
