@@ -44,6 +44,7 @@ function AppInner() {
   const [items, setItems] = useState<Equipment[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [dataLoading, setDataLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [selectedEquipment, setSelectedEquipment] = useState<Equipment | null>(null);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [activeTab, setActiveTab] = useState<ActiveTab>('catalog');
@@ -67,15 +68,14 @@ function AppInner() {
 
   useEffect(() => {
     if (!user) return;
+    setLoadError(false);
     const timeout = setTimeout(() => {
       setDataLoading(false);
-      void message.error('Не удалось загрузить данные. Проверьте соединение или консоль браузера (F12).');
-    }, 20000);
+      setLoadError(true);
+    }, 35000);
 
     void loadAll()
-      .catch(() => {
-        void message.error('Ошибка загрузки. Проверьте соединение.');
-      })
+      .catch(() => { setLoadError(true); })
       .finally(() => {
         clearTimeout(timeout);
         setDataLoading(false);
@@ -202,6 +202,26 @@ function AppInner() {
   }
 
   if (!user) return <LoginPage />;
+
+  if (loadError && items.length === 0) {
+    return (
+      <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16 }}>
+        <Typography.Text type="secondary">Не удалось загрузить данные</Typography.Text>
+        <Button
+          type="primary"
+          onClick={() => {
+            setDataLoading(true);
+            setLoadError(false);
+            void loadAll()
+              .catch(() => setLoadError(true))
+              .finally(() => setDataLoading(false));
+          }}
+        >
+          Повторить
+        </Button>
+      </div>
+    );
+  }
 
   const handleBack = () => {
     setSelectedEquipment(null);
