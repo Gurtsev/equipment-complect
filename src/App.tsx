@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Layout, App as AntApp, Spin, Button, Flex, Typography } from 'antd';
+import { Layout, App as AntApp, Spin, Button, Flex, Typography, Grid } from 'antd';
 import { LogoutOutlined } from '@ant-design/icons';
 import { CatalogSidebar } from './components/CatalogSidebar';
 import { EquipmentDetail } from './components/EquipmentDetail';
@@ -52,6 +52,8 @@ function AppInner() {
   const [projectDrawerMode, setProjectDrawerMode] = useState<'create' | 'edit' | null>(null);
 
   const canEdit = role === 'admin' || role === 'operator';
+  const screens = Grid.useBreakpoint();
+  const isMobile = !screens.md;
 
   const loadAll = useCallback(async () => {
     const [newItems, newProjects] = await Promise.all([
@@ -201,6 +203,11 @@ function AppInner() {
 
   if (!user) return <LoginPage />;
 
+  const handleBack = () => {
+    setSelectedEquipment(null);
+    setSelectedProject(null);
+  };
+
   const rightPane = selectedProject ? (
     <ProjectDetail
       key={selectedProject.id}
@@ -211,6 +218,7 @@ function AppInner() {
       onUpdate={handleProjectUpdate}
       onEquipmentChange={handleEquipmentChange}
       getEquipmentProject={getEquipmentProject}
+      onBack={isMobile ? handleBack : undefined}
     />
   ) : selectedEquipment ? (
     <EquipmentDetail
@@ -221,10 +229,117 @@ function AppInner() {
       project={getEquipmentProject(selectedEquipment.id) ?? null}
       onProjectClick={handleProjectClick}
       onStatusUpdate={handleStatusUpdate}
+      onBack={isMobile ? handleBack : undefined}
     />
-  ) : (
+  ) : isMobile ? null : (
     <Dashboard items={items} />
   );
+
+  const tabsBar = (
+    <div style={{ display: 'flex', borderBottom: '1px solid #f0f0f0', flexShrink: 0 }}>
+      {(['catalog', 'projects'] as ActiveTab[]).map((tab) => {
+        const label = tab === 'catalog' ? 'Каталог' : 'Проекты';
+        const isActive = activeTab === tab;
+        return (
+          <div
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            style={{
+              ...TAB_STYLE_BASE,
+              fontWeight: isActive ? 600 : 400,
+              color: isActive ? '#1677ff' : '#595959',
+              borderBottom: `2px solid ${isActive ? '#1677ff' : 'transparent'}`,
+            }}
+          >
+            {label}
+          </div>
+        );
+      })}
+    </div>
+  );
+
+  const tabContent = (
+    <div style={{ flex: 1, overflow: 'hidden', position: 'relative' }}>
+      <div style={{ height: '100%', display: activeTab === 'catalog' ? 'block' : 'none' }}>
+        <CatalogSidebar
+          items={items}
+          selected={selectedEquipment}
+          canEdit={canEdit}
+          onSelect={handleEquipmentSelect}
+          onAdd={() => setEquipmentDrawerMode('create')}
+        />
+      </div>
+      <div style={{ height: '100%', display: activeTab === 'projects' ? 'block' : 'none' }}>
+        <ProjectsSidebar
+          projects={projects}
+          selected={selectedProject}
+          canEdit={canEdit}
+          onSelect={handleProjectSelect}
+          onAdd={() => setProjectDrawerMode('create')}
+        />
+      </div>
+    </div>
+  );
+
+  const userBar = (
+    <div style={{ padding: '10px 16px', borderTop: '1px solid #f0f0f0', flexShrink: 0 }}>
+      <Flex justify="space-between" align="center">
+        <div style={{ minWidth: 0 }}>
+          <Text strong style={{ fontSize: 13, display: 'block' }} ellipsis>
+            {userName}
+          </Text>
+          <Text type="secondary" style={{ fontSize: 11 }}>
+            {ROLE_LABEL[role ?? ''] ?? role}
+          </Text>
+        </div>
+        <Button
+          size="small"
+          icon={<LogoutOutlined />}
+          onClick={() => void signOut()}
+          title="Выйти"
+        />
+      </Flex>
+    </div>
+  );
+
+  const drawers = (
+    <>
+      <CreateEquipmentDrawer
+        open={equipmentDrawerMode !== null}
+        onClose={() => setEquipmentDrawerMode(null)}
+        onCreated={handleEquipmentCreated}
+        initialEquipment={equipmentDrawerMode === 'edit' ? (selectedEquipment ?? undefined) : undefined}
+        onUpdated={handleEquipmentUpdated}
+      />
+      <CreateProjectDrawer
+        open={projectDrawerMode !== null}
+        onClose={() => setProjectDrawerMode(null)}
+        onCreated={handleProjectCreated}
+        initialProject={projectDrawerMode === 'edit' ? (selectedProject ?? undefined) : undefined}
+        onUpdated={handleProjectUpdated}
+      />
+    </>
+  );
+
+  if (isMobile) {
+    const showDetail = !!selectedEquipment || !!selectedProject;
+    return (
+      <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', background: '#fff' }}>
+        {showDetail ? (
+          <div style={{ flex: 1, overflow: 'auto', background: '#f5f7fa' }}>
+            {rightPane}
+          </div>
+        ) : (
+          <>
+            {tabsBar}
+            {tabContent}
+            {userBar}
+          </>
+        )}
+        {drawers}
+      </div>
+    );
+  }
 
   return (
     <Layout style={{ height: '100vh', overflow: 'hidden' }}>
@@ -238,90 +353,16 @@ function AppInner() {
           flexDirection: 'column',
         }}
       >
-        {/* Вкладки */}
-        <div style={{ display: 'flex', borderBottom: '1px solid #f0f0f0', flexShrink: 0 }}>
-          {(['catalog', 'projects'] as ActiveTab[]).map((tab) => {
-            const label = tab === 'catalog' ? 'Каталог' : 'Проекты';
-            const isActive = activeTab === tab;
-            return (
-              <div
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                style={{
-                  ...TAB_STYLE_BASE,
-                  fontWeight: isActive ? 600 : 400,
-                  color: isActive ? '#1677ff' : '#595959',
-                  borderBottom: `2px solid ${isActive ? '#1677ff' : 'transparent'}`,
-                }}
-              >
-                {label}
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Контент вкладок */}
-        <div style={{ flex: 1, overflow: 'hidden', position: 'relative' }}>
-          <div style={{ height: '100%', display: activeTab === 'catalog' ? 'block' : 'none' }}>
-            <CatalogSidebar
-              items={items}
-              selected={selectedEquipment}
-              canEdit={canEdit}
-              onSelect={handleEquipmentSelect}
-              onAdd={() => setEquipmentDrawerMode('create')}
-            />
-          </div>
-          <div style={{ height: '100%', display: activeTab === 'projects' ? 'block' : 'none' }}>
-            <ProjectsSidebar
-              projects={projects}
-              selected={selectedProject}
-              canEdit={canEdit}
-              onSelect={handleProjectSelect}
-              onAdd={() => setProjectDrawerMode('create')}
-            />
-          </div>
-        </div>
-
-        {/* Пользователь */}
-        <div style={{ padding: '10px 16px', borderTop: '1px solid #f0f0f0', flexShrink: 0 }}>
-          <Flex justify="space-between" align="center">
-            <div style={{ minWidth: 0 }}>
-              <Text strong style={{ fontSize: 13, display: 'block' }} ellipsis>
-                {userName}
-              </Text>
-              <Text type="secondary" style={{ fontSize: 11 }}>
-                {ROLE_LABEL[role ?? ''] ?? role}
-              </Text>
-            </div>
-            <Button
-              size="small"
-              icon={<LogoutOutlined />}
-              onClick={() => void signOut()}
-              title="Выйти"
-            />
-          </Flex>
-        </div>
+        {tabsBar}
+        {tabContent}
+        {userBar}
       </Sider>
 
       <Content style={{ overflow: 'auto', background: '#f5f7fa', height: '100vh' }}>
         {rightPane}
       </Content>
 
-      <CreateEquipmentDrawer
-        open={equipmentDrawerMode !== null}
-        onClose={() => setEquipmentDrawerMode(null)}
-        onCreated={handleEquipmentCreated}
-        initialEquipment={equipmentDrawerMode === 'edit' ? (selectedEquipment ?? undefined) : undefined}
-        onUpdated={handleEquipmentUpdated}
-      />
-
-      <CreateProjectDrawer
-        open={projectDrawerMode !== null}
-        onClose={() => setProjectDrawerMode(null)}
-        onCreated={handleProjectCreated}
-        initialProject={projectDrawerMode === 'edit' ? (selectedProject ?? undefined) : undefined}
-        onUpdated={handleProjectUpdated}
-      />
+      {drawers}
     </Layout>
   );
 }

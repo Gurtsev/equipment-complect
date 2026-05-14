@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Drawer, Form, Input, Select, Button, Space, DatePicker, App } from 'antd';
+import { Drawer, Form, Input, Select, Button, Space, DatePicker, App, Grid } from 'antd';
 import dayjs, { type Dayjs } from 'dayjs';
 import { Project, ProjectData } from '../../models/Project';
 import { EquipmentLocation } from '../../models/Equipment';
@@ -38,6 +38,8 @@ export function CreateProjectDrawer({ open, onClose, onCreated, initialProject, 
   const { message } = App.useApp();
   const [form] = Form.useForm<FormValues>();
   const isEdit = !!initialProject;
+  const screens = Grid.useBreakpoint();
+  const drawerWidth = screens.md ? 480 : '100%';
 
   useEffect(() => {
     if (!open) return;
@@ -86,7 +88,7 @@ export function CreateProjectDrawer({ open, onClose, onCreated, initialProject, 
       title={isEdit ? 'Редактировать проект' : 'Новый проект'}
       open={open}
       onClose={onClose}
-      width={480}
+      width={drawerWidth}
       footer={
         <Space style={{ display: 'flex', justifyContent: 'flex-end' }}>
           <Button onClick={onClose}>Отмена</Button>

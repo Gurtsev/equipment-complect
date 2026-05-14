@@ -13,7 +13,7 @@ import {
   Flex,
   App,
 } from 'antd';
-import { QrcodeOutlined, EditOutlined, PrinterOutlined } from '@ant-design/icons';
+import { QrcodeOutlined, EditOutlined, PrinterOutlined, ArrowLeftOutlined } from '@ant-design/icons';
 import { QRCodeSVG } from 'qrcode.react';
 import {
   Equipment,
@@ -98,9 +98,10 @@ interface Props {
   project?: Project | null;
   onProjectClick?: (project: Project) => void;
   onStatusUpdate?: (status: EquipmentStatus, location: EquipmentLocation, responsible: string) => Promise<void>;
+  onBack?: () => void;
 }
 
-export function EquipmentDetail({ equipment, canEdit, onEdit, project, onProjectClick, onStatusUpdate }: Props) {
+export function EquipmentDetail({ equipment, canEdit, onEdit, project, onProjectClick, onStatusUpdate, onBack }: Props) {
   const { message } = App.useApp();
   const [status, setStatus] = useState<EquipmentStatus>(equipment.currentStatus);
   const [location, setLocation] = useState<EquipmentLocation>(equipment.currentLocation);
@@ -122,6 +123,16 @@ export function EquipmentDetail({ equipment, canEdit, onEdit, project, onProject
 
   return (
     <div style={{ padding: 24, maxWidth: 860, margin: '0 auto' }}>
+      {onBack && (
+        <Button
+          icon={<ArrowLeftOutlined />}
+          type="text"
+          onClick={onBack}
+          style={{ marginBottom: 12, paddingLeft: 0 }}
+        >
+          Назад
+        </Button>
+      )}
       {/* Header card */}
       <Card style={{ marginBottom: 16 }}>
         <Flex gap={20} align="flex-start">

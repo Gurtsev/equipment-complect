@@ -8,6 +8,7 @@ import {
   Space,
   Upload,
   App,
+  Grid,
 } from 'antd';
 import type { UploadFile, UploadProps } from 'antd';
 import { PlusOutlined, MinusCircleOutlined, UploadOutlined } from '@ant-design/icons';
@@ -53,6 +54,8 @@ export function CreateEquipmentDrawer({ open, onClose, onCreated, initialEquipme
   const { message } = App.useApp();
   const [form] = Form.useForm<FormValues>();
   const isEdit = !!initialEquipment;
+  const screens = Grid.useBreakpoint();
+  const drawerWidth = screens.md ? 480 : '100%';
   const [fileList, setFileList] = useState<UploadFile[]>([]);
 
   useEffect(() => {
@@ -158,7 +161,7 @@ export function CreateEquipmentDrawer({ open, onClose, onCreated, initialEquipme
       title={isEdit ? 'Редактировать оборудование' : 'Новое оборудование'}
       open={open}
       onClose={onClose}
-      width={480}
+      width={drawerWidth}
       footer={
         <Space style={{ display: 'flex', justifyContent: 'flex-end' }}>
           <Button onClick={onClose}>Отмена</Button>

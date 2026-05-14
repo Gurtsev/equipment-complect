@@ -21,6 +21,7 @@ import {
   CheckOutlined,
   SendOutlined,
   DownloadOutlined,
+  ArrowLeftOutlined,
 } from '@ant-design/icons';
 import * as XLSX from 'xlsx';
 import { Project, ProjectStatus } from '../../models/Project';
@@ -72,6 +73,7 @@ interface Props {
   onUpdate: (project: Project) => void;
   onEquipmentChange: () => void;
   getEquipmentProject: (equipmentId: string) => Project | undefined;
+  onBack?: () => void;
 }
 
 export function ProjectDetail({
@@ -82,6 +84,7 @@ export function ProjectDetail({
   onUpdate,
   onEquipmentChange,
   getEquipmentProject,
+  onBack,
 }: Props) {
   const { message, modal } = App.useApp();
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -234,6 +237,16 @@ export function ProjectDetail({
 
   return (
     <div style={{ padding: 24, maxWidth: 860, margin: '0 auto' }}>
+      {onBack && (
+        <Button
+          icon={<ArrowLeftOutlined />}
+          type="text"
+          onClick={onBack}
+          style={{ marginBottom: 12, paddingLeft: 0 }}
+        >
+          Назад
+        </Button>
+      )}
       {/* Header */}
       <Card style={{ marginBottom: 16 }}>
         <Flex justify="space-between" align="flex-start" gap={16}>
