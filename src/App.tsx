@@ -70,7 +70,7 @@ function AppInner() {
     const timeout = setTimeout(() => {
       setDataLoading(false);
       void message.error('Не удалось загрузить данные. Проверьте соединение или консоль браузера (F12).');
-    }, 12000);
+    }, 20000);
 
     void loadAll()
       .catch(() => {
