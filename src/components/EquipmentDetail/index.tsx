@@ -12,6 +12,7 @@ import {
   Modal,
   Flex,
   App,
+  Grid,
 } from 'antd';
 import { QrcodeOutlined, EditOutlined, PrinterOutlined, ArrowLeftOutlined } from '@ant-design/icons';
 import { QRCodeSVG } from 'qrcode.react';
@@ -103,6 +104,8 @@ interface Props {
 
 export function EquipmentDetail({ equipment, canEdit, onEdit, project, onProjectClick, onStatusUpdate, onBack }: Props) {
   const { message } = App.useApp();
+  const screens = Grid.useBreakpoint();
+  const isMobile = !screens.md;
   const [status, setStatus] = useState<EquipmentStatus>(equipment.currentStatus);
   const [location, setLocation] = useState<EquipmentLocation>(equipment.currentLocation);
   const [changedBy, setChangedBy] = useState(equipment.responsible);
@@ -122,7 +125,7 @@ export function EquipmentDetail({ equipment, canEdit, onEdit, project, onProject
   };
 
   return (
-    <div style={{ padding: 24, maxWidth: 860, margin: '0 auto' }}>
+    <div style={{ padding: isMobile ? '12px' : 24, maxWidth: 860, margin: '0 auto', overflowX: 'hidden' }}>
       {onBack && (
         <Button
           icon={<ArrowLeftOutlined />}
@@ -135,12 +138,12 @@ export function EquipmentDetail({ equipment, canEdit, onEdit, project, onProject
       )}
       {/* Header card */}
       <Card style={{ marginBottom: 16 }}>
-        <Flex gap={20} align="flex-start">
+        <Flex gap={isMobile ? 12 : 20} align="flex-start">
           <div
             className="equipment-image"
             style={{
-              width: 180,
-              height: 130,
+              width: isMobile ? 80 : 180,
+              height: isMobile ? 60 : 130,
               backgroundImage: `url('${equipment.image}')`,
               backgroundSize: 'cover',
               backgroundPosition: 'center',
@@ -156,32 +159,34 @@ export function EquipmentDetail({ equipment, canEdit, onEdit, project, onProject
               </Tag>
               <Tag color={STATUS_COLOR[equipment.currentStatus]}>{equipment.currentStatus}</Tag>
             </Flex>
-            <Title level={4} style={{ margin: '0 0 2px' }}>
+            <Title level={isMobile ? 5 : 4} style={{ margin: '0 0 2px' }}>
               {equipment.model}
             </Title>
             <Text type="secondary" style={{ fontSize: 13 }}>
               {equipment.subtitle}
             </Text>
-            <div style={{ marginTop: 8 }}>
-              <Text style={{ fontSize: 13 }}>{equipment.description}</Text>
-            </div>
+            {!isMobile && (
+              <div style={{ marginTop: 8 }}>
+                <Text style={{ fontSize: 13 }}>{equipment.description}</Text>
+              </div>
+            )}
             <Text type="secondary" style={{ fontSize: 12, display: 'block', marginTop: 6 }}>
               📍 {equipment.currentLocation}
             </Text>
           </div>
-          <Flex gap={8} className="no-print">
-            {canEdit && (
-              <Button icon={<EditOutlined />} onClick={onEdit}>
-                Изменить
-              </Button>
-            )}
-            <Button icon={<PrinterOutlined />} onClick={() => window.print()}>
-              Печать
+        </Flex>
+        <Flex gap={8} className="no-print" wrap style={{ marginTop: 12 }}>
+          {canEdit && (
+            <Button icon={<EditOutlined />} onClick={onEdit}>
+              Изменить
             </Button>
-            <Button icon={<QrcodeOutlined />} onClick={() => setQrOpen(true)}>
-              QR-код
-            </Button>
-          </Flex>
+          )}
+          <Button icon={<PrinterOutlined />} onClick={() => window.print()}>
+            Печать
+          </Button>
+          <Button icon={<QrcodeOutlined />} onClick={() => setQrOpen(true)}>
+            QR-код
+          </Button>
         </Flex>
 
         {/* QR для печати */}
@@ -195,7 +200,7 @@ export function EquipmentDetail({ equipment, canEdit, onEdit, project, onProject
 
       {/* Info */}
       <Card title="Информация" size="small" style={{ marginBottom: 16 }}>
-        <Descriptions column={2} size="small">
+        <Descriptions column={isMobile ? 1 : 2} size="small">
           <Descriptions.Item label="Инвентарный №">
             <Text code>{equipment.invNumber}</Text>
           </Descriptions.Item>
@@ -238,32 +243,60 @@ export function EquipmentDetail({ equipment, canEdit, onEdit, project, onProject
       </Card>
 
       {/* Status update */}
-      {canEdit && <Card title="Обновить статус" size="small" style={{ marginBottom: 16 }} className="no-print">
-        <Space size={8} wrap>
-          <Select<EquipmentStatus>
-            value={status}
-            onChange={handleStatusChange}
-            style={{ width: 170 }}
-            options={STATUSES.map((s) => ({ label: s, value: s }))}
-          />
-          <Select<EquipmentLocation>
-            value={location}
-            onChange={setLocation}
-            disabled={status === 'В Ремонте'}
-            style={{ width: 210 }}
-            options={LOCATIONS.map((l) => ({ label: l, value: l }))}
-          />
-          <Input
-            value={changedBy}
-            onChange={(e) => setChangedBy(e.target.value)}
-            placeholder="Кто меняет статус"
-            style={{ width: 180 }}
-          />
-          <Button type="primary" onClick={() => void handleSave()}>
-            Сохранить
-          </Button>
-        </Space>
-      </Card>}
+      {canEdit && (
+        <Card title="Обновить статус" size="small" style={{ marginBottom: 16 }} className="no-print">
+          {isMobile ? (
+            <Flex vertical gap={8}>
+              <Select<EquipmentStatus>
+                value={status}
+                onChange={handleStatusChange}
+                style={{ width: '100%' }}
+                options={STATUSES.map((s) => ({ label: s, value: s }))}
+              />
+              <Select<EquipmentLocation>
+                value={location}
+                onChange={setLocation}
+                disabled={status === 'В Ремонте'}
+                style={{ width: '100%' }}
+                options={LOCATIONS.map((l) => ({ label: l, value: l }))}
+              />
+              <Input
+                value={changedBy}
+                onChange={(e) => setChangedBy(e.target.value)}
+                placeholder="Кто меняет статус"
+              />
+              <Button type="primary" block onClick={() => void handleSave()}>
+                Сохранить
+              </Button>
+            </Flex>
+          ) : (
+            <Space size={8} wrap>
+              <Select<EquipmentStatus>
+                value={status}
+                onChange={handleStatusChange}
+                style={{ width: 170 }}
+                options={STATUSES.map((s) => ({ label: s, value: s }))}
+              />
+              <Select<EquipmentLocation>
+                value={location}
+                onChange={setLocation}
+                disabled={status === 'В Ремонте'}
+                style={{ width: 210 }}
+                options={LOCATIONS.map((l) => ({ label: l, value: l }))}
+              />
+              <Input
+                value={changedBy}
+                onChange={(e) => setChangedBy(e.target.value)}
+                placeholder="Кто меняет статус"
+                style={{ width: 180 }}
+              />
+              <Button type="primary" onClick={() => void handleSave()}>
+                Сохранить
+              </Button>
+            </Space>
+          )}
+        </Card>
+      )}
 
       {/* History */}
       <Card title="История перемещений" size="small">
@@ -272,6 +305,7 @@ export function EquipmentDetail({ equipment, canEdit, onEdit, project, onProject
           columns={historyColumns}
           size="small"
           pagination={false}
+          scroll={{ x: 560 }}
         />
       </Card>
 
