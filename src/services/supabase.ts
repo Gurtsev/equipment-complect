@@ -13,4 +13,9 @@ function fetchWithTimeout(input: RequestInfo | URL, init?: RequestInit): Promise
 
 export const supabase = createClient(url, key, {
   global: { fetch: fetchWithTimeout },
+  auth: {
+    detectSessionInUrl: false,
+    persistSession: true,
+    storageKey: 'equipment-app-auth',
+  },
 });
