@@ -73,19 +73,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
-        console.log('[auth] event:', _event, session?.user?.email ?? 'null');
+        console.log('[auth] event:', _event, session?.user?.email ?? 'null', 'AT len:', session?.access_token?.length ?? 0);
         if (!session && settingSession) return;
         clearTimeout(timer);
         if (session?.user) {
           saveRefreshToken(session.refresh_token);
           setUser(session.user);
+          setLoading(false);
+          console.log('[auth] fetchProfile start');
           applyProfile(await fetchProfile(session.user.id).catch(() => null));
+          console.log('[auth] fetchProfile done');
         } else {
           saveRefreshToken(null);
           setUser(null);
           applyProfile(null);
+          setLoading(false);
         }
-        setLoading(false);
       },
     );
 
