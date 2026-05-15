@@ -48,12 +48,28 @@
 
 ## Этап 4 — Доступность и многопользовательность
 
-### ✅ 4.1 Деплой на Vercel
-- Подключить GitHub репозиторий к Vercel
-- Настроить переменные окружения (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`)
-- Система доступна по постоянной ссылке с любого устройства
-- Решает проблему VPN/localhost — все работают через одну публичную ссылку
+### ✅ 4.1 Деплой на GitHub Pages
+
+**Почему GitHub Pages вместо Vercel:** доступность из России без VPN; Vercel нестабильно открывается в российских сетях.
+
+#### Настройка деплоя
+- GitHub Actions workflow `.github/workflows/deploy.yml`: `push` в `master` → `npm ci` → `npm run build` → публикация в ветку `gh-pages` через `peaceiris/actions-gh-pages@v4`
+- Переменные окружения `VITE_SUPABASE_URL` и `VITE_SUPABASE_ANON_KEY` — добавлены в GitHub Secrets, пробрасываются через `env:` в шаге `npm run build`
+- `vite.config.ts`: `base: '/equipment-complect/'` + `define` с явным `process.env` fallback и `.trim()` для корректного встраивания переменных в бандл
+- Публичная ссылка: `https://gurtsev.github.io/equipment-complect/`
 - **Обязательное условие для Этапа 5** — Edge Function-прокси (5.3) работает только на задеплоенном проекте
+
+#### Решение проблемы сессии (persistSession + дедлок)
+При деплое на GitHub Pages стандартный механизм сессий Supabase не работал: каждая перезагрузка требовала повторного входа.
+
+**Причина 1 — `payload` error:** Supabase читает сохранённый JWT из localStorage, падает при декодировании → вызывает SIGNED_OUT.
+**Решение:** `persistSession: false` — Supabase не управляет storage самостоятельно. Refresh token хранится в localStorage вручную (ключ `eq_rt_v1`). При перезагрузке вызывается `supabase.auth.refreshSession({ refresh_token })` — чистый обмен токена на сервере без локального декодирования JWT.
+
+**Причина 2 — дедлок:** Supabase v2 держит внутренний мьютекс во время вызова `onAuthStateChange`. Вызов `supabase.from(...)` (fetchProfile) внутри колбека пытался захватить тот же мьютекс → вечный спиннер.
+**Решение:** `onAuthStateChange` содержит только синхронные React state setters (`setUser`, `setLoading`). `fetchProfile` вынесен в отдельный `useEffect([user?.id])`, который выполняется после ре-рендера — вне скоупа мьютекса.
+
+**Причина 3 — `getSession()` конфликт:** ручной вызов `supabase.auth.getSession()` при инициализации конфликтовал с внутренним `_initializePromise`, вешая все REST-запросы.
+**Решение:** убран `getSession()`, состояние сессии получается исключительно через `onAuthStateChange`. Добавлен fallback-таймер 10 сек на случай отсутствия сессии.
 
 ### ✅ 4.1.1 Мобильный адаптив
 - `useBreakpoint()` из Ant Design — определение мобильного устройства (< 768px)
