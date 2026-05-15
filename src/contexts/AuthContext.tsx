@@ -5,15 +5,28 @@ import { supabase } from '../services/supabase';
 const RT_KEY = 'eq_rt_v1';
 
 function saveRefreshToken(token: string | null) {
-  if (token) {
-    localStorage.setItem(RT_KEY, token);
-  } else {
-    localStorage.removeItem(RT_KEY);
+  try {
+    if (token) {
+      localStorage.setItem(RT_KEY, token);
+      console.log('[auth] RT saved, len:', token.length);
+    } else {
+      localStorage.removeItem(RT_KEY);
+      console.log('[auth] RT cleared');
+    }
+  } catch (e) {
+    console.error('[auth] localStorage write failed:', e);
   }
 }
 
 function loadRefreshToken(): string | null {
-  return localStorage.getItem(RT_KEY);
+  try {
+    const val = localStorage.getItem(RT_KEY);
+    console.log('[auth] RT load:', val ? `found (${val.length})` : 'empty');
+    return val;
+  } catch (e) {
+    console.error('[auth] localStorage read failed:', e);
+    return null;
+  }
 }
 
 export type UserRole = 'admin' | 'operator' | 'viewer';
@@ -56,8 +69,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const timer = setTimeout(() => setLoading(false), 10000);
 
+    console.log('[auth] init, hasRT:', !!storedRT);
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
+        console.log('[auth] event:', _event, session?.user?.email ?? 'null');
         if (!session && settingSession) return;
         clearTimeout(timer);
         if (session?.user) {
@@ -75,8 +91,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (storedRT) {
       supabase.auth.refreshSession({ refresh_token: storedRT })
-        .then(() => { settingSession = false; })
-        .catch(() => {
+        .then(() => {
+          console.log('[auth] refreshSession ok');
+          settingSession = false;
+        })
+        .catch((e: unknown) => {
+          console.error('[auth] refreshSession failed:', (e as Error)?.message);
           settingSession = false;
           saveRefreshToken(null);
           setUser(null);
