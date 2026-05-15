@@ -2,26 +2,18 @@ import { createContext, useContext, useEffect, useState, ReactNode } from 'react
 import type { User } from '@supabase/supabase-js';
 import { supabase } from '../services/supabase';
 
-const SESSION_KEY = 'eq_auth_v1';
+const RT_KEY = 'eq_rt_v1';
 
-function saveTokens(session: { access_token: string; refresh_token: string } | null) {
-  if (session) {
-    localStorage.setItem(SESSION_KEY, JSON.stringify({ a: session.access_token, r: session.refresh_token }));
+function saveRefreshToken(token: string | null) {
+  if (token) {
+    localStorage.setItem(RT_KEY, token);
   } else {
-    localStorage.removeItem(SESSION_KEY);
+    localStorage.removeItem(RT_KEY);
   }
 }
 
-function loadTokens(): { access_token: string; refresh_token: string } | null {
-  try {
-    const raw = localStorage.getItem(SESSION_KEY);
-    if (!raw) return null;
-    const p = JSON.parse(raw) as Record<string, string>;
-    if (p?.a && p?.r) return { access_token: p.a, refresh_token: p.r };
-  } catch {
-    // corrupted
-  }
-  return null;
+function loadRefreshToken(): string | null {
+  return localStorage.getItem(RT_KEY);
 }
 
 export type UserRole = 'admin' | 'operator' | 'viewer';
@@ -59,8 +51,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let settingSession = false;
-    const stored = loadTokens();
-    if (stored) settingSession = true;
+    const storedRT = loadRefreshToken();
+    if (storedRT) settingSession = true;
 
     const timer = setTimeout(() => setLoading(false), 10000);
 
@@ -69,11 +61,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!session && settingSession) return;
         clearTimeout(timer);
         if (session?.user) {
-          saveTokens({ access_token: session.access_token, refresh_token: session.refresh_token });
+          saveRefreshToken(session.refresh_token);
           setUser(session.user);
           applyProfile(await fetchProfile(session.user.id).catch(() => null));
         } else {
-          saveTokens(null);
+          saveRefreshToken(null);
           setUser(null);
           applyProfile(null);
         }
@@ -81,12 +73,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       },
     );
 
-    if (stored) {
-      supabase.auth.setSession(stored)
+    if (storedRT) {
+      supabase.auth.refreshSession({ refresh_token: storedRT })
         .then(() => { settingSession = false; })
         .catch(() => {
           settingSession = false;
-          saveTokens(null);
+          saveRefreshToken(null);
           setUser(null);
           applyProfile(null);
           setLoading(false);
@@ -100,12 +92,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signIn = async (email: string, password: string): Promise<string | null> => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (data.session?.refresh_token) {
+      saveRefreshToken(data.session.refresh_token);
+    }
     return error?.message ?? null;
   };
 
   const signOut = async () => {
-    saveTokens(null);
+    saveRefreshToken(null);
     await supabase.auth.signOut();
   };
 
