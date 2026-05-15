@@ -36,8 +36,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   useEffect(() => {
+    const timer = setTimeout(() => setLoading(false), 10000);
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
+        clearTimeout(timer);
         if (session?.user) {
           setUser(session.user);
           applyProfile(await fetchProfile(session.user.id).catch(() => null));
@@ -49,7 +52,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       },
     );
 
-    return () => subscription.unsubscribe();
+    return () => {
+      clearTimeout(timer);
+      subscription.unsubscribe();
+    };
   }, []);
 
   const signIn = async (email: string, password: string): Promise<string | null> => {
