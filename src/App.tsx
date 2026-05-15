@@ -75,7 +75,7 @@ function AppInner() {
     }, 35000);
 
     void loadAll()
-      .catch((err) => { console.error('[loadAll] failed:', err); setLoadError(true); })
+      .catch(() => { setLoadError(true); })
       .finally(() => {
         clearTimeout(timeout);
         setDataLoading(false);
@@ -213,7 +213,7 @@ function AppInner() {
             setDataLoading(true);
             setLoadError(false);
             void loadAll()
-              .catch((err) => { console.error('[loadAll retry] failed:', err); setLoadError(true); })
+              .catch(() => setLoadError(true))
               .finally(() => setDataLoading(false));
           }}
         >

@@ -45,12 +45,10 @@ function toEquipment(row: EquipmentRow, history: HistoryRow[]): Equipment {
 
 export const equipmentService = {
   async getAll(): Promise<Equipment[]> {
-    console.log('[equipmentService] getAll start');
     const { data: rows, error: eqErr } = await supabase
       .from('equipment')
       .select('*')
       .order('created_at', { ascending: false });
-    console.log('[equipmentService] getAll result', { rows, eqErr });
     if (eqErr) throw eqErr;
     if (!rows || rows.length === 0) return [];
 
