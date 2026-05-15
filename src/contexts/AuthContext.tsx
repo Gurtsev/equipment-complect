@@ -8,23 +8,18 @@ function saveRefreshToken(token: string | null) {
   try {
     if (token) {
       localStorage.setItem(RT_KEY, token);
-      console.log('[auth] RT saved, len:', token.length);
     } else {
       localStorage.removeItem(RT_KEY);
-      console.log('[auth] RT cleared');
     }
-  } catch (e) {
-    console.error('[auth] localStorage write failed:', e);
+  } catch {
+    // ignore
   }
 }
 
 function loadRefreshToken(): string | null {
   try {
-    const val = localStorage.getItem(RT_KEY);
-    console.log('[auth] RT load:', val ? `found (${val.length})` : 'empty');
-    return val;
-  } catch (e) {
-    console.error('[auth] localStorage read failed:', e);
+    return localStorage.getItem(RT_KEY);
+  } catch {
     return null;
   }
 }
@@ -62,6 +57,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUserName(profile?.name ?? '');
   }
 
+  // fetchProfile вызывается вне onAuthStateChange, чтобы избежать дедлока
+  // с внутренним локом Supabase, который держится во время вызова колбека
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    fetchProfile(user.id)
+      .catch(() => null)
+      .then(profile => { if (!cancelled) applyProfile(profile); });
+    return () => { cancelled = true; };
+  }, [user?.id]);
+
   useEffect(() => {
     let settingSession = false;
     const storedRT = loadRefreshToken();
@@ -69,20 +75,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const timer = setTimeout(() => setLoading(false), 10000);
 
-    console.log('[auth] init, hasRT:', !!storedRT);
-
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
-        console.log('[auth] event:', _event, session?.user?.email ?? 'null', 'AT len:', session?.access_token?.length ?? 0);
+      (_event, session) => {
         if (!session && settingSession) return;
         clearTimeout(timer);
         if (session?.user) {
           saveRefreshToken(session.refresh_token);
           setUser(session.user);
           setLoading(false);
-          console.log('[auth] fetchProfile start');
-          applyProfile(await fetchProfile(session.user.id).catch(() => null));
-          console.log('[auth] fetchProfile done');
         } else {
           saveRefreshToken(null);
           setUser(null);
@@ -94,12 +94,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (storedRT) {
       supabase.auth.refreshSession({ refresh_token: storedRT })
-        .then(() => {
-          console.log('[auth] refreshSession ok');
-          settingSession = false;
-        })
-        .catch((e: unknown) => {
-          console.error('[auth] refreshSession failed:', (e as Error)?.message);
+        .then(() => { settingSession = false; })
+        .catch(() => {
           settingSession = false;
           saveRefreshToken(null);
           setUser(null);
