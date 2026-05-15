@@ -19,5 +19,10 @@ export const supabase = createClient(url, key, {
   global: { fetch: fetchWithTimeout },
   auth: {
     detectSessionInUrl: false,
+    storage: {
+      getItem: (key) => sessionStorage.getItem(key),
+      setItem: (key, value) => sessionStorage.setItem(key, value),
+      removeItem: (key) => sessionStorage.removeItem(key),
+    },
   },
 });
