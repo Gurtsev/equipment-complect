@@ -89,15 +89,9 @@ export function LoginPage() {
                   rules={[
                     { required: true, message: 'Введите email' },
                     { type: 'email', message: 'Неверный формат' },
-                    {
-                      validator: (_, value) =>
-                        !value || value.endsWith('@megapolis.media')
-                          ? Promise.resolve()
-                          : Promise.reject('Только адреса @megapolis.media'),
-                    },
                   ]}
                 >
-                  <Input placeholder="name@megapolis.media" autoComplete="email" />
+                  <Input placeholder="name@example.com" autoComplete="email" />
                 </Form.Item>
 
                 <Form.Item
