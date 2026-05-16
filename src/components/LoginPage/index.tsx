@@ -1,25 +1,143 @@
 import { useState } from 'react';
-import { Form, Input, Button, Card, Typography, App } from 'antd';
+import { Form, Input, Button, Card, Typography, App, Tabs } from 'antd';
 import { useAuth } from '../../contexts/AuthContext';
 
 const { Title, Text } = Typography;
 
-interface FormValues {
-  email: string;
-  password: string;
-}
-
 export function LoginPage() {
-  const { signIn } = useAuth();
+  const { signIn, signUp } = useAuth();
   const { message } = App.useApp();
-  const [loading, setLoading] = useState(false);
+  const [loginLoading, setLoginLoading] = useState(false);
+  const [registerLoading, setRegisterLoading] = useState(false);
 
-  const handleFinish = async (values: FormValues) => {
-    setLoading(true);
+  const handleLogin = async (values: { email: string; password: string }) => {
+    setLoginLoading(true);
     const error = await signIn(values.email, values.password);
-    setLoading(false);
+    setLoginLoading(false);
     if (error) void message.error('Неверный email или пароль');
   };
+
+  const handleRegister = async (values: { name: string; email: string; password: string }) => {
+    setRegisterLoading(true);
+    const error = await signUp(values.email, values.password, values.name);
+    setRegisterLoading(false);
+    if (error) {
+      void message.error(error);
+    } else {
+      void message.success('Аккаунт создан. Входим…');
+    }
+  };
+
+  const card = (
+    <Card style={{ width: 360, boxShadow: '0 4px 24px rgba(0,0,0,0.08)' }}>
+      <div style={{ textAlign: 'center', marginBottom: 20 }}>
+        <Title level={4} style={{ margin: '0 0 4px' }}>
+          Инвентарь студии
+        </Title>
+        <Text type="secondary">megapolis.media</Text>
+      </div>
+
+      <Tabs
+        centered
+        items={[
+          {
+            key: 'login',
+            label: 'Войти',
+            children: (
+              <Form layout="vertical" onFinish={handleLogin} requiredMark={false}>
+                <Form.Item
+                  name="email"
+                  label="Email"
+                  rules={[
+                    { required: true, message: 'Введите email' },
+                    { type: 'email', message: 'Неверный формат' },
+                  ]}
+                >
+                  <Input placeholder="name@megapolis.media" autoComplete="email" />
+                </Form.Item>
+
+                <Form.Item
+                  name="password"
+                  label="Пароль"
+                  rules={[{ required: true, message: 'Введите пароль' }]}
+                >
+                  <Input.Password placeholder="••••••••" autoComplete="current-password" />
+                </Form.Item>
+
+                <Button type="primary" htmlType="submit" loading={loginLoading} block style={{ marginTop: 4 }}>
+                  Войти
+                </Button>
+              </Form>
+            ),
+          },
+          {
+            key: 'register',
+            label: 'Зарегистрироваться',
+            children: (
+              <Form layout="vertical" onFinish={handleRegister} requiredMark={false}>
+                <Form.Item
+                  name="name"
+                  label="Имя"
+                  rules={[{ required: true, message: 'Введите имя' }]}
+                >
+                  <Input placeholder="Иван Иванов" autoComplete="name" />
+                </Form.Item>
+
+                <Form.Item
+                  name="email"
+                  label="Email"
+                  rules={[
+                    { required: true, message: 'Введите email' },
+                    { type: 'email', message: 'Неверный формат' },
+                    {
+                      validator: (_, value) =>
+                        !value || value.endsWith('@megapolis.media')
+                          ? Promise.resolve()
+                          : Promise.reject('Только адреса @megapolis.media'),
+                    },
+                  ]}
+                >
+                  <Input placeholder="name@megapolis.media" autoComplete="email" />
+                </Form.Item>
+
+                <Form.Item
+                  name="password"
+                  label="Пароль"
+                  rules={[
+                    { required: true, message: 'Введите пароль' },
+                    { min: 6, message: 'Минимум 6 символов' },
+                  ]}
+                >
+                  <Input.Password placeholder="••••••••" autoComplete="new-password" />
+                </Form.Item>
+
+                <Form.Item
+                  name="confirm"
+                  label="Повторите пароль"
+                  dependencies={['password']}
+                  rules={[
+                    { required: true, message: 'Повторите пароль' },
+                    ({ getFieldValue }) => ({
+                      validator(_, value) {
+                        if (!value || getFieldValue('password') === value) return Promise.resolve();
+                        return Promise.reject('Пароли не совпадают');
+                      },
+                    }),
+                  ]}
+                >
+                  <Input.Password placeholder="••••••••" autoComplete="new-password" />
+                </Form.Item>
+
+                <Button type="primary" htmlType="submit" loading={registerLoading} block style={{ marginTop: 4 }}>
+                  Создать аккаунт
+                </Button>
+              </Form>
+            ),
+          },
+        ]}
+      />
+    </Card>
+  );
 
   return (
     <div
@@ -31,39 +149,7 @@ export function LoginPage() {
         background: '#f5f7fa',
       }}
     >
-      <Card style={{ width: 360, boxShadow: '0 4px 24px rgba(0,0,0,0.08)' }}>
-        <div style={{ textAlign: 'center', marginBottom: 28 }}>
-          <Title level={4} style={{ margin: '0 0 4px' }}>
-            Инвентарь студии
-          </Title>
-          <Text type="secondary">Войдите в систему</Text>
-        </div>
-
-        <Form layout="vertical" onFinish={handleFinish} requiredMark={false}>
-          <Form.Item
-            name="email"
-            label="Email"
-            rules={[
-              { required: true, message: 'Введите email' },
-              { type: 'email', message: 'Неверный формат' },
-            ]}
-          >
-            <Input placeholder="name@studio.ru" autoComplete="email" />
-          </Form.Item>
-
-          <Form.Item
-            name="password"
-            label="Пароль"
-            rules={[{ required: true, message: 'Введите пароль' }]}
-          >
-            <Input.Password placeholder="••••••••" autoComplete="current-password" />
-          </Form.Item>
-
-          <Button type="primary" htmlType="submit" loading={loading} block style={{ marginTop: 4 }}>
-            Войти
-          </Button>
-        </Form>
-      </Card>
+      {card}
     </div>
   );
 }

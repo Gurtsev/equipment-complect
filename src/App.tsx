@@ -9,6 +9,7 @@ import { ProjectsSidebar } from './components/ProjectsSidebar';
 import { ProjectDetail } from './components/ProjectDetail';
 import { CreateProjectDrawer } from './components/CreateProjectDrawer';
 import { LoginPage } from './components/LoginPage';
+import { UsersPage } from './components/UsersPage';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { equipmentService } from './services/equipmentService';
 import { historyService } from './services/historyService';
@@ -19,7 +20,7 @@ import { Project } from './models/Project';
 const { Sider, Content } = Layout;
 const { Text } = Typography;
 
-type ActiveTab = 'catalog' | 'projects';
+type ActiveTab = 'catalog' | 'projects' | 'users';
 
 const ROLE_LABEL: Record<string, string> = {
   admin: 'Администратор',
@@ -203,6 +204,18 @@ function AppInner() {
 
   if (!user) return <LoginPage />;
 
+  if (user && !role) {
+    return (
+      <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16 }}>
+        <Typography.Title level={4} style={{ margin: 0 }}>Доступ запрещён</Typography.Title>
+        <Typography.Text type="secondary">
+          Ваш email не входит в список разрешённых. Обратитесь к администратору.
+        </Typography.Text>
+        <Button onClick={() => signOut()}>Выйти</Button>
+      </div>
+    );
+  }
+
   if (loadError && items.length === 0) {
     return (
       <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16 }}>
@@ -255,15 +268,20 @@ function AppInner() {
     <Dashboard items={items} />
   );
 
+  const tabs: { key: ActiveTab; label: string }[] = [
+    { key: 'catalog', label: 'Каталог' },
+    { key: 'projects', label: 'Проекты' },
+    ...(role === 'admin' ? [{ key: 'users' as ActiveTab, label: 'Пользователи' }] : []),
+  ];
+
   const tabsBar = (
     <div style={{ display: 'flex', borderBottom: '1px solid #f0f0f0', flexShrink: 0 }}>
-      {(['catalog', 'projects'] as ActiveTab[]).map((tab) => {
-        const label = tab === 'catalog' ? 'Каталог' : 'Проекты';
-        const isActive = activeTab === tab;
+      {tabs.map(({ key, label }) => {
+        const isActive = activeTab === key;
         return (
           <div
-            key={tab}
-            onClick={() => setActiveTab(tab)}
+            key={key}
+            onClick={() => setActiveTab(key)}
             style={{
               ...TAB_STYLE_BASE,
               fontWeight: isActive ? 600 : 400,
@@ -298,6 +316,11 @@ function AppInner() {
           onAdd={() => setProjectDrawerMode('create')}
         />
       </div>
+      {role === 'admin' && (
+        <div style={{ height: '100%', overflowY: 'auto', display: activeTab === 'users' ? 'block' : 'none' }}>
+          <UsersPage />
+        </div>
+      )}
     </div>
   );
 
