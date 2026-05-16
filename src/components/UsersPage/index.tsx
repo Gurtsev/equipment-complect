@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import {
   Table, Select, Button, Popconfirm, Tabs, Form, Input, App,
-  Tag, Space, Typography, Tooltip,
+  Tag, Typography, Tooltip,
 } from 'antd';
 import { PlusOutlined, DeleteOutlined } from '@ant-design/icons';
 import { usersService, Profile, AllowedEntry } from '../../services/usersService';
@@ -162,12 +162,16 @@ export function UsersPage() {
       title: 'Адрес / домен',
       key: 'target',
       render: (_: unknown, record: AllowedEntry) => (
-        <Space>
+        <div>
           {record.domain
             ? <Tag color="blue">@{record.domain}</Tag>
             : <Text code>{record.email}</Text>}
-          {record.note && <Text type="secondary" style={{ fontSize: 12 }}>{record.note}</Text>}
-        </Space>
+          {record.note && (
+            <div>
+              <Text type="secondary" style={{ fontSize: 12 }}>{record.note}</Text>
+            </div>
+          )}
+        </div>
       ),
     },
     {
