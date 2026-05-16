@@ -316,11 +316,6 @@ function AppInner() {
           onAdd={() => setProjectDrawerMode('create')}
         />
       </div>
-      {role === 'admin' && (
-        <div style={{ height: '100%', overflowY: 'auto', display: activeTab === 'users' ? 'block' : 'none' }}>
-          <UsersPage />
-        </div>
-      )}
     </div>
   );
 
@@ -375,7 +370,11 @@ function AppInner() {
         ) : (
           <>
             {tabsBar}
-            {tabContent}
+            {activeTab === 'users' ? (
+              <div style={{ flex: 1, overflow: 'auto', background: '#f5f7fa' }}>
+                <UsersPage />
+              </div>
+            ) : tabContent}
             {userBar}
           </>
         )}
@@ -397,12 +396,12 @@ function AppInner() {
         }}
       >
         {tabsBar}
-        {tabContent}
+        {activeTab !== 'users' && tabContent}
         {userBar}
       </Sider>
 
       <Content style={{ overflow: 'auto', background: '#f5f7fa', height: '100vh' }}>
-        {rightPane}
+        {activeTab === 'users' ? <UsersPage /> : rightPane}
       </Content>
 
       {drawers}
