@@ -32,6 +32,7 @@ interface AuthState {
   userName: string;
   loading: boolean;
   isRecovery: boolean;
+  recoveryError: string | null;
   signIn: (email: string, password: string) => Promise<string | null>;
   signUp: (email: string, password: string, name: string) => Promise<string | null>;
   signOut: () => Promise<void>;
@@ -58,6 +59,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isRecovery, setIsRecovery] = useState(() =>
     window.location.hash.includes('type=recovery'),
   );
+  const [recoveryError, setRecoveryError] = useState<string | null>(null);
 
   function applyProfile(profile: { name: string; role: UserRole } | null) {
     setRole(profile?.role ?? null);
@@ -67,12 +69,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Ручная обработка ссылки восстановления пароля (detectSessionInUrl: false)
   useEffect(() => {
     const hash = window.location.hash;
-    if (!hash.includes('type=recovery')) return;
+    if (!hash.includes('type=recovery') && !hash.includes('error=')) return;
+    window.history.replaceState(null, '', window.location.pathname + window.location.search);
+    if (hash.includes('error=')) {
+      const params = new URLSearchParams(hash.slice(1));
+      const code = params.get('error_code');
+      setRecoveryError(code === 'otp_expired' ? 'Ссылка устарела. Запросите новую.' : 'Ссылка недействительна.');
+      setLoading(false);
+      return;
+    }
     const params = new URLSearchParams(hash.slice(1));
     const accessToken = params.get('access_token');
     const refreshToken = params.get('refresh_token');
     if (!accessToken || !refreshToken) { setLoading(false); return; }
-    window.history.replaceState(null, '', window.location.pathname + window.location.search);
     void supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken })
       .catch(() => { setIsRecovery(false); setLoading(false); });
   }, []);
@@ -173,7 +182,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, role, userName, loading, isRecovery, signIn, signUp, signOut, forgotPassword, updatePassword }}>
+    <AuthContext.Provider value={{ user, role, userName, loading, isRecovery, recoveryError, signIn, signUp, signOut, forgotPassword, updatePassword }}>
       {children}
     </AuthContext.Provider>
   );

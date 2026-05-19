@@ -1,11 +1,11 @@
 import { useState } from 'react';
-import { Form, Input, Button, Card, Typography, App, Tabs } from 'antd';
+import { Form, Input, Button, Card, Typography, App, Tabs, Alert } from 'antd';
 import { useAuth } from '../../contexts/AuthContext';
 
 const { Title, Text } = Typography;
 
 export function LoginPage() {
-  const { signIn, signUp, forgotPassword } = useAuth();
+  const { signIn, signUp, forgotPassword, recoveryError } = useAuth();
   const { message } = App.useApp();
   const [loginLoading, setLoginLoading] = useState(false);
   const [registerLoading, setRegisterLoading] = useState(false);
@@ -40,6 +40,9 @@ export function LoginPage() {
 
   const card = (
     <Card style={{ width: 360, boxShadow: '0 4px 24px rgba(0,0,0,0.08)' }}>
+      {recoveryError && (
+        <Alert type="warning" message={recoveryError} style={{ marginBottom: 16 }} showIcon />
+      )}
       <div style={{ textAlign: 'center', marginBottom: 20 }}>
         <Title level={4} style={{ margin: '0 0 4px' }}>
           Инвентарь студии
