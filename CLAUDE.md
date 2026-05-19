@@ -33,7 +33,7 @@ src/
     Equipment.ts          # Equipment class + TypeScript types
     Project.ts            # Project class + ProjectStatus type
   components/
-    LoginPage/            # Форма входа (email + пароль)
+    LoginPage/            # Форма входа (email + пароль) + кнопка регистрации
     CatalogSidebar/       # Вкладка «Каталог»: поиск, фильтры, список, экспорт
     ProjectsSidebar/      # Вкладка «Проекты»: список проектов со статусами
     EquipmentDetail/      # Правая панель: карточка оборудования
@@ -41,6 +41,7 @@ src/
     Dashboard/            # Правая панель по умолчанию: сводная статистика
     CreateEquipmentDrawer/ # Drawer: создание и редактирование оборудования
     CreateProjectDrawer/   # Drawer: создание и редактирование проекта
+    UsersPage/            # Вкладка «Пользователи» (только admin): управление профилями и allowed_emails
   App.tsx                 # Root: весь стейт, async загрузка, роутинг правой панели
   main.tsx                # React entry point
   print.css               # @media print стили
@@ -50,6 +51,7 @@ supabase/
     001_initial.sql       # Схема: equipment, equipment_history, projects, project_equipment
     002_auth.sql          # profiles, RLS политики на всех таблицах
     003_storage_policies.sql # INSERT/UPDATE/DELETE политики для storage.objects
+    004_access_control.sql   # allowed_emails, триггер auto-create profile, новые RLS для profiles
 ```
 
 ## Auth Flow
@@ -60,11 +62,13 @@ supabase/
 - `dataLoading` в AppInner = загрузка данных из БД после авторизации
 - Условие спиннера: `authLoading || (!!user && dataLoading)` — не показывать спиннер если пользователь не авторизован (иначе форма входа никогда не появится)
 
-`useAuth()` возвращает: `user`, `role`, `userName`, `loading`, `signIn()`, `signOut()`.
+`useAuth()` возвращает: `user`, `role`, `userName`, `loading`, `signIn()`, `signUp()`, `signOut()`.
 
-**Ручные шаги для нового пользователя:**
-1. Создать пользователя в Supabase Dashboard → Authentication → Users
-2. Добавить запись в `profiles`: `insert into public.profiles (id, name, role) values ('<uuid>', 'Имя', 'admin')`
+**Создание пользователей — два способа:**
+- **Авторазрешённая регистрация:** добавить email или домен в `allowed_emails` (через UsersPage или SQL). Когда пользователь регистрируется через `signUp()`, триггер `handle_new_user` автоматически создаёт `profiles` запись с ролью из `allowed_emails`.
+- **Ручной способ (admin/operator без self-reg):** создать в Supabase Dashboard → Authentication → Users, затем вручную: `insert into public.profiles (id, name, role, email) values ('<uuid>', 'Имя', 'admin', 'email@example.com')`
+
+**Доступ запрещён** (`user && !role`): пользователь прошёл auth, но профиля нет — показывается заглушка с кнопкой выхода.
 
 ## Role-Based Access
 
@@ -79,9 +83,18 @@ supabase/
 | Кнопки «Изменить», форма статуса | EquipmentDetail |
 | «Изменить», «Выдать», «Завершить», «Добавить» в комплект, удаление единицы | ProjectDetail |
 
-Экспорт, печать, QR — доступны всем ролям.
+Вкладка «Пользователи» в сайдбаре — только `admin`. Экспорт, печать, QR — доступны всем ролям.
 
 ## Services
+
+### `usersService`
+- `getProfiles()` — SELECT из `profiles` (admin видит все; viewer — только себя по RLS).
+- `updateProfile(id, fields)` — UPDATE `name`/`role` в `profiles`. Только admin.
+- `deleteProfile(id)` — DELETE из `profiles` (деактивация; `auth.users` не трогается).
+- `getAllowedEntries()` — SELECT из `allowed_emails`.
+- `addAllowedEntry(entry)` — INSERT в `allowed_emails`. `email` и `domain` взаимоисключающие.
+- `updateAllowedEntry(id, fields)` — UPDATE `role`/`note`.
+- `deleteAllowedEntry(id)` — DELETE из `allowed_emails`.
 
 ### `equipmentService`
 - `getAll()` — загружает все `equipment` + историю из `equipment_history`, собирает `Equipment[]`. История сортируется по `recorded_at desc` — первая запись = `currentStatus`/`currentLocation`.
@@ -155,9 +168,10 @@ UserRole          = 'admin' | 'operator' | 'viewer'
 - `equipment_history` — история. `recorded_at desc` = текущий статус.
 - `projects` — `start_date`/`end_date` тип `date`, приходят строкой `"YYYY-MM-DD"`, конвертируются через `new Date(row.start_date)`.
 - `project_equipment` — join M:M. Синхронизируется через DELETE + INSERT при каждом `projectService.update()`.
-- `profiles` — `uuid references auth.users`, `name`, `role`. Создаётся вручную для каждого пользователя.
+- `profiles` — `uuid references auth.users`, `name`, `role`, `email`. Создаётся триггером `handle_new_user` при регистрации (если email/домен есть в `allowed_emails`), либо вручную.
+- `allowed_emails` — whitelist для авторегистрации. `email` и `domain` взаимоисключающие (CHECK). Приоритет: конкретный email над доменом.
 
-**RLS:** включён на всех таблицах (002_auth.sql). SELECT открыт всем authenticated. INSERT/UPDATE/DELETE — только admin + operator (через `current_user_role()` function). Storage bucket `equipment-images` — публичный на чтение, authenticated на запись (003_storage_policies.sql).
+**RLS:** включён на всех таблицах. SELECT на `equipment`/`projects`/`project_equipment` открыт всем authenticated. INSERT/UPDATE/DELETE на данных — только admin + operator. Profiles: SELECT — сам себя или admin видит всех; UPDATE/DELETE — только admin. `allowed_emails` — SELECT всем authenticated, остальное — только admin (004_access_control.sql). Storage bucket `equipment-images` — публичный на чтение, authenticated на запись (003_storage_policies.sql).
 
 ## Conventions
 

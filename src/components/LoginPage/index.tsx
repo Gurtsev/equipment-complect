@@ -19,12 +19,16 @@ export function LoginPage() {
 
   const handleRegister = async (values: { name: string; email: string; password: string }) => {
     setRegisterLoading(true);
-    const error = await signUp(values.email, values.password, values.name);
+    const signUpError = await signUp(values.email, values.password, values.name);
+    if (signUpError) {
+      setRegisterLoading(false);
+      void message.error(signUpError);
+      return;
+    }
+    const signInError = await signIn(values.email, values.password);
     setRegisterLoading(false);
-    if (error) {
-      void message.error(error);
-    } else {
-      void message.success('Аккаунт создан. Входим…');
+    if (signInError) {
+      void message.info('Аккаунт создан. Войдите с вашими данными.');
     }
   };
 
