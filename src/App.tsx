@@ -77,6 +77,18 @@ function AppInner() {
     }, 35000);
 
     void loadAll()
+      .then(({ newItems }) => {
+        const params = new URLSearchParams(window.location.search);
+        const eqId = params.get('eq');
+        if (eqId) {
+          const found = newItems.find((e) => e.id === eqId);
+          if (found) {
+            setSelectedEquipment(found);
+            setActiveTab('catalog');
+          }
+          window.history.replaceState(null, '', window.location.pathname);
+        }
+      })
       .catch(() => { setLoadError(true); })
       .finally(() => {
         clearTimeout(timeout);

@@ -112,6 +112,7 @@ interface Props {
 
 export function EquipmentDetail({ equipment, canEdit, onEdit, project, onProjectClick, onStatusUpdate, onBack }: Props) {
   const { message } = App.useApp();
+  const equipmentUrl = `${window.location.origin}${window.location.pathname}?eq=${equipment.id}`;
   const screens = Grid.useBreakpoint();
   const isMobile = !screens.md;
   const [status, setStatus] = useState<EquipmentStatus>(equipment.currentStatus);
@@ -199,7 +200,7 @@ export function EquipmentDetail({ equipment, canEdit, onEdit, project, onProject
 
         {/* QR для печати */}
         <div className="print-only" style={{ marginTop: 16, textAlign: 'center' }}>
-          <QRCodeSVG value={`equipment:${equipment.id}`} size={120} />
+          <QRCodeSVG value={equipmentUrl} size={120} />
           <div style={{ fontSize: 11, color: '#666', marginTop: 4 }}>
             {equipment.id} · {equipment.invNumber}
           </div>
@@ -327,7 +328,7 @@ export function EquipmentDetail({ equipment, canEdit, onEdit, project, onProject
         width={320}
       >
         <Flex vertical align="center" gap={12} style={{ padding: '16px 0' }}>
-          <QRCodeSVG value={`equipment:${equipment.id}`} size={200} />
+          <QRCodeSVG value={equipmentUrl} size={200} />
           <Text type="secondary" style={{ fontSize: 12 }}>
             {equipment.id} · {equipment.invNumber}
           </Text>
