@@ -11,6 +11,7 @@ import { CreateProjectDrawer } from './components/CreateProjectDrawer';
 import { LoginPage } from './components/LoginPage';
 import { UsersPage } from './components/UsersPage';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { supabase } from './services/supabase';
 import { equipmentService } from './services/equipmentService';
 import { historyService } from './services/historyService';
 import { projectService } from './services/projectService';
@@ -84,6 +85,32 @@ function AppInner() {
 
     return () => clearTimeout(timeout);
   }, [loadAll, user, message]);
+
+  const realtimeReload = useCallback(async () => {
+    const { newItems, newProjects } = await loadAll();
+    setSelectedEquipment(prev => prev ? (newItems.find(e => e.id === prev.id) ?? null) : null);
+    setSelectedProject(prev => prev ? (newProjects.find(p => p.id === prev.id) ?? null) : null);
+  }, [loadAll]);
+
+  useEffect(() => {
+    if (!user) return;
+    let timer: ReturnType<typeof setTimeout>;
+    const reload = () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => void realtimeReload(), 300);
+    };
+    const channel = supabase
+      .channel('db-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'equipment' }, reload)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'equipment_history' }, reload)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'projects' }, reload)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'project_equipment' }, reload)
+      .subscribe();
+    return () => {
+      clearTimeout(timer);
+      void supabase.removeChannel(channel);
+    };
+  }, [user, realtimeReload]);
 
   // --- Equipment handlers ---
 
