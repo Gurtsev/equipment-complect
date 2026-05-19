@@ -55,12 +55,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [role, setRole] = useState<UserRole | null>(null);
   const [userName, setUserName] = useState('');
   const [loading, setLoading] = useState(true);
-  const [isRecovery, setIsRecovery] = useState(false);
+  const [isRecovery, setIsRecovery] = useState(() =>
+    window.location.hash.includes('type=recovery'),
+  );
 
   function applyProfile(profile: { name: string; role: UserRole } | null) {
     setRole(profile?.role ?? null);
     setUserName(profile?.name ?? '');
   }
+
+  // Ручная обработка ссылки восстановления пароля (detectSessionInUrl: false)
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (!hash.includes('type=recovery')) return;
+    const params = new URLSearchParams(hash.slice(1));
+    const accessToken = params.get('access_token');
+    const refreshToken = params.get('refresh_token');
+    if (!accessToken || !refreshToken) { setLoading(false); return; }
+    window.history.replaceState(null, '', window.location.pathname + window.location.search);
+    void supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken })
+      .catch(() => { setIsRecovery(false); setLoading(false); });
+  }, []);
 
   // fetchProfile вызывается вне onAuthStateChange, чтобы избежать дедлока
   // с внутренним локом Supabase, который держится во время вызова колбека

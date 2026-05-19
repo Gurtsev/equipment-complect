@@ -193,7 +193,7 @@ function AppInner() {
         (p.status === 'Планируется' || p.status === 'Активен'),
     );
 
-  if (authLoading || (!!user && dataLoading)) {
+  if (authLoading) {
     return (
       <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
         <Spin size="large" />
@@ -250,6 +250,15 @@ function AppInner() {
             </Button>
           </Form>
         </div>
+      </div>
+    );
+  }
+
+  if (!!user && dataLoading) {
+    return (
+      <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
+        <Spin size="large" />
+        <Typography.Text type="secondary">Загрузка...</Typography.Text>
       </div>
     );
   }
