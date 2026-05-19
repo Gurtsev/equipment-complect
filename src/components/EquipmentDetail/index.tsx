@@ -146,7 +146,7 @@ export function EquipmentDetail({ equipment, canEdit, onEdit, project, onProject
         </Button>
       )}
       {/* Header card */}
-      <Card style={{ marginBottom: 16 }}>
+      <Card style={{ marginBottom: 16 }} className="no-print">
         <Flex gap={isMobile ? 12 : 20} align="flex-start">
           <div
             className="equipment-image"
@@ -198,17 +198,10 @@ export function EquipmentDetail({ equipment, canEdit, onEdit, project, onProject
           </Button>
         </Flex>
 
-        {/* QR для печати */}
-        <div className="print-only" style={{ marginTop: 16, textAlign: 'center' }}>
-          <QRCodeSVG value={equipmentUrl} size={120} />
-          <div style={{ fontSize: 11, color: '#666', marginTop: 4 }}>
-            {equipment.id} · {equipment.invNumber}
-          </div>
-        </div>
       </Card>
 
       {/* Info */}
-      <Card title="Информация" size="small" style={{ marginBottom: 16 }}>
+      <Card title="Информация" size="small" style={{ marginBottom: 16 }} className="no-print">
         <Descriptions column={isMobile ? 1 : 2} size="small">
           <Descriptions.Item label="Инвентарный №">
             <Text code>{equipment.invNumber}</Text>
@@ -241,7 +234,7 @@ export function EquipmentDetail({ equipment, canEdit, onEdit, project, onProject
       </Card>
 
       {/* Accessories */}
-      <Card title="Комплектация" size="small" style={{ marginBottom: 16 }}>
+      <Card title="Комплектация" size="small" style={{ marginBottom: 16 }} className="no-print">
         <Flex wrap gap={6}>
           {equipment.accessories.map((acc) => (
             <Tag key={acc} style={{ margin: 0 }}>
@@ -308,7 +301,7 @@ export function EquipmentDetail({ equipment, canEdit, onEdit, project, onProject
       )}
 
       {/* History */}
-      <Card title="История перемещений" size="small">
+      <Card title="История перемещений" size="small" className="no-print">
         <Table<HistoryEntry & { key: number }>
           dataSource={history.map((h, i) => ({ ...h, key: i }))}
           columns={historyColumns}
@@ -319,6 +312,15 @@ export function EquipmentDetail({ equipment, canEdit, onEdit, project, onProject
       </Card>
 
       {/* QR Modal */}
+      {/* QR только для печати */}
+      <div className="print-only" style={{ textAlign: 'center', padding: '40px 0' }}>
+        <QRCodeSVG value={equipmentUrl} size={220} />
+        <div style={{ marginTop: 16, fontSize: 16, fontWeight: 600 }}>{equipment.model}</div>
+        <div style={{ marginTop: 4, fontSize: 13, color: '#666' }}>
+          {equipment.invNumber} · {equipment.id}
+        </div>
+      </div>
+
       <Modal
         title={`QR-код — ${equipment.model}`}
         open={qrOpen}
