@@ -90,6 +90,14 @@ const historyColumns = [
     dataIndex: 'responsible',
     key: 'responsible',
   },
+  {
+    title: 'Изменил',
+    dataIndex: 'userName',
+    key: 'userName',
+    render: (name: string | undefined) => name
+      ? <Typography.Text type="secondary">{name}</Typography.Text>
+      : null,
+  },
 ];
 
 interface Props {

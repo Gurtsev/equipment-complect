@@ -20,9 +20,10 @@ interface HistoryRow {
   location: string;
   responsible: string;
   recorded_at: string;
+  user_id: string | null;
 }
 
-function toEquipment(row: EquipmentRow, history: HistoryRow[]): Equipment {
+function toEquipment(row: EquipmentRow, history: HistoryRow[], nameById: Map<string, string>): Equipment {
   return new Equipment({
     id: row.id,
     model: row.model,
@@ -39,6 +40,7 @@ function toEquipment(row: EquipmentRow, history: HistoryRow[]): Equipment {
       status: h.status as EquipmentStatus,
       location: h.location as EquipmentLocation,
       responsible: h.responsible,
+      userName: h.user_id ? nameById.get(h.user_id) : undefined,
     })),
   });
 }
@@ -54,19 +56,29 @@ export const equipmentService = {
 
     const { data: histRows, error: hErr } = await supabase
       .from('equipment_history')
-      .select('*')
+      .select('equipment_id, status, location, responsible, recorded_at, user_id')
       .in('equipment_id', rows.map((r) => r.id))
       .order('recorded_at', { ascending: false });
     if (hErr) throw hErr;
 
-    const byId = new Map<string, HistoryRow[]>();
+    const byEquipment = new Map<string, HistoryRow[]>();
     for (const h of histRows ?? []) {
-      const arr = byId.get(h.equipment_id) ?? [];
+      const arr = byEquipment.get(h.equipment_id) ?? [];
       arr.push(h);
-      byId.set(h.equipment_id, arr);
+      byEquipment.set(h.equipment_id, arr);
     }
 
-    return rows.map((r) => toEquipment(r, byId.get(r.id) ?? []));
+    const userIds = [...new Set((histRows ?? []).map((h) => h.user_id).filter(Boolean))] as string[];
+    const nameById = new Map<string, string>();
+    if (userIds.length > 0) {
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, name')
+        .in('id', userIds);
+      for (const p of profiles ?? []) nameById.set(p.id, p.name);
+    }
+
+    return rows.map((r) => toEquipment(r, byEquipment.get(r.id) ?? [], nameById));
   },
 
   async add(equipment: Equipment): Promise<void> {

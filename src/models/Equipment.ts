@@ -19,6 +19,7 @@ export interface HistoryEntry {
   status: EquipmentStatus;
   location: EquipmentLocation;
   responsible: string;
+  userName?: string;
 }
 
 export interface EquipmentData {
