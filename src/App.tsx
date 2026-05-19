@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Layout, App as AntApp, Spin, Button, Flex, Typography, Grid } from 'antd';
+import { Layout, App as AntApp, Spin, Button, Flex, Typography, Grid, Form, Input } from 'antd';
 import { LogoutOutlined } from '@ant-design/icons';
 import { CatalogSidebar } from './components/CatalogSidebar';
 import { EquipmentDetail } from './components/EquipmentDetail';
@@ -40,7 +40,7 @@ const TAB_STYLE_BASE: React.CSSProperties = {
 
 function AppInner() {
   const { message } = AntApp.useApp();
-  const { user, role, userName, loading: authLoading, signOut } = useAuth();
+  const { user, role, userName, loading: authLoading, isRecovery, updatePassword, signOut } = useAuth();
 
   const [items, setItems] = useState<Equipment[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -203,6 +203,56 @@ function AppInner() {
   }
 
   if (!user) return <LoginPage />;
+
+  if (isRecovery) {
+    return (
+      <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f5f7fa' }}>
+        <div style={{ width: 360, background: '#fff', borderRadius: 8, padding: 32, boxShadow: '0 4px 24px rgba(0,0,0,0.08)' }}>
+          <Typography.Title level={4} style={{ marginTop: 0, marginBottom: 20, textAlign: 'center' }}>
+            Новый пароль
+          </Typography.Title>
+          <Form
+            layout="vertical"
+            requiredMark={false}
+            onFinish={async (values: { password: string }) => {
+              const error = await updatePassword(values.password);
+              if (error) void message.error(error);
+            }}
+          >
+            <Form.Item
+              name="password"
+              label="Новый пароль"
+              rules={[
+                { required: true, message: 'Введите пароль' },
+                { min: 6, message: 'Минимум 6 символов' },
+              ]}
+            >
+              <Input.Password placeholder="••••••••" autoComplete="new-password" />
+            </Form.Item>
+            <Form.Item
+              name="confirm"
+              label="Повторите пароль"
+              dependencies={['password']}
+              rules={[
+                { required: true, message: 'Повторите пароль' },
+                ({ getFieldValue }) => ({
+                  validator(_, value) {
+                    if (!value || getFieldValue('password') === value) return Promise.resolve();
+                    return Promise.reject('Пароли не совпадают');
+                  },
+                }),
+              ]}
+            >
+              <Input.Password placeholder="••••••••" autoComplete="new-password" />
+            </Form.Item>
+            <Button type="primary" htmlType="submit" block>
+              Сохранить пароль
+            </Button>
+          </Form>
+        </div>
+      </div>
+    );
+  }
 
   if (user && !role) {
     return (
