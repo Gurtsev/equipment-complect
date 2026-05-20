@@ -3,8 +3,9 @@ import {
   Drawer, Typography, Tag, Avatar, Button, Table, Divider,
   Empty, Spin, Flex, Select, Input, Modal, App,
 } from 'antd';
-import { UserOutlined, RollbackOutlined } from '@ant-design/icons';
+import { UserOutlined, RollbackOutlined, SwapOutlined } from '@ant-design/icons';
 import { assignmentService, ProfileAssignment } from '../../services/assignmentService';
+import { loanService, EquipmentLoanSummary } from '../../services/loanService';
 import { Profile } from '../../services/usersService';
 import { Equipment } from '../../models/Equipment';
 import { UserRole } from '../../contexts/AuthContext';
@@ -35,6 +36,7 @@ interface Props {
 export function EmployeeCard({ profile, open, onClose, canEdit, allEquipment, onChanged }: Props) {
   const { message } = App.useApp();
   const [assignments, setAssignments] = useState<ProfileAssignment[]>([]);
+  const [activeLoans, setActiveLoans] = useState<EquipmentLoanSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pickerValue, setPickerValue] = useState<string | undefined>();
@@ -44,8 +46,12 @@ export function EmployeeCard({ profile, open, onClose, canEdit, allEquipment, on
   const reload = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await assignmentService.getForProfile(profile.id);
+      const [data, loans] = await Promise.all([
+        assignmentService.getForProfile(profile.id),
+        loanService.getActiveLoansForProfile(profile.id),
+      ]);
       setAssignments(data);
+      setActiveLoans(loans);
     } catch {
       void message.error('Ошибка загрузки');
     } finally {
@@ -225,6 +231,53 @@ export function EmployeeCard({ profile, open, onClose, canEdit, allEquipment, on
           </>
         )}
       </div>
+
+      {/* Активные займы */}
+      {activeLoans.length > 0 && (
+        <div style={{ marginTop: 4 }}>
+          <Divider style={{ margin: '16px 0 12px' }} />
+          <Text strong style={{ display: 'block', marginBottom: 12 }}>
+            Временные займы ({activeLoans.length})
+          </Text>
+          <Table
+            dataSource={activeLoans}
+            rowKey="id"
+            size="small"
+            pagination={false}
+            showHeader={false}
+            columns={[
+              {
+                key: 'eq',
+                render: (_: unknown, a: EquipmentLoanSummary) => (
+                  <Flex gap={10} align="center">
+                    <Avatar src={a.equipmentImage ?? undefined} shape="square" size={36} style={{ borderRadius: 4, flexShrink: 0 }} />
+                    <div>
+                      <Text strong style={{ fontSize: 13 }}>{a.equipmentModel}</Text>
+                      <Text type="secondary" style={{ fontSize: 11, display: 'block' }}>
+                        {a.equipmentInvNumber}
+                        {a.notes && ` · ${a.notes}`}
+                      </Text>
+                    </div>
+                  </Flex>
+                ),
+              },
+              {
+                key: 'date',
+                width: 130,
+                render: (_: unknown, a: EquipmentLoanSummary) => (
+                  <Text type="secondary" style={{ fontSize: 11 }}>
+                    <SwapOutlined style={{ color: '#1677ff', marginRight: 4 }} />
+                    с {a.issuedAt.toLocaleDateString('ru-RU')}
+                    {a.dueDate && (
+                      <div>до {a.dueDate.toLocaleDateString('ru-RU')}</div>
+                    )}
+                  </Text>
+                ),
+              },
+            ]}
+          />
+        </div>
+      )}
 
       {/* Picker modal */}
       <Modal

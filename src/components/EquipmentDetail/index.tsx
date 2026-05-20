@@ -14,17 +14,20 @@ import {
   App,
   Grid,
   Avatar,
+  Radio,
 } from 'antd';
-import { QrcodeOutlined, EditOutlined, PrinterOutlined, ArrowLeftOutlined, UserOutlined } from '@ant-design/icons';
+import { QrcodeOutlined, EditOutlined, PrinterOutlined, ArrowLeftOutlined, UserOutlined, SwapOutlined } from '@ant-design/icons';
 import { QRCodeSVG } from 'qrcode.react';
 import {
   Equipment,
   EquipmentStatus,
   EquipmentLocation,
+  EquipmentDepartment,
   HistoryEntry,
 } from '../../models/Equipment';
 import { Project } from '../../models/Project';
 import { assignmentService, Assignment } from '../../services/assignmentService';
+import { loanService, Loan, LoanType } from '../../services/loanService';
 import { usersService, Profile } from '../../services/usersService';
 
 const { Title, Text } = Typography;
@@ -148,6 +151,15 @@ export function EquipmentDetail({ equipment, canEdit, onEdit, project, onProject
   const [assignNotes, setAssignNotes] = useState('');
   const [assignLoading, setAssignLoading] = useState(false);
 
+  const [activeLoan, setActiveLoan] = useState<Loan | null>(null);
+  const [loanOpen, setLoanOpen] = useState(false);
+  const [loanType, setLoanType] = useState<LoanType>('employee');
+  const [loanProfileId, setLoanProfileId] = useState<string | undefined>();
+  const [loanDepartment, setLoanDepartment] = useState<EquipmentDepartment | undefined>();
+  const [loanDueDate, setLoanDueDate] = useState('');
+  const [loanNotes, setLoanNotes] = useState('');
+  const [loanLoading, setLoanLoading] = useState(false);
+
   const loadAssignment = useCallback(async () => {
     try {
       const a = await assignmentService.getCurrentAssignment(equipment.id);
@@ -155,7 +167,14 @@ export function EquipmentDetail({ equipment, canEdit, onEdit, project, onProject
     } catch { /* не блокируем UI */ }
   }, [equipment.id]);
 
-  useEffect(() => { void loadAssignment(); }, [loadAssignment]);
+  const loadLoan = useCallback(async () => {
+    try {
+      const l = await loanService.getActiveLoan(equipment.id);
+      setActiveLoan(l);
+    } catch { /* не блокируем UI */ }
+  }, [equipment.id]);
+
+  useEffect(() => { void loadAssignment(); void loadLoan(); }, [loadAssignment, loadLoan]);
 
   const handleStatusChange = (val: EquipmentStatus) => {
     setStatus(val);
@@ -246,6 +265,23 @@ export function EquipmentDetail({ equipment, canEdit, onEdit, project, onProject
               Выдать сотруднику
             </Button>
           )}
+          {canEdit && !assignment && !activeLoan && equipment.currentStatus !== 'Забронировано' && (
+            <Button
+              icon={<SwapOutlined />}
+              onClick={async () => {
+                const p = await usersService.getProfiles();
+                setProfiles(p);
+                setLoanType('employee');
+                setLoanProfileId(undefined);
+                setLoanDepartment(undefined);
+                setLoanDueDate('');
+                setLoanNotes('');
+                setLoanOpen(true);
+              }}
+            >
+              Временный займ
+            </Button>
+          )}
           {canEdit && assignment && (
             <Button
               danger
@@ -275,6 +311,37 @@ export function EquipmentDetail({ equipment, canEdit, onEdit, project, onProject
                 {assignment.notes && ` · ${assignment.notes}`}
               </Text>
             </div>
+          </Flex>
+        )}
+
+        {activeLoan && (
+          <Flex align="center" gap={8} style={{ marginTop: 12, padding: '8px 12px', background: '#e6f4ff', borderRadius: 8 }} className="no-print">
+            <SwapOutlined style={{ color: '#1677ff', fontSize: 18, flexShrink: 0 }} />
+            <div style={{ flex: 1 }}>
+              <Text strong style={{ fontSize: 13 }}>
+                {activeLoan.loanType === 'employee'
+                  ? `Займ: ${activeLoan.toProfileName ?? '—'}`
+                  : `Займ → ${DEPT_LABEL[activeLoan.toDepartment!]}`}
+              </Text>
+              <Text type="secondary" style={{ fontSize: 11, display: 'block' }}>
+                с {activeLoan.issuedAt.toLocaleDateString('ru-RU')}
+                {activeLoan.dueDate && ` · вернуть до ${activeLoan.dueDate.toLocaleDateString('ru-RU')}`}
+                {activeLoan.notes && ` · ${activeLoan.notes}`}
+              </Text>
+            </div>
+            {canEdit && (
+              <Button size="small" danger onClick={async () => {
+                try {
+                  await loanService.returnLoan(activeLoan.id, equipment.id);
+                  void loadLoan();
+                  void message.success('Займ закрыт, оборудование на складе');
+                } catch {
+                  void message.error('Ошибка при возврате');
+                }
+              }}>
+                Вернуть
+              </Button>
+            )}
           </Flex>
         )}
 
@@ -441,6 +508,86 @@ export function EquipmentDetail({ equipment, canEdit, onEdit, project, onProject
             placeholder="Примечание (необязательно)"
             value={assignNotes}
             onChange={e => setAssignNotes(e.target.value)}
+          />
+        </Flex>
+      </Modal>
+
+      {/* Модальное окно временного займа */}
+      <Modal
+        title="Временный займ"
+        open={loanOpen}
+        onCancel={() => setLoanOpen(false)}
+        okText="Оформить"
+        cancelText="Отмена"
+        confirmLoading={loanLoading}
+        onOk={async () => {
+          if (loanType === 'employee' && !loanProfileId) {
+            void message.error('Выберите сотрудника');
+            return;
+          }
+          if (loanType === 'department' && !loanDepartment) {
+            void message.error('Выберите отдел');
+            return;
+          }
+          setLoanLoading(true);
+          try {
+            await loanService.create({
+              equipmentId: equipment.id,
+              loanType,
+              toProfileId: loanType === 'employee' ? loanProfileId : undefined,
+              toDepartment: loanType === 'department' ? loanDepartment : undefined,
+              fromDepartment: equipment.department,
+              dueDate: loanDueDate || undefined,
+              notes: loanNotes || undefined,
+            });
+            setLoanOpen(false);
+            void loadLoan();
+            void message.success('Займ оформлен');
+          } catch {
+            void message.error('Ошибка при оформлении займа');
+          } finally {
+            setLoanLoading(false);
+          }
+        }}
+      >
+        <Flex vertical gap={12} style={{ marginTop: 8 }}>
+          <Radio.Group value={loanType} onChange={(e) => setLoanType(e.target.value as LoanType)}>
+            <Radio value="employee">Сотруднику</Radio>
+            <Radio value="department">В отдел</Radio>
+          </Radio.Group>
+          {loanType === 'employee' ? (
+            <Select
+              placeholder="Выберите сотрудника"
+              value={loanProfileId}
+              onChange={setLoanProfileId}
+              style={{ width: '100%' }}
+              options={profiles.map((p) => ({ value: p.id, label: `${p.name} (${p.email ?? p.role})` }))}
+              showSearch
+              filterOption={(input, opt) => (opt?.label as string ?? '').toLowerCase().includes(input.toLowerCase())}
+            />
+          ) : (
+            <Select
+              placeholder="Выберите отдел"
+              value={loanDepartment}
+              onChange={(v) => setLoanDepartment(v as EquipmentDepartment)}
+              style={{ width: '100%' }}
+              options={[
+                { value: 'studio', label: 'Студия' },
+                { value: 'aho', label: 'АХО' },
+                { value: 'office', label: 'Офис' },
+              ]}
+            />
+          )}
+          <Input
+            type="date"
+            placeholder="Дата возврата"
+            value={loanDueDate}
+            onChange={(e) => setLoanDueDate(e.target.value)}
+          />
+          <Input
+            placeholder="Комментарий (необязательно)"
+            value={loanNotes}
+            onChange={(e) => setLoanNotes(e.target.value)}
           />
         </Flex>
       </Modal>

@@ -121,6 +121,7 @@ function AppInner() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'employee_assignments' }, reload)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'consumables' }, reload)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'consumable_transactions' }, reload)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'equipment_loans' }, reload)
       .subscribe();
     return () => {
       clearTimeout(timer);
