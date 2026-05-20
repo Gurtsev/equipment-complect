@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Layout, App as AntApp, Spin, Button, Typography, Grid, Form, Input } from 'antd';
+import { Layout, App as AntApp, Spin, Button, Typography, Grid, Form, Input, Badge } from 'antd';
 import { LogoutOutlined } from '@ant-design/icons';
 import { CatalogSidebar } from './components/CatalogSidebar';
 import { EquipmentDetail } from './components/EquipmentDetail';
@@ -11,18 +11,21 @@ import { CreateProjectDrawer } from './components/CreateProjectDrawer';
 import { LoginPage } from './components/LoginPage';
 import { UsersPage } from './components/UsersPage';
 import { CalendarView } from './components/CalendarView';
+import { ConsumablesPage } from './components/ConsumablesPage';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { supabase } from './services/supabase';
 import { equipmentService } from './services/equipmentService';
 import { historyService } from './services/historyService';
 import { projectService } from './services/projectService';
+import { consumablesService } from './services/consumablesService';
 import { Equipment, EquipmentLocation, EquipmentStatus } from './models/Equipment';
 import { Project } from './models/Project';
+import type { Consumable } from './services/consumablesService';
 
 const { Sider, Content } = Layout;
 const { Text } = Typography;
 
-type ActiveTab = 'catalog' | 'projects' | 'users' | 'calendar';
+type ActiveTab = 'catalog' | 'projects' | 'users' | 'calendar' | 'consumables';
 
 const ROLE_LABEL: Record<string, string> = {
   admin: 'Администратор',
@@ -37,6 +40,7 @@ function AppInner() {
 
   const [items, setItems] = useState<Equipment[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
+  const [consumables, setConsumables] = useState<Consumable[]>([]);
   const [dataLoading, setDataLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [selectedEquipment, setSelectedEquipment] = useState<Equipment | null>(null);
@@ -54,12 +58,14 @@ function AppInner() {
   const isMobile = !screens.md;
 
   const loadAll = useCallback(async () => {
-    const [newItems, newProjects] = await Promise.all([
+    const [newItems, newProjects, newConsumables] = await Promise.all([
       equipmentService.getAll(),
       projectService.getAll(),
+      consumablesService.getAll(),
     ]);
     setItems(newItems);
     setProjects(newProjects);
+    setConsumables(newConsumables);
     return { newItems, newProjects };
   }, []);
 
@@ -113,6 +119,8 @@ function AppInner() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'projects' }, reload)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'project_equipment' }, reload)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'employee_assignments' }, reload)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'consumables' }, reload)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'consumable_transactions' }, reload)
       .subscribe();
     return () => {
       clearTimeout(timer);
@@ -362,11 +370,24 @@ function AppInner() {
     <Dashboard items={items} />
   );
 
-  const tabs: { key: ActiveTab; label: string }[] = [
-    { key: 'catalog', label: 'Каталог' },
-    { key: 'projects', label: 'Проекты' },
-    { key: 'calendar', label: 'Календарь' },
-    ...(role === 'admin' ? [{ key: 'users' as ActiveTab, label: 'Пользователи' }] : []),
+  const criticalCount = consumables.filter(
+    (c) => c.minThreshold > 0 && c.quantity < c.minThreshold,
+  ).length;
+
+  const tabs: { key: ActiveTab; label: React.ReactNode; tabKey: ActiveTab }[] = [
+    { key: 'catalog', tabKey: 'catalog', label: 'Каталог' },
+    { key: 'projects', tabKey: 'projects', label: 'Проекты' },
+    { key: 'calendar', tabKey: 'calendar', label: 'Календарь' },
+    ...(canEdit ? [{
+      key: 'consumables' as ActiveTab,
+      tabKey: 'consumables' as ActiveTab,
+      label: (
+        <Badge count={criticalCount} size="small" offset={[6, -2]}>
+          Расходники
+        </Badge>
+      ),
+    }] : []),
+    ...(role === 'admin' ? [{ key: 'users' as ActiveTab, tabKey: 'users' as ActiveTab, label: 'Пользователи' }] : []),
   ];
 
   const calendarProps = {
@@ -430,12 +451,12 @@ function AppInner() {
       overflowX: scrollable ? 'auto' : 'visible',
       flexShrink: 0,
     }}>
-      {tabs.map(({ key, label }) => {
-        const isActive = activeTab === key;
+      {tabs.map(({ tabKey, label }) => {
+        const isActive = activeTab === tabKey;
         return (
           <div
-            key={key}
-            onClick={() => setActiveTab(key)}
+            key={tabKey}
+            onClick={() => setActiveTab(tabKey)}
             style={{
               padding: '0 16px',
               height: 48,
@@ -507,6 +528,8 @@ function AppInner() {
           <div style={{ flex: 1, overflow: 'auto', background: '#f5f7fa' }}><UsersPage canEdit={canEdit} allEquipment={items} onEquipmentChanged={handleEquipmentChange} /></div>
         ) : activeTab === 'calendar' ? (
           <div style={{ flex: 1, overflow: 'auto', background: '#f5f7fa' }}><CalendarView {...calendarProps} /></div>
+        ) : activeTab === 'consumables' ? (
+          <div style={{ flex: 1, overflow: 'auto', background: '#f5f7fa' }}><ConsumablesPage consumables={consumables} canEdit={canEdit} onChanged={() => void loadAll()} /></div>
         ) : tabContent}
         {drawers}
       </div>
@@ -530,6 +553,7 @@ function AppInner() {
         <Content style={{ overflow: 'auto', background: '#f5f7fa', height: '100%' }}>
           {activeTab === 'users' ? <UsersPage canEdit={canEdit} allEquipment={items} onEquipmentChanged={handleEquipmentChange} /> :
            activeTab === 'calendar' ? <CalendarView {...calendarProps} /> :
+           activeTab === 'consumables' ? <ConsumablesPage consumables={consumables} canEdit={canEdit} onChanged={() => void loadAll()} /> :
            rightPane}
         </Content>
       </Layout>
