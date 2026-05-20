@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Card,
   Typography,
@@ -13,6 +13,8 @@ import {
   App,
   Popconfirm,
   Descriptions,
+  Timeline,
+  Spin,
 } from 'antd';
 import {
   EditOutlined,
@@ -22,12 +24,17 @@ import {
   SendOutlined,
   DownloadOutlined,
   ArrowLeftOutlined,
+  PlusCircleOutlined,
+  MinusCircleOutlined,
+  PlayCircleOutlined,
+  CheckCircleOutlined,
 } from '@ant-design/icons';
 import * as XLSX from 'xlsx';
 import { Project, ProjectStatus } from '../../models/Project';
 import { Equipment, EquipmentStatus } from '../../models/Equipment';
 import { historyService } from '../../services/historyService';
 import { projectService } from '../../services/projectService';
+import { projectHistoryService, ProjectHistoryEntry } from '../../services/projectHistoryService';
 
 const { Title, Text } = Typography;
 
@@ -44,6 +51,33 @@ const EQUIPMENT_STATUS_COLOR: Record<EquipmentStatus, string> = {
   'Списано': 'error',
   'В Пути': 'purple',
   'Забронировано': 'cyan',
+};
+
+const HISTORY_LABEL: Record<string, string> = {
+  equipment_added: 'добавил в комплект',
+  equipment_removed: 'убрал из комплекта',
+  activated: 'выдал оборудование (проект активен)',
+  finished: 'завершил проект',
+  created: 'создал проект',
+  updated: 'обновил проект',
+};
+
+const HISTORY_COLOR: Record<string, string> = {
+  equipment_added: 'green',
+  equipment_removed: 'red',
+  activated: 'blue',
+  finished: 'gray',
+  created: 'blue',
+  updated: 'gray',
+};
+
+const HISTORY_ICON: Record<string, React.ReactNode> = {
+  equipment_added: <PlusCircleOutlined />,
+  equipment_removed: <MinusCircleOutlined />,
+  activated: <PlayCircleOutlined />,
+  finished: <CheckCircleOutlined />,
+  created: <PlusCircleOutlined />,
+  updated: <EditOutlined />,
 };
 
 function formatDateRange(start: Date, end: Date): string {
@@ -90,6 +124,21 @@ export function ProjectDetail({
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pickerSearch, setPickerSearch] = useState('');
   const [pickerSelected, setPickerSelected] = useState<string[]>([]);
+  const [projectHistory, setProjectHistory] = useState<ProjectHistoryEntry[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(true);
+
+  const reloadHistory = useCallback(async () => {
+    try {
+      const entries = await projectHistoryService.getForProject(project.id);
+      setProjectHistory(entries);
+    } catch {
+      // не блокируем UI если история не загрузилась
+    } finally {
+      setHistoryLoading(false);
+    }
+  }, [project.id]);
+
+  useEffect(() => { void reloadHistory(); }, [reloadHistory]);
 
   const projectEquipment = project.equipmentIds
     .map((id) => allEquipment.find((e) => e.id === id))
@@ -112,9 +161,11 @@ export function ProjectDetail({
             historyService.addEntry(eq.id, 'В Работе', project.location, project.responsible),
           ),
           projectService.update(project),
+          projectHistoryService.addEntry(project.id, 'activated'),
         ]);
         onUpdate(project);
         onEquipmentChange();
+        void reloadHistory();
         void message.success('Оборудование выдано, проект активен');
       },
     });
@@ -139,9 +190,11 @@ export function ProjectDetail({
             historyService.addEntry(eq.id, 'На Складе', 'Склад', project.responsible),
           ),
           projectService.update(project),
+          projectHistoryService.addEntry(project.id, 'finished'),
         ]);
         onUpdate(project);
         onEquipmentChange();
+        void reloadHistory();
         void message.success('Проект завершён, оборудование возвращено на склад');
       },
     });
@@ -154,9 +207,16 @@ export function ProjectDetail({
       await historyService.addEntry(eq.id, 'На Складе', 'Склад', project.responsible);
     }
     project.equipmentIds = project.equipmentIds.filter((id) => id !== eq.id);
-    await projectService.update(project);
+    await Promise.all([
+      projectService.update(project),
+      projectHistoryService.addEntry(project.id, 'equipment_removed', {
+        equipmentId: eq.id,
+        equipmentName: eq.model,
+      }),
+    ]);
     onUpdate(project);
     onEquipmentChange();
+    void reloadHistory();
     void message.success(`${eq.model} убрано из проекта`);
   };
 
@@ -175,10 +235,17 @@ export function ProjectDetail({
       ...toAdd.map((eq) =>
         historyService.addEntry(eq.id, 'Забронировано', eq.currentLocation, project.responsible),
       ),
+      ...toAdd.map((eq) =>
+        projectHistoryService.addEntry(project.id, 'equipment_added', {
+          equipmentId: eq.id,
+          equipmentName: eq.model,
+        }),
+      ),
       projectService.update(project),
     ]);
     onUpdate(project);
     onEquipmentChange();
+    void reloadHistory();
     setPickerSelected([]);
     setPickerOpen(false);
     void message.success(`Добавлено ${toAdd.length} ед. оборудования`);
@@ -412,6 +479,38 @@ export function ProjectDetail({
           })}
         </div>
       </Modal>
+
+      {/* История проекта */}
+      <Card title="История проекта" size="small" style={{ marginTop: 16 }}>
+        {historyLoading ? (
+          <Flex justify="center" style={{ padding: 16 }}><Spin /></Flex>
+        ) : projectHistory.length === 0 ? (
+          <Text type="secondary">Нет записей</Text>
+        ) : (
+          <Timeline
+            style={{ marginTop: 8 }}
+            items={projectHistory.map((entry) => ({
+              dot: HISTORY_ICON[entry.action],
+              color: HISTORY_COLOR[entry.action],
+              children: (
+                <div>
+                  <Text>
+                    <Text strong>{entry.userName ?? 'Система'}</Text>
+                    {' '}{HISTORY_LABEL[entry.action]}
+                    {entry.equipmentName && (
+                      <Text type="secondary"> — {entry.equipmentName}</Text>
+                    )}
+                  </Text>
+                  <br />
+                  <Text type="secondary" style={{ fontSize: 11 }}>
+                    {entry.recordedAt.toLocaleString('ru-RU')}
+                  </Text>
+                </div>
+              ),
+            }))}
+          />
+        )}
+      </Card>
     </div>
   );
 }
