@@ -395,11 +395,9 @@ export function ConsumablesPage({ consumables, canEdit, onChanged }: Props) {
         onClose={() => setSelected(null)}
         width={520}
         extra={canEdit && selected && (
-          <Space>
-            <Button size="small" icon={<EditOutlined />} onClick={() => openEditForm(selected)}>
-              Изменить
-            </Button>
-          </Space>
+          <Tooltip title="Редактировать">
+            <Button size="small" icon={<EditOutlined />} onClick={() => openEditForm(selected)} />
+          </Tooltip>
         )}
       >
         {selected && (() => {
