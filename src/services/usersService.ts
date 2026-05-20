@@ -1,11 +1,13 @@
 import { supabase } from './supabase';
 import type { UserRole } from '../contexts/AuthContext';
+import type { EquipmentDepartment } from '../models/Equipment';
 
 export interface Profile {
   id: string;
   name: string;
   email: string;
   role: UserRole;
+  department: EquipmentDepartment | null;
 }
 
 export interface AllowedEntry {
@@ -21,13 +23,13 @@ export const usersService = {
   async getProfiles(): Promise<Profile[]> {
     const { data, error } = await supabase
       .from('profiles')
-      .select('id, name, email, role')
+      .select('id, name, email, role, department')
       .order('name');
     if (error) throw error;
     return (data ?? []) as Profile[];
   },
 
-  async updateProfile(id: string, fields: Partial<Pick<Profile, 'name' | 'role'>>): Promise<void> {
+  async updateProfile(id: string, fields: Partial<Pick<Profile, 'name' | 'role' | 'department'>>): Promise<void> {
     const { error } = await supabase.from('profiles').update(fields).eq('id', id);
     if (error) throw error;
   },

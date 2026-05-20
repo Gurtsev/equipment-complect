@@ -33,7 +33,7 @@ const ROLE_LABEL: Record<string, string> = {
 
 function AppInner() {
   const { message } = AntApp.useApp();
-  const { user, role, userName, loading: authLoading, isRecovery, updatePassword, signOut } = useAuth();
+  const { user, role, userName, userDepartment, loading: authLoading, isRecovery, updatePassword, signOut } = useAuth();
 
   const [items, setItems] = useState<Equipment[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -47,6 +47,9 @@ function AppInner() {
   const [projectDrawerMode, setProjectDrawerMode] = useState<'create' | 'edit' | null>(null);
 
   const canEdit = role === 'admin' || role === 'operator';
+  // canEditEquipment: учитывает ограничение по отделу для операторов
+  const canEditEquipment = (dept: string) =>
+    canEdit && (userDepartment === null || userDepartment === dept);
   const screens = Grid.useBreakpoint();
   const isMobile = !screens.md;
 
@@ -348,7 +351,7 @@ function AppInner() {
     <EquipmentDetail
       key={`${selectedEquipment.id}-${detailKey}`}
       equipment={selectedEquipment}
-      canEdit={canEdit}
+      canEdit={canEditEquipment(selectedEquipment.department)}
       onEdit={() => setEquipmentDrawerMode('edit')}
       project={getEquipmentProject(selectedEquipment.id) ?? null}
       onProjectClick={handleProjectClick}

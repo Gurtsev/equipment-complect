@@ -6,6 +6,7 @@ import {
 import { PlusOutlined, DeleteOutlined, IdcardOutlined } from '@ant-design/icons';
 import { usersService, Profile, AllowedEntry } from '../../services/usersService';
 import type { UserRole } from '../../contexts/AuthContext';
+import type { EquipmentDepartment } from '../../models/Equipment';
 import { EmployeeCard } from '../EmployeeCard';
 import { Equipment } from '../../models/Equipment';
 
@@ -15,6 +16,12 @@ const ROLE_OPTIONS = [
   { value: 'admin', label: 'Администратор' },
   { value: 'operator', label: 'Оператор' },
   { value: 'viewer', label: 'Наблюдатель' },
+];
+
+const DEPT_OPTIONS = [
+  { value: 'studio', label: 'Студия' },
+  { value: 'aho', label: 'АХО' },
+  { value: 'office', label: 'Офис' },
 ];
 
 const ROLE_COLOR: Record<UserRole, string> = {
@@ -69,6 +76,15 @@ export function UsersPage({ canEdit, allEquipment, onEquipmentChanged }: Props) 
       setProfiles((prev) => prev.map((p) => p.id === id ? { ...p, role } : p));
     } catch {
       void message.error('Ошибка при смене роли');
+    }
+  };
+
+  const handleDeptChange = async (id: string, department: EquipmentDepartment | null) => {
+    try {
+      await usersService.updateProfile(id, { department: department ?? undefined });
+      setProfiles((prev) => prev.map((p) => p.id === id ? { ...p, department } : p));
+    } catch {
+      void message.error('Ошибка при смене отдела');
     }
   };
 
@@ -145,6 +161,23 @@ export function UsersPage({ canEdit, allEquipment, onEquipmentChanged }: Props) 
           style={{ width: 160 }}
           options={ROLE_OPTIONS}
           onChange={(val) => void handleRoleChange(record.id, val as UserRole)}
+        />
+      ),
+    },
+    {
+      title: 'Отдел',
+      dataIndex: 'department',
+      key: 'department',
+      width: 140,
+      render: (dept: EquipmentDepartment | null, record: Profile) => (
+        <Select
+          value={dept ?? undefined}
+          size="small"
+          style={{ width: 120 }}
+          placeholder="Все"
+          allowClear
+          options={DEPT_OPTIONS}
+          onChange={(val) => void handleDeptChange(record.id, (val as EquipmentDepartment) ?? null)}
         />
       ),
     },

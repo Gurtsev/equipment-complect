@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import type { User } from '@supabase/supabase-js';
 import { supabase } from '../services/supabase';
+import type { EquipmentDepartment } from '../models/Equipment';
 
 const RT_KEY = 'eq_rt_v1';
 
@@ -30,6 +31,7 @@ interface AuthState {
   user: User | null;
   role: UserRole | null;
   userName: string;
+  userDepartment: EquipmentDepartment | null;
   loading: boolean;
   isRecovery: boolean;
   recoveryError: string | null;
@@ -42,10 +44,10 @@ interface AuthState {
 
 const AuthContext = createContext<AuthState | null>(null);
 
-async function fetchProfile(userId: string): Promise<{ name: string; role: UserRole } | null> {
+async function fetchProfile(userId: string): Promise<{ name: string; role: UserRole; department: EquipmentDepartment | null } | null> {
   const { data } = await supabase
     .from('profiles')
-    .select('name, role')
+    .select('name, role, department')
     .eq('id', userId)
     .single();
   return data ?? null;
@@ -55,15 +57,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [role, setRole] = useState<UserRole | null>(null);
   const [userName, setUserName] = useState('');
+  const [userDepartment, setUserDepartment] = useState<EquipmentDepartment | null>(null);
   const [loading, setLoading] = useState(true);
   const [isRecovery, setIsRecovery] = useState(() =>
     window.location.hash.includes('type=recovery'),
   );
   const [recoveryError, setRecoveryError] = useState<string | null>(null);
 
-  function applyProfile(profile: { name: string; role: UserRole } | null) {
+  function applyProfile(profile: { name: string; role: UserRole; department: EquipmentDepartment | null } | null) {
     setRole(profile?.role ?? null);
     setUserName(profile?.name ?? '');
+    setUserDepartment(profile?.department ?? null);
   }
 
   // Ручная обработка ссылки восстановления пароля (detectSessionInUrl: false)
@@ -182,7 +186,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, role, userName, loading, isRecovery, recoveryError, signIn, signUp, signOut, forgotPassword, updatePassword }}>
+    <AuthContext.Provider value={{ user, role, userName, userDepartment, loading, isRecovery, recoveryError, signIn, signUp, signOut, forgotPassword, updatePassword }}>
       {children}
     </AuthContext.Provider>
   );
