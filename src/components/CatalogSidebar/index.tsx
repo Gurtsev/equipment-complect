@@ -5,6 +5,7 @@ import * as XLSX from 'xlsx';
 import {
   Equipment,
   EquipmentCategory,
+  EquipmentDepartment,
   EquipmentStatus,
   EquipmentLocation,
 } from '../../models/Equipment';
@@ -21,6 +22,9 @@ const CATEGORIES: Array<{ label: string; value: EquipmentCategory | 'all' }> = [
   { label: 'Аксессуары', value: 'accessory' },
   { label: 'Оптика', value: 'optics' },
   { label: 'Телефоны', value: 'phone' },
+  { label: 'Мебель', value: 'furniture' },
+  { label: 'Реквизит', value: 'prop' },
+  { label: 'Инструмент', value: 'tool' },
 ];
 
 const CATEGORY_LABEL: Record<EquipmentCategory, string> = {
@@ -32,6 +36,9 @@ const CATEGORY_LABEL: Record<EquipmentCategory, string> = {
   accessory: 'Аксессуар',
   optics: 'Оптика',
   phone: 'Телефон',
+  furniture: 'Мебель',
+  prop: 'Реквизит',
+  tool: 'Инструмент',
 };
 
 const STATUS_OPTIONS: Array<{ label: string; value: EquipmentStatus }> = [
@@ -49,6 +56,14 @@ const LOCATION_OPTIONS: Array<{ label: string; value: EquipmentLocation }> = [
   { label: 'Склад', value: 'Склад' },
   { label: 'Ремонт', value: 'Ремонт' },
   { label: 'В пути', value: 'В пути' },
+  { label: 'Офис', value: 'Офис' },
+];
+
+const DEPT_OPTIONS: Array<{ label: string; value: EquipmentDepartment | 'all' }> = [
+  { label: 'Все', value: 'all' },
+  { label: 'Студия', value: 'studio' },
+  { label: 'АХО', value: 'aho' },
+  { label: 'Офис', value: 'office' },
 ];
 
 const SORT_OPTIONS = [
@@ -74,6 +89,7 @@ function filterItems(
   query: string,
   statusFilter: EquipmentStatus | 'all',
   locationFilter: EquipmentLocation | 'all',
+  deptFilter: EquipmentDepartment | 'all',
 ): Equipment[] {
   const q = query.toLowerCase().trim();
   return items.filter((item) => {
@@ -82,7 +98,8 @@ function filterItems(
       !q || item.model.toLowerCase().includes(q) || item.invNumber.toLowerCase().includes(q);
     const matchesStatus = statusFilter === 'all' || item.currentStatus === statusFilter;
     const matchesLocation = locationFilter === 'all' || item.currentLocation === locationFilter;
-    return matchesCategory && matchesSearch && matchesStatus && matchesLocation;
+    const matchesDept = deptFilter === 'all' || item.department === deptFilter;
+    return matchesCategory && matchesSearch && matchesStatus && matchesLocation && matchesDept;
   });
 }
 
@@ -165,6 +182,7 @@ export function CatalogSidebar({ items, selected, canEdit, onSelect, onAdd }: Pr
   const [category, setCategory] = useState<EquipmentCategory | 'all'>('all');
   const [statusFilter, setStatusFilter] = useState<EquipmentStatus | undefined>(undefined);
   const [locationFilter, setLocationFilter] = useState<EquipmentLocation | undefined>(undefined);
+  const [deptFilter, setDeptFilter] = useState<EquipmentDepartment | 'all'>('all');
   const [sortBy, setSortBy] = useState('default');
 
   const hasActiveFilters = !!statusFilter || !!locationFilter || sortBy !== 'default';
@@ -172,13 +190,25 @@ export function CatalogSidebar({ items, selected, canEdit, onSelect, onAdd }: Pr
   const statusVal: EquipmentStatus | 'all' = statusFilter ?? 'all';
   const locationVal: EquipmentLocation | 'all' = locationFilter ?? 'all';
 
-  const filtered = sortItems(filterItems(items, category, query, statusVal, locationVal), sortBy);
+  const filtered = sortItems(filterItems(items, category, query, statusVal, locationVal, deptFilter), sortBy);
 
   const handleReset = () => {
     setStatusFilter(undefined);
     setLocationFilter(undefined);
     setSortBy('default');
   };
+
+  const deptFilterStyle = (val: EquipmentDepartment | 'all'): React.CSSProperties => ({
+    padding: '2px 10px',
+    borderRadius: 12,
+    fontSize: 12,
+    cursor: 'pointer',
+    userSelect: 'none',
+    background: deptFilter === val ? '#1677ff' : '#f0f0f0',
+    color: deptFilter === val ? '#fff' : '#595959',
+    transition: 'all 0.15s',
+    flexShrink: 0,
+  });
 
   const exportMenuItems = [
     {
@@ -213,6 +243,13 @@ export function CatalogSidebar({ items, selected, canEdit, onSelect, onAdd }: Pr
               </Button>
             )}
           </Flex>
+        </Flex>
+        <Flex gap={6} wrap="wrap" style={{ marginBottom: 8 }}>
+          {DEPT_OPTIONS.map((d) => (
+            <span key={d.value} style={deptFilterStyle(d.value)} onClick={() => setDeptFilter(d.value)}>
+              {d.label}
+            </span>
+          ))}
         </Flex>
         <Input
           prefix={<SearchOutlined style={{ color: '#bfbfbf' }} />}
@@ -267,7 +304,7 @@ export function CatalogSidebar({ items, selected, canEdit, onSelect, onAdd }: Pr
       {/* Category list */}
       <div style={{ borderBottom: '1px solid #f0f0f0', padding: '4px 0' }}>
         {CATEGORIES.map((c) => {
-          const count = filterItems(items, c.value, query, statusVal, locationVal).length;
+          const count = filterItems(items, c.value, query, statusVal, locationVal, deptFilter).length;
           const isActive = category === c.value;
           return (
             <div

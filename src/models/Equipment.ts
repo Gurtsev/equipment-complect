@@ -4,7 +4,8 @@ export type EquipmentLocation =
   | 'Студия на Романовом'
   | 'Склад'
   | 'Ремонт'
-  | 'В пути';
+  | 'В пути'
+  | 'Офис';
 export type EquipmentCategory =
   | 'camera'
   | 'microphone'
@@ -13,7 +14,11 @@ export type EquipmentCategory =
   | 'audio'
   | 'accessory'
   | 'optics'
-  | 'phone';
+  | 'phone'
+  | 'furniture'
+  | 'prop'
+  | 'tool';
+export type EquipmentDepartment = 'studio' | 'aho' | 'office';
 
 export interface HistoryEntry {
   date: Date;
@@ -28,6 +33,7 @@ export interface EquipmentData {
   model: string;
   subtitle: string;
   category: EquipmentCategory;
+  department: EquipmentDepartment;
   description: string;
   image: string;
   invNumber: string;
@@ -42,6 +48,7 @@ export class Equipment {
   readonly model: string;
   readonly subtitle: string;
   readonly category: EquipmentCategory;
+  readonly department: EquipmentDepartment;
   readonly description: string;
   readonly image: string;
   readonly invNumber: string;
@@ -55,6 +62,7 @@ export class Equipment {
     this.model = data.model;
     this.subtitle = data.subtitle;
     this.category = data.category;
+    this.department = data.department;
     this.description = data.description;
     this.image = data.image;
     this.invNumber = data.invNumber;

@@ -37,7 +37,14 @@ const LOCATIONS: EquipmentLocation[] = [
   'Склад',
   'Ремонт',
   'В пути',
+  'Офис',
 ];
+
+const DEPT_LABEL: Record<string, string> = {
+  studio: 'Студия',
+  aho: 'АХО',
+  office: 'Офис',
+};
 
 const STATUS_COLOR: Record<EquipmentStatus, string> = {
   'В Работе': 'success',
@@ -58,6 +65,9 @@ const CATEGORY_LABEL: Record<Equipment['category'], string> = {
   accessory: 'Аксессуар',
   optics: 'Оптика',
   phone: 'Телефон',
+  furniture: 'Мебель',
+  prop: 'Реквизит',
+  tool: 'Инструмент',
 };
 
 const CATEGORY_COLOR: Record<Equipment['category'], string> = {
@@ -69,6 +79,9 @@ const CATEGORY_COLOR: Record<Equipment['category'], string> = {
   accessory: 'default',
   optics: 'cyan',
   phone: 'geekblue',
+  furniture: 'lime',
+  prop: 'orange',
+  tool: 'volcano',
 };
 
 const historyColumns = [
@@ -278,6 +291,7 @@ export function EquipmentDetail({ equipment, canEdit, onEdit, project, onProject
             <Text code>{equipment.id}</Text>
           </Descriptions.Item>
           <Descriptions.Item label="Ответственный">{equipment.responsible}</Descriptions.Item>
+          <Descriptions.Item label="Отдел">{DEPT_LABEL[equipment.department] ?? equipment.department}</Descriptions.Item>
           {project && (
             <Descriptions.Item label="Проект" span={2}>
               <Flex align="center" gap={8}>
