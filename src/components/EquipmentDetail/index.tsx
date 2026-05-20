@@ -168,7 +168,7 @@ export function EquipmentDetail({ equipment, canEdit, onEdit, project, onProject
               </Tag>
               <Tag color={STATUS_COLOR[equipment.currentStatus]}>{equipment.currentStatus}</Tag>
             </Flex>
-            <Title level={isMobile ? 5 : 4} style={{ margin: '0 0 2px' }}>
+            <Title level={isMobile ? 5 : 4} style={{ margin: '0 0 2px', wordBreak: 'normal', overflowWrap: 'break-word' }}>
               {equipment.model}
             </Title>
             <Text type="secondary" style={{ fontSize: 13 }}>
@@ -202,7 +202,7 @@ export function EquipmentDetail({ equipment, canEdit, onEdit, project, onProject
 
       {/* Info */}
       <Card title="Информация" size="small" style={{ marginBottom: 16 }} className="no-print">
-        <Descriptions column={isMobile ? 1 : 2} size="small">
+        <Descriptions column={{ xs: 1, sm: 1, md: 2 }} size="small">
           <Descriptions.Item label="Инвентарный №">
             <Text code>{equipment.invNumber}</Text>
           </Descriptions.Item>

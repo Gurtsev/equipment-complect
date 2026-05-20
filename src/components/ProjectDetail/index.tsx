@@ -326,10 +326,13 @@ export function ProjectDetail({
                 <Text type="secondary" style={{ fontSize: 13 }}>{project.client}</Text>
               )}
             </Flex>
-            <Title level={isMobile ? 5 : 4} style={{ margin: '0 0 4px' }}>
+            <Title
+              level={isMobile ? 5 : 4}
+              style={{ margin: '0 0 4px', wordBreak: 'normal', overflowWrap: 'break-word' }}
+            >
               {project.name}
             </Title>
-            <Descriptions size="small" column={isMobile ? 1 : 2} style={{ marginTop: 8 }}>
+            <Descriptions size="small" column={{ xs: 1, sm: 1, md: 2 }} style={{ marginTop: 8 }}>
               <Descriptions.Item label="Даты">
                 {formatDateRange(project.startDate, project.endDate)}
               </Descriptions.Item>
