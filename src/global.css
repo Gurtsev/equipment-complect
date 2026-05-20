@@ -1,0 +1,17 @@
+/* Перенос текста по словам везде — запрет посимвольного разбиения */
+*,
+*::before,
+*::after {
+  overflow-wrap: break-word;
+  word-break: normal;
+}
+
+/* Ant Design местами перебивает word-break: break-all — явно сбрасываем */
+.ant-descriptions-item-content,
+.ant-descriptions-item-label,
+.ant-table-cell,
+.ant-card-head-title,
+.ant-typography {
+  word-break: normal !important;
+  overflow-wrap: break-word !important;
+}
