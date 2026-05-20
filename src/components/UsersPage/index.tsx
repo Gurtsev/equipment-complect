@@ -3,9 +3,11 @@ import {
   Table, Select, Button, Popconfirm, Tabs, Form, Input, App,
   Tag, Typography, Tooltip,
 } from 'antd';
-import { PlusOutlined, DeleteOutlined } from '@ant-design/icons';
+import { PlusOutlined, DeleteOutlined, IdcardOutlined } from '@ant-design/icons';
 import { usersService, Profile, AllowedEntry } from '../../services/usersService';
 import type { UserRole } from '../../contexts/AuthContext';
+import { EmployeeCard } from '../EmployeeCard';
+import { Equipment } from '../../models/Equipment';
 
 const { Text } = Typography;
 
@@ -27,10 +29,17 @@ const ROLE_LABEL: Record<UserRole, string> = {
   viewer: 'Наблюдатель',
 };
 
-export function UsersPage() {
+interface Props {
+  canEdit: boolean;
+  allEquipment: Equipment[];
+  onEquipmentChanged: () => void;
+}
+
+export function UsersPage({ canEdit, allEquipment, onEquipmentChanged }: Props) {
   const { message, modal } = App.useApp();
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [allowed, setAllowed] = useState<AllowedEntry[]>([]);
+  const [selectedProfile, setSelectedProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [addForm] = Form.useForm();
   const [addMode, setAddMode] = useState<'email' | 'domain'>('domain');
@@ -142,17 +151,27 @@ export function UsersPage() {
     {
       title: '',
       key: 'actions',
-      width: 48,
+      width: 88,
       render: (_: unknown, record: Profile) => (
-        <Tooltip title="Деактивировать">
-          <Button
-            type="text"
-            danger
-            size="small"
-            icon={<DeleteOutlined />}
-            onClick={() => void handleDeactivate(record.id, record.name)}
-          />
-        </Tooltip>
+        <div style={{ display: 'flex', gap: 4 }}>
+          <Tooltip title="Карточка сотрудника">
+            <Button
+              type="text"
+              size="small"
+              icon={<IdcardOutlined />}
+              onClick={() => setSelectedProfile(record)}
+            />
+          </Tooltip>
+          <Tooltip title="Деактивировать">
+            <Button
+              type="text"
+              danger
+              size="small"
+              icon={<DeleteOutlined />}
+              onClick={() => void handleDeactivate(record.id, record.name)}
+            />
+          </Tooltip>
+        </div>
       ),
     },
   ];
@@ -294,6 +313,17 @@ export function UsersPage() {
           },
         ]}
       />
+
+      {selectedProfile && (
+        <EmployeeCard
+          profile={selectedProfile}
+          open={!!selectedProfile}
+          onClose={() => setSelectedProfile(null)}
+          canEdit={canEdit}
+          allEquipment={allEquipment}
+          onChanged={onEquipmentChanged}
+        />
+      )}
     </div>
   );
 }

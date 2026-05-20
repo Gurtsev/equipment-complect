@@ -52,6 +52,7 @@ const EQUIPMENT_STATUS_COLOR: Record<EquipmentStatus, string> = {
   'Списано': 'error',
   'В Пути': 'purple',
   'Забронировано': 'cyan',
+  'Выдан': 'volcano',
 };
 
 const HISTORY_LABEL: Record<string, string> = {

@@ -63,6 +63,7 @@ const STATUS_COLOR: Record<EquipmentStatus, string> = {
   'Списано': 'red',
   'В Пути': 'purple',
   'Забронировано': 'cyan',
+  'Выдан': 'volcano',
 };
 
 function filterItems(

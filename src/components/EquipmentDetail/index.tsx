@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Card,
   Typography,
@@ -13,8 +13,9 @@ import {
   Flex,
   App,
   Grid,
+  Avatar,
 } from 'antd';
-import { QrcodeOutlined, EditOutlined, PrinterOutlined, ArrowLeftOutlined } from '@ant-design/icons';
+import { QrcodeOutlined, EditOutlined, PrinterOutlined, ArrowLeftOutlined, UserOutlined } from '@ant-design/icons';
 import { QRCodeSVG } from 'qrcode.react';
 import {
   Equipment,
@@ -23,6 +24,8 @@ import {
   HistoryEntry,
 } from '../../models/Equipment';
 import { Project } from '../../models/Project';
+import { assignmentService, Assignment } from '../../services/assignmentService';
+import { usersService, Profile } from '../../services/usersService';
 
 const { Title, Text } = Typography;
 
@@ -43,6 +46,7 @@ const STATUS_COLOR: Record<EquipmentStatus, string> = {
   'Списано': 'error',
   'В Пути': 'purple',
   'Забронировано': 'cyan',
+  'Выдан': 'volcano',
 };
 
 const CATEGORY_LABEL: Record<Equipment['category'], string> = {
@@ -120,6 +124,21 @@ export function EquipmentDetail({ equipment, canEdit, onEdit, project, onProject
   const [changedBy, setChangedBy] = useState(equipment.responsible);
   const [history, setHistory] = useState<HistoryEntry[]>(equipment.history);
   const [qrOpen, setQrOpen] = useState(false);
+  const [assignment, setAssignment] = useState<Assignment | null>(null);
+  const [assignOpen, setAssignOpen] = useState(false);
+  const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [assignProfileId, setAssignProfileId] = useState<string | undefined>();
+  const [assignNotes, setAssignNotes] = useState('');
+  const [assignLoading, setAssignLoading] = useState(false);
+
+  const loadAssignment = useCallback(async () => {
+    try {
+      const a = await assignmentService.getCurrentAssignment(equipment.id);
+      setAssignment(a);
+    } catch { /* не блокируем UI */ }
+  }, [equipment.id]);
+
+  useEffect(() => { void loadAssignment(); }, [loadAssignment]);
 
   const handleStatusChange = (val: EquipmentStatus) => {
     setStatus(val);
@@ -196,7 +215,51 @@ export function EquipmentDetail({ equipment, canEdit, onEdit, project, onProject
           <Button icon={<QrcodeOutlined />} onClick={() => setQrOpen(true)}>
             QR-код
           </Button>
+          {canEdit && equipment.currentStatus !== 'Выдан' && equipment.currentStatus !== 'Забронировано' && equipment.currentStatus !== 'В Работе' && (
+            <Button
+              icon={<UserOutlined />}
+              onClick={async () => {
+                const p = await usersService.getProfiles();
+                setProfiles(p);
+                setAssignProfileId(undefined);
+                setAssignNotes('');
+                setAssignOpen(true);
+              }}
+            >
+              Выдать сотруднику
+            </Button>
+          )}
+          {canEdit && assignment && (
+            <Button
+              danger
+              icon={<UserOutlined />}
+              onClick={async () => {
+                try {
+                  await assignmentService.returnEquipment(assignment.id, equipment.id);
+                  void loadAssignment();
+                  void message.success('Оборудование возвращено на склад');
+                } catch {
+                  void message.error('Ошибка при возврате');
+                }
+              }}
+            >
+              Вернуть
+            </Button>
+          )}
         </Flex>
+
+        {assignment && (
+          <Flex align="center" gap={8} style={{ marginTop: 12, padding: '8px 12px', background: '#fff7e6', borderRadius: 8 }} className="no-print">
+            <Avatar size={28} icon={<UserOutlined />} style={{ background: '#fa8c16', flexShrink: 0 }} />
+            <div>
+              <Text strong style={{ fontSize: 13 }}>Выдан: {assignment.profileName}</Text>
+              <Text type="secondary" style={{ fontSize: 11, display: 'block' }}>
+                с {assignment.assignedAt.toLocaleDateString('ru-RU')}
+                {assignment.notes && ` · ${assignment.notes}`}
+              </Text>
+            </div>
+          </Flex>
+        )}
 
       </Card>
 
@@ -320,6 +383,49 @@ export function EquipmentDetail({ equipment, canEdit, onEdit, project, onProject
           {equipment.invNumber} · {equipment.id}
         </div>
       </div>
+
+      {/* Модальное окно выдачи сотруднику */}
+      <Modal
+        title="Выдать сотруднику"
+        open={assignOpen}
+        onCancel={() => setAssignOpen(false)}
+        okText="Выдать"
+        cancelText="Отмена"
+        confirmLoading={assignLoading}
+        onOk={async () => {
+          if (!assignProfileId) { void message.error('Выберите сотрудника'); return; }
+          const profile = profiles.find(p => p.id === assignProfileId);
+          if (!profile) return;
+          setAssignLoading(true);
+          try {
+            await assignmentService.assign(equipment.id, assignProfileId, profile.name, equipment.currentLocation, assignNotes || undefined);
+            setAssignOpen(false);
+            void loadAssignment();
+            void message.success(`Выдано: ${profile.name}`);
+          } catch {
+            void message.error('Ошибка при выдаче');
+          } finally {
+            setAssignLoading(false);
+          }
+        }}
+      >
+        <Flex vertical gap={12} style={{ marginTop: 8 }}>
+          <Select
+            placeholder="Выберите сотрудника"
+            value={assignProfileId}
+            onChange={setAssignProfileId}
+            style={{ width: '100%' }}
+            options={profiles.map(p => ({ value: p.id, label: `${p.name} (${p.email ?? p.role})` }))}
+            showSearch
+            filterOption={(input, opt) => (opt?.label as string ?? '').toLowerCase().includes(input.toLowerCase())}
+          />
+          <Input
+            placeholder="Примечание (необязательно)"
+            value={assignNotes}
+            onChange={e => setAssignNotes(e.target.value)}
+          />
+        </Flex>
+      </Modal>
 
       <Modal
         title={`QR-код — ${equipment.model}`}

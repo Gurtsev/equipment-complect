@@ -109,6 +109,7 @@ function AppInner() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'equipment_history' }, reload)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'projects' }, reload)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'project_equipment' }, reload)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'employee_assignments' }, reload)
       .subscribe();
     return () => {
       clearTimeout(timer);
@@ -500,7 +501,7 @@ function AppInner() {
         {showDetail ? (
           <div style={{ flex: 1, overflow: 'auto', background: '#f5f7fa' }}>{rightPane}</div>
         ) : activeTab === 'users' ? (
-          <div style={{ flex: 1, overflow: 'auto', background: '#f5f7fa' }}><UsersPage /></div>
+          <div style={{ flex: 1, overflow: 'auto', background: '#f5f7fa' }}><UsersPage canEdit={canEdit} allEquipment={items} onEquipmentChanged={handleEquipmentChange} /></div>
         ) : activeTab === 'calendar' ? (
           <div style={{ flex: 1, overflow: 'auto', background: '#f5f7fa' }}><CalendarView {...calendarProps} /></div>
         ) : tabContent}
@@ -524,7 +525,7 @@ function AppInner() {
           </Sider>
         )}
         <Content style={{ overflow: 'auto', background: '#f5f7fa', height: '100%' }}>
-          {activeTab === 'users' ? <UsersPage /> :
+          {activeTab === 'users' ? <UsersPage canEdit={canEdit} allEquipment={items} onEquipmentChanged={handleEquipmentChange} /> :
            activeTab === 'calendar' ? <CalendarView {...calendarProps} /> :
            rightPane}
         </Content>

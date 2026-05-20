@@ -15,6 +15,7 @@ const STATUS_COLOR: Record<EquipmentStatus, string> = {
   'Списано': 'red',
   'В Пути': 'purple',
   'Забронировано': 'cyan',
+  'Выдан': 'volcano',
 };
 
 const CATEGORY_LABEL: Record<EquipmentCategory, string> = {
