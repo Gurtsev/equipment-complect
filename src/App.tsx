@@ -231,11 +231,13 @@ function AppInner() {
   };
 
   const getEquipmentProject = (equipmentId: string) =>
-    projects.find(
-      (p) =>
-        p.equipmentIds.includes(equipmentId) &&
-        (p.status === 'Планируется' || p.status === 'Активен'),
-    );
+    projects
+      .filter(
+        (p) =>
+          p.equipmentIds.includes(equipmentId) &&
+          (p.status === 'Планируется' || p.status === 'Активен'),
+      )
+      .sort((a, b) => a.startDate.getTime() - b.startDate.getTime())[0];
 
   if (authLoading) {
     return (

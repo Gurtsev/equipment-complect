@@ -363,7 +363,7 @@ export function EquipmentDetail({ equipment, canEdit, onEdit, project, onProject
           <Descriptions.Item label="Отдел">{DEPT_LABEL[equipment.department] ?? equipment.department}</Descriptions.Item>
           {project && (
             <Descriptions.Item label="Проект" span={2}>
-              <Flex align="center" gap={8}>
+              <Flex align="center" gap={8} wrap>
                 <Tag color="cyan">{project.name}</Tag>
                 {onProjectClick && (
                   <Button
