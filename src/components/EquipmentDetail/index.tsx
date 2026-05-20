@@ -37,7 +37,9 @@ const LOCATIONS: EquipmentLocation[] = [
   'Склад',
   'Ремонт',
   'В пути',
-  'Офис',
+  'Знаменка-25',
+  'Романов-96',
+  'Знаменка-13',
 ];
 
 const DEPT_LABEL: Record<string, string> = {

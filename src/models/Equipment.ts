@@ -5,7 +5,9 @@ export type EquipmentLocation =
   | 'Склад'
   | 'Ремонт'
   | 'В пути'
-  | 'Офис';
+  | 'Знаменка-25'
+  | 'Романов-96'
+  | 'Знаменка-13';
 export type EquipmentCategory =
   | 'camera'
   | 'microphone'

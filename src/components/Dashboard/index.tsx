@@ -34,7 +34,7 @@ const CATEGORY_LABEL: Record<EquipmentCategory, string> = {
 
 const STATUSES: EquipmentStatus[] = ['В Работе', 'Забронировано', 'На Складе', 'В Ремонте', 'В Пути', 'Списано'];
 const CATEGORIES: EquipmentCategory[] = ['camera', 'microphone', 'light', 'computer', 'audio', 'accessory', 'optics', 'phone', 'furniture', 'prop', 'tool'];
-const LOCATIONS: EquipmentLocation[] = ['Студия Медиа Крыша', 'Студия на Романовом', 'Склад', 'Ремонт', 'В пути'];
+const LOCATIONS: EquipmentLocation[] = ['Студия Медиа Крыша', 'Студия на Романовом', 'Склад', 'Ремонт', 'В пути', 'Знаменка-25', 'Романов-96', 'Знаменка-13'];
 
 interface Props {
   items: Equipment[];

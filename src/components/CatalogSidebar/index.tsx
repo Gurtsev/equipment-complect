@@ -56,7 +56,9 @@ const LOCATION_OPTIONS: Array<{ label: string; value: EquipmentLocation }> = [
   { label: 'Склад', value: 'Склад' },
   { label: 'Ремонт', value: 'Ремонт' },
   { label: 'В пути', value: 'В пути' },
-  { label: 'Офис', value: 'Офис' },
+  { label: 'Знаменка-25', value: 'Знаменка-25' },
+  { label: 'Романов-96', value: 'Романов-96' },
+  { label: 'Знаменка-13', value: 'Знаменка-13' },
 ];
 
 const DEPT_OPTIONS: Array<{ label: string; value: EquipmentDepartment | 'all' }> = [
