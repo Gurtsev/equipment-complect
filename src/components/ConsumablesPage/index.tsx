@@ -377,6 +377,7 @@ export function ConsumablesPage({ consumables, canEdit, onChanged }: Props) {
         rowKey="id"
         size="small"
         pagination={false}
+        scroll={{ x: 500 }}
         onRow={(record) => ({ onClick: () => handleSelect(record), style: { cursor: 'pointer' } })}
         locale={{ emptyText: 'Расходники не добавлены' }}
       />
