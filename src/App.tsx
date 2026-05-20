@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Layout, App as AntApp, Spin, Button, Flex, Typography, Grid, Form, Input } from 'antd';
+import { Layout, App as AntApp, Spin, Button, Typography, Grid, Form, Input } from 'antd';
 import { LogoutOutlined } from '@ant-design/icons';
 import { CatalogSidebar } from './components/CatalogSidebar';
 import { EquipmentDetail } from './components/EquipmentDetail';
@@ -30,15 +30,6 @@ const ROLE_LABEL: Record<string, string> = {
   viewer: 'Наблюдатель',
 };
 
-const TAB_STYLE_BASE: React.CSSProperties = {
-  flex: 1,
-  padding: '10px 0',
-  textAlign: 'center',
-  cursor: 'pointer',
-  fontSize: 13,
-  userSelect: 'none',
-  transition: 'color 0.15s',
-};
 
 function AppInner() {
   const { message } = AntApp.useApp();
@@ -374,27 +365,15 @@ function AppInner() {
     ...(role === 'admin' ? [{ key: 'users' as ActiveTab, label: 'Пользователи' }] : []),
   ];
 
-  const tabsBar = (
-    <div style={{ display: 'flex', borderBottom: '1px solid #f0f0f0', flexShrink: 0 }}>
-      {tabs.map(({ key, label }) => {
-        const isActive = activeTab === key;
-        return (
-          <div
-            key={key}
-            onClick={() => setActiveTab(key)}
-            style={{
-              ...TAB_STYLE_BASE,
-              fontWeight: isActive ? 600 : 400,
-              color: isActive ? '#1677ff' : '#595959',
-              borderBottom: `2px solid ${isActive ? '#1677ff' : 'transparent'}`,
-            }}
-          >
-            {label}
-          </div>
-        );
-      })}
-    </div>
-  );
+  const calendarProps = {
+    projects,
+    allEquipment: items,
+    onProjectSelect: (p: Project) => {
+      setSelectedProject(p);
+      setSelectedEquipment(null);
+      setActiveTab('projects');
+    },
+  };
 
   const tabContent = (
     <div style={{ flex: 1, overflow: 'hidden', position: 'relative' }}>
@@ -419,27 +398,6 @@ function AppInner() {
     </div>
   );
 
-  const userBar = (
-    <div style={{ padding: '10px 16px', borderTop: '1px solid #f0f0f0', flexShrink: 0 }}>
-      <Flex justify="space-between" align="center">
-        <div style={{ minWidth: 0 }}>
-          <Text strong style={{ fontSize: 13, display: 'block' }} ellipsis>
-            {userName}
-          </Text>
-          <Text type="secondary" style={{ fontSize: 11 }}>
-            {ROLE_LABEL[role ?? ''] ?? role}
-          </Text>
-        </div>
-        <Button
-          size="small"
-          icon={<LogoutOutlined />}
-          onClick={() => void signOut()}
-          title="Выйти"
-        />
-      </Flex>
-    </div>
-  );
-
   const drawers = (
     <>
       <CreateEquipmentDrawer
@@ -459,68 +417,120 @@ function AppInner() {
     </>
   );
 
+  const showSider = activeTab === 'catalog' || activeTab === 'projects';
+
+  // ── Header (desktop + mobile) ──────────────────────────────────────
+  const navTabs = (scrollable?: boolean) => (
+    <div style={{
+      display: 'flex',
+      overflowX: scrollable ? 'auto' : 'visible',
+      flexShrink: 0,
+    }}>
+      {tabs.map(({ key, label }) => {
+        const isActive = activeTab === key;
+        return (
+          <div
+            key={key}
+            onClick={() => setActiveTab(key)}
+            style={{
+              padding: '0 16px',
+              height: 48,
+              display: 'flex',
+              alignItems: 'center',
+              cursor: 'pointer',
+              fontSize: 13,
+              fontWeight: isActive ? 600 : 400,
+              color: isActive ? '#1677ff' : '#595959',
+              borderBottom: `2px solid ${isActive ? '#1677ff' : 'transparent'}`,
+              whiteSpace: 'nowrap',
+              userSelect: 'none',
+              transition: 'color 0.15s',
+              flexShrink: 0,
+            }}
+          >
+            {label}
+          </div>
+        );
+      })}
+    </div>
+  );
+
+  const header = (
+    <div style={{
+      height: 48,
+      background: '#fff',
+      borderBottom: '1px solid #f0f0f0',
+      display: 'flex',
+      alignItems: 'stretch',
+      flexShrink: 0,
+      overflow: 'hidden',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', padding: '0 16px', borderRight: '1px solid #f0f0f0', flexShrink: 0 }}>
+        <Text strong style={{ fontSize: 14, whiteSpace: 'nowrap' }}>Инвентарь студии</Text>
+      </div>
+      <div style={{ flex: 1, overflow: 'hidden', display: 'flex' }}>
+        {navTabs()}
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 12px', flexShrink: 0, borderLeft: '1px solid #f0f0f0' }}>
+        <div style={{ minWidth: 0, textAlign: 'right' }}>
+          <Text strong style={{ fontSize: 12, display: 'block' }} ellipsis>{userName}</Text>
+          <Text type="secondary" style={{ fontSize: 11 }}>{ROLE_LABEL[role ?? ''] ?? role}</Text>
+        </div>
+        <Button size="small" icon={<LogoutOutlined />} onClick={() => void signOut()} title="Выйти" />
+      </div>
+    </div>
+  );
+
+  // ── Mobile ──────────────────────────────────────────────────────────
   if (isMobile) {
     const showDetail = !!selectedEquipment || !!selectedProject;
     return (
       <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', background: '#fff' }}>
-        {showDetail ? (
-          <div style={{ flex: 1, overflow: 'auto', background: '#f5f7fa' }}>
-            {rightPane}
+        {/* Compact header on mobile */}
+        <div style={{ height: 48, background: '#fff', borderBottom: '1px solid #f0f0f0', display: 'flex', alignItems: 'center', padding: '0 16px', flexShrink: 0, gap: 8 }}>
+          <Text strong style={{ flex: 1, fontSize: 14 }}>Инвентарь студии</Text>
+          <Text type="secondary" style={{ fontSize: 11 }}>{ROLE_LABEL[role ?? ''] ?? role}</Text>
+          <Button size="small" icon={<LogoutOutlined />} onClick={() => void signOut()} />
+        </div>
+        {!showDetail && (
+          <div style={{ borderBottom: '1px solid #f0f0f0', overflowX: 'auto', flexShrink: 0 }}>
+            {navTabs(true)}
           </div>
-        ) : (
-          <>
-            {tabsBar}
-            {activeTab === 'users' ? (
-              <div style={{ flex: 1, overflow: 'auto', background: '#f5f7fa' }}>
-                <UsersPage />
-              </div>
-            ) : activeTab === 'calendar' ? (
-              <div style={{ flex: 1, overflow: 'auto', background: '#f5f7fa' }}>
-                <CalendarView
-                  projects={projects}
-                  allEquipment={items}
-                  onProjectSelect={(p) => { setSelectedProject(p); setSelectedEquipment(null); setActiveTab('projects'); }}
-                />
-              </div>
-            ) : tabContent}
-            {userBar}
-          </>
         )}
+        {showDetail ? (
+          <div style={{ flex: 1, overflow: 'auto', background: '#f5f7fa' }}>{rightPane}</div>
+        ) : activeTab === 'users' ? (
+          <div style={{ flex: 1, overflow: 'auto', background: '#f5f7fa' }}><UsersPage /></div>
+        ) : activeTab === 'calendar' ? (
+          <div style={{ flex: 1, overflow: 'auto', background: '#f5f7fa' }}><CalendarView {...calendarProps} /></div>
+        ) : tabContent}
         {drawers}
       </div>
     );
   }
 
+  // ── Desktop ─────────────────────────────────────────────────────────
   return (
-    <Layout style={{ height: '100vh', overflow: 'hidden' }}>
-      <Sider
-        width={320}
-        theme="light"
-        style={{
-          borderRight: '1px solid #f0f0f0',
-          overflow: 'hidden',
-          display: 'flex',
-          flexDirection: 'column',
-        }}
-      >
-        {tabsBar}
-        {activeTab !== 'users' && tabContent}
-        {userBar}
-      </Sider>
-
-      <Content style={{ overflow: 'auto', background: '#f5f7fa', height: '100vh' }}>
-        {activeTab === 'users' ? <UsersPage /> :
-         activeTab === 'calendar' ? (
-           <CalendarView
-             projects={projects}
-             allEquipment={items}
-             onProjectSelect={(p) => { setSelectedProject(p); setSelectedEquipment(null); setActiveTab('projects'); }}
-           />
-         ) : rightPane}
-      </Content>
-
+    <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      {header}
+      <Layout style={{ flex: 1, overflow: 'hidden' }}>
+        {showSider && (
+          <Sider
+            width={320}
+            theme="light"
+            style={{ borderRight: '1px solid #f0f0f0', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}
+          >
+            {tabContent}
+          </Sider>
+        )}
+        <Content style={{ overflow: 'auto', background: '#f5f7fa', height: '100%' }}>
+          {activeTab === 'users' ? <UsersPage /> :
+           activeTab === 'calendar' ? <CalendarView {...calendarProps} /> :
+           rightPane}
+        </Content>
+      </Layout>
       {drawers}
-    </Layout>
+    </div>
   );
 }
 
