@@ -15,6 +15,7 @@ import {
   Descriptions,
   Timeline,
   Spin,
+  Grid,
 } from 'antd';
 import {
   EditOutlined,
@@ -121,6 +122,7 @@ export function ProjectDetail({
   onBack,
 }: Props) {
   const { message, modal } = App.useApp();
+  const isMobile = !Grid.useBreakpoint().md;
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pickerSearch, setPickerSearch] = useState('');
   const [pickerSelected, setPickerSelected] = useState<string[]>([]);
@@ -303,7 +305,7 @@ export function ProjectDetail({
   ];
 
   return (
-    <div style={{ padding: 24, maxWidth: 860, margin: '0 auto' }}>
+    <div style={{ padding: isMobile ? 12 : 24, maxWidth: 860, margin: '0 auto' }}>
       {onBack && (
         <Button
           icon={<ArrowLeftOutlined />}
@@ -316,18 +318,18 @@ export function ProjectDetail({
       )}
       {/* Header */}
       <Card style={{ marginBottom: 16 }}>
-        <Flex justify="space-between" align="flex-start" gap={16}>
+        <Flex vertical={isMobile} justify="space-between" align={isMobile ? 'flex-start' : 'flex-start'} gap={12}>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <Flex gap={8} style={{ marginBottom: 8 }} align="center">
+            <Flex gap={8} style={{ marginBottom: 8 }} align="center" wrap>
               <Tag color={PROJECT_STATUS_COLOR[project.status]}>{project.status}</Tag>
               {project.client && (
                 <Text type="secondary" style={{ fontSize: 13 }}>{project.client}</Text>
               )}
             </Flex>
-            <Title level={4} style={{ margin: '0 0 4px' }}>
+            <Title level={isMobile ? 5 : 4} style={{ margin: '0 0 4px' }}>
               {project.name}
             </Title>
-            <Descriptions size="small" column={2} style={{ marginTop: 8 }}>
+            <Descriptions size="small" column={isMobile ? 1 : 2} style={{ marginTop: 8 }}>
               <Descriptions.Item label="Даты">
                 {formatDateRange(project.startDate, project.endDate)}
               </Descriptions.Item>
@@ -340,7 +342,7 @@ export function ProjectDetail({
               )}
             </Descriptions>
           </div>
-          <Flex gap={8} wrap style={{ flexShrink: 0 }}>
+          <Flex gap={8} wrap>
             {canEdit && project.status !== 'Завершён' && (
               <Button icon={<EditOutlined />} onClick={onEdit}>
                 Изменить
