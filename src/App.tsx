@@ -10,6 +10,7 @@ import { ProjectDetail } from './components/ProjectDetail';
 import { CreateProjectDrawer } from './components/CreateProjectDrawer';
 import { LoginPage } from './components/LoginPage';
 import { UsersPage } from './components/UsersPage';
+import { CalendarView } from './components/CalendarView';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { supabase } from './services/supabase';
 import { equipmentService } from './services/equipmentService';
@@ -21,7 +22,7 @@ import { Project } from './models/Project';
 const { Sider, Content } = Layout;
 const { Text } = Typography;
 
-type ActiveTab = 'catalog' | 'projects' | 'users';
+type ActiveTab = 'catalog' | 'projects' | 'users' | 'calendar';
 
 const ROLE_LABEL: Record<string, string> = {
   admin: 'Администратор',
@@ -369,6 +370,7 @@ function AppInner() {
   const tabs: { key: ActiveTab; label: string }[] = [
     { key: 'catalog', label: 'Каталог' },
     { key: 'projects', label: 'Проекты' },
+    { key: 'calendar', label: 'Календарь' },
     ...(role === 'admin' ? [{ key: 'users' as ActiveTab, label: 'Пользователи' }] : []),
   ];
 
@@ -472,6 +474,14 @@ function AppInner() {
               <div style={{ flex: 1, overflow: 'auto', background: '#f5f7fa' }}>
                 <UsersPage />
               </div>
+            ) : activeTab === 'calendar' ? (
+              <div style={{ flex: 1, overflow: 'auto', background: '#f5f7fa' }}>
+                <CalendarView
+                  projects={projects}
+                  allEquipment={items}
+                  onProjectSelect={(p) => { setSelectedProject(p); setSelectedEquipment(null); setActiveTab('projects'); }}
+                />
+              </div>
             ) : tabContent}
             {userBar}
           </>
@@ -499,7 +509,14 @@ function AppInner() {
       </Sider>
 
       <Content style={{ overflow: 'auto', background: '#f5f7fa', height: '100vh' }}>
-        {activeTab === 'users' ? <UsersPage /> : rightPane}
+        {activeTab === 'users' ? <UsersPage /> :
+         activeTab === 'calendar' ? (
+           <CalendarView
+             projects={projects}
+             allEquipment={items}
+             onProjectSelect={(p) => { setSelectedProject(p); setSelectedEquipment(null); setActiveTab('projects'); }}
+           />
+         ) : rightPane}
       </Content>
 
       {drawers}
