@@ -363,19 +363,13 @@ export function EquipmentDetail({ equipment, canEdit, onEdit, project, onProject
           <Descriptions.Item label="Отдел">{DEPT_LABEL[equipment.department] ?? equipment.department}</Descriptions.Item>
           {project && (
             <Descriptions.Item label="Проект" span={2}>
-              <Flex align="center" gap={8} wrap>
-                <Tag color="cyan">{project.name}</Tag>
-                {onProjectClick && (
-                  <Button
-                    type="link"
-                    size="small"
-                    style={{ padding: 0, height: 'auto', fontSize: 12 }}
-                    onClick={() => onProjectClick(project)}
-                  >
-                    Перейти →
-                  </Button>
-                )}
-              </Flex>
+              <Tag
+                color="cyan"
+                style={{ cursor: onProjectClick ? 'pointer' : 'default' }}
+                onClick={() => onProjectClick?.(project)}
+              >
+                {project.name}
+              </Tag>
             </Descriptions.Item>
           )}
         </Descriptions>
