@@ -318,33 +318,31 @@ export function ProjectDetail({
       )}
       {/* Header */}
       <Card style={{ marginBottom: 16 }}>
-        <Flex vertical={isMobile} justify="space-between" align={isMobile ? 'flex-start' : 'flex-start'} gap={12}>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <Flex gap={8} style={{ marginBottom: 8 }} align="center" wrap>
-              <Tag color={PROJECT_STATUS_COLOR[project.status]}>{project.status}</Tag>
-              {project.client && (
-                <Text type="secondary" style={{ fontSize: 13 }}>{project.client}</Text>
-              )}
-            </Flex>
-            <Title
-              level={isMobile ? 5 : 4}
-              style={{ margin: '0 0 4px', wordBreak: 'normal', overflowWrap: 'break-word' }}
-            >
-              {project.name}
-            </Title>
-            <Descriptions size="small" column={{ xs: 1, sm: 1, md: 2 }} style={{ marginTop: 8 }}>
-              <Descriptions.Item label="Даты">
-                {formatDateRange(project.startDate, project.endDate)}
+        <div>
+          <Flex gap={8} style={{ marginBottom: 6 }} align="center" wrap>
+            <Tag color={PROJECT_STATUS_COLOR[project.status]}>{project.status}</Tag>
+            {project.client && (
+              <Text type="secondary" style={{ fontSize: 13 }}>{project.client}</Text>
+            )}
+          </Flex>
+          <Title
+            level={isMobile ? 5 : 4}
+            style={{ margin: '0 0 8px', wordBreak: 'normal', overflowWrap: 'break-word' }}
+          >
+            {project.name}
+          </Title>
+          <Descriptions size="small" column={{ xs: 1, sm: 1, md: 2 }} style={{ marginBottom: 12 }}>
+            <Descriptions.Item label="Даты">
+              {formatDateRange(project.startDate, project.endDate)}
+            </Descriptions.Item>
+            <Descriptions.Item label="Локация">{project.location}</Descriptions.Item>
+            <Descriptions.Item label="Ответственный">{project.responsible}</Descriptions.Item>
+            {project.notes && (
+              <Descriptions.Item label="Заметки" span={2}>
+                {project.notes}
               </Descriptions.Item>
-              <Descriptions.Item label="Локация">{project.location}</Descriptions.Item>
-              <Descriptions.Item label="Ответственный">{project.responsible}</Descriptions.Item>
-              {project.notes && (
-                <Descriptions.Item label="Заметки" span={2}>
-                  {project.notes}
-                </Descriptions.Item>
-              )}
-            </Descriptions>
-          </div>
+            )}
+          </Descriptions>
           <Flex gap={8} wrap>
             {canEdit && project.status !== 'Завершён' && (
               <Button icon={<EditOutlined />} onClick={onEdit}>
@@ -369,7 +367,7 @@ export function ProjectDetail({
               </Button>
             )}
           </Flex>
-        </Flex>
+        </div>
       </Card>
 
       {/* Equipment list */}
