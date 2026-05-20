@@ -12,7 +12,8 @@ export type EquipmentCategory =
   | 'computer'
   | 'audio'
   | 'accessory'
-  | 'optics';
+  | 'optics'
+  | 'phone';
 
 export interface HistoryEntry {
   date: Date;

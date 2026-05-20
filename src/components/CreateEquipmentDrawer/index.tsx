@@ -23,6 +23,7 @@ const CATEGORIES: Array<{ label: string; value: EquipmentCategory }> = [
   { label: '🎧 Аудио', value: 'audio' },
   { label: '🔧 Аксессуар', value: 'accessory' },
   { label: '🔭 Оптика', value: 'optics' },
+  { label: '📱 Телефон', value: 'phone' },
 ];
 
 interface FormValues {

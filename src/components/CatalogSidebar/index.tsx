@@ -20,6 +20,7 @@ const CATEGORIES: Array<{ label: string; value: EquipmentCategory | 'all' }> = [
   { label: 'Аудио', value: 'audio' },
   { label: 'Аксессуары', value: 'accessory' },
   { label: 'Оптика', value: 'optics' },
+  { label: 'Телефоны', value: 'phone' },
 ];
 
 const CATEGORY_LABEL: Record<EquipmentCategory, string> = {
@@ -30,6 +31,7 @@ const CATEGORY_LABEL: Record<EquipmentCategory, string> = {
   audio: 'Аудио',
   accessory: 'Аксессуар',
   optics: 'Оптика',
+  phone: 'Телефон',
 };
 
 const STATUS_OPTIONS: Array<{ label: string; value: EquipmentStatus }> = [

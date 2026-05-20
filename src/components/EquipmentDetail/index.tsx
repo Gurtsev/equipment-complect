@@ -57,6 +57,7 @@ const CATEGORY_LABEL: Record<Equipment['category'], string> = {
   audio: 'Аудио',
   accessory: 'Аксессуар',
   optics: 'Оптика',
+  phone: 'Телефон',
 };
 
 const CATEGORY_COLOR: Record<Equipment['category'], string> = {
@@ -67,6 +68,7 @@ const CATEGORY_COLOR: Record<Equipment['category'], string> = {
   audio: 'purple',
   accessory: 'default',
   optics: 'cyan',
+  phone: 'geekblue',
 };
 
 const historyColumns = [
