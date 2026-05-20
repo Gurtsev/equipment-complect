@@ -423,9 +423,15 @@ export function ProjectDetail({
           {pickerFiltered.map((eq) => {
             const occupyingProject = getEquipmentProject(eq.id);
             const alreadyInThis = project.equipmentIds.includes(eq.id);
-            const inOtherProject = occupyingProject && occupyingProject.id !== project.id;
+            const datesOverlap = occupyingProject && occupyingProject.id !== project.id && (() => {
+              const s1 = project.startDate, e1 = project.endDate;
+              const s2 = occupyingProject.startDate, e2 = occupyingProject.endDate;
+              if (!s1 || !e1 || !s2 || !e2) return true;
+              return s1 <= e2 && s2 <= e1;
+            })();
+            const inOtherProject = !!datesOverlap;
             const isAssigned = eq.currentStatus === 'Выдан';
-            const disabled = alreadyInThis || !!inOtherProject || isAssigned;
+            const disabled = alreadyInThis || inOtherProject || isAssigned;
             const isSelected = pickerSelected.includes(eq.id);
 
             const row = (
@@ -465,9 +471,9 @@ export function ProjectDetail({
                     {alreadyInThis && (
                       <Text type="secondary" style={{ fontSize: 11 }}>уже в проекте</Text>
                     )}
-                    {inOtherProject && (
+                    {inOtherProject && occupyingProject && (
                       <Text type="secondary" style={{ fontSize: 11 }}>
-                        занято: {occupyingProject!.name}
+                        занято: {occupyingProject.name}
                       </Text>
                     )}
                     {isAssigned && (
@@ -480,7 +486,7 @@ export function ProjectDetail({
             );
 
             return inOtherProject ? (
-              <Tooltip key={eq.id} title={`Занято проектом: ${occupyingProject!.name}`}>{row}</Tooltip>
+              <Tooltip key={eq.id} title={`Конфликт дат: ${occupyingProject!.name} (${occupyingProject!.startDate.toLocaleDateString('ru-RU')} — ${occupyingProject!.endDate.toLocaleDateString('ru-RU')})`}>{row}</Tooltip>
             ) : isAssigned ? (
               <Tooltip key={eq.id} title="Выдано сотруднику. Верните оборудование, чтобы добавить в проект.">{row}</Tooltip>
             ) : row;
