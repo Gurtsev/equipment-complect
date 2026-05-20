@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Input, List, Avatar, Typography, Tag, Flex, Button, Select, Dropdown } from 'antd';
 import { SearchOutlined, PlusOutlined, DownloadOutlined } from '@ant-design/icons';
 import * as XLSX from 'xlsx';
@@ -190,6 +190,17 @@ export function CatalogSidebar({ items, selected, canEdit, onSelect, onAdd }: Pr
   const statusVal: EquipmentStatus | 'all' = statusFilter ?? 'all';
   const locationVal: EquipmentLocation | 'all' = locationFilter ?? 'all';
 
+  const visibleCategories = CATEGORIES.filter((c) => {
+    if (c.value === 'all') return true;
+    return filterItems(items, c.value, query, statusVal, locationVal, deptFilter).length > 0;
+  });
+
+  useEffect(() => {
+    if (category === 'all') return;
+    const count = filterItems(items, category, query, statusVal, locationVal, deptFilter).length;
+    if (count === 0) setCategory('all');
+  }, [deptFilter, items]);
+
   const filtered = sortItems(filterItems(items, category, query, statusVal, locationVal, deptFilter), sortBy);
 
   const handleReset = () => {
@@ -303,7 +314,7 @@ export function CatalogSidebar({ items, selected, canEdit, onSelect, onAdd }: Pr
 
       {/* Category list */}
       <div style={{ borderBottom: '1px solid #f0f0f0', padding: '4px 0' }}>
-        {CATEGORIES.map((c) => {
+        {visibleCategories.map((c) => {
           const count = filterItems(items, c.value, query, statusVal, locationVal, deptFilter).length;
           const isActive = category === c.value;
           return (
