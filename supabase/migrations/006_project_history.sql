@@ -1,6 +1,6 @@
 create table public.project_history (
   id             uuid default gen_random_uuid() primary key,
-  project_id     uuid not null references public.projects(id) on delete cascade,
+  project_id     text not null references public.projects(id) on delete cascade,
   user_id        uuid references auth.users(id) on delete set null,
   action         text not null check (action in (
     'equipment_added', 'equipment_removed', 'activated', 'finished', 'created', 'updated'
