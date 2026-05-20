@@ -424,7 +424,8 @@ export function ProjectDetail({
             const occupyingProject = getEquipmentProject(eq.id);
             const alreadyInThis = project.equipmentIds.includes(eq.id);
             const inOtherProject = occupyingProject && occupyingProject.id !== project.id;
-            const disabled = alreadyInThis || !!inOtherProject;
+            const isAssigned = eq.currentStatus === 'Выдан';
+            const disabled = alreadyInThis || !!inOtherProject || isAssigned;
             const isSelected = pickerSelected.includes(eq.id);
 
             const row = (
@@ -469,6 +470,9 @@ export function ProjectDetail({
                         занято: {occupyingProject!.name}
                       </Text>
                     )}
+                    {isAssigned && (
+                      <Text type="secondary" style={{ fontSize: 11 }}>выдано сотруднику</Text>
+                    )}
                   </Flex>
                 </div>
                 {isSelected && <CheckOutlined style={{ color: '#1677ff', flexShrink: 0 }} />}
@@ -476,9 +480,9 @@ export function ProjectDetail({
             );
 
             return inOtherProject ? (
-              <Tooltip key={eq.id} title={`Занято проектом: ${occupyingProject!.name}`}>
-                {row}
-              </Tooltip>
+              <Tooltip key={eq.id} title={`Занято проектом: ${occupyingProject!.name}`}>{row}</Tooltip>
+            ) : isAssigned ? (
+              <Tooltip key={eq.id} title="Выдано сотруднику. Верните оборудование, чтобы добавить в проект.">{row}</Tooltip>
             ) : row;
           })}
         </div>
