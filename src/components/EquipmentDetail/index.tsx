@@ -153,7 +153,7 @@ export function EquipmentDetail({ equipment, canEdit, onEdit, project, equipment
   const [assignNotes, setAssignNotes] = useState('');
   const [assignLoading, setAssignLoading] = useState(false);
 
-  const [activeLoan, setActiveLoan] = useState<Loan | null>(null);
+  const [openLoans, setOpenLoans] = useState<Loan[]>([]);
   const [loanOpen, setLoanOpen] = useState(false);
   const [loanType, setLoanType] = useState<LoanType>('employee');
   const [loanProfileId, setLoanProfileId] = useState<string | undefined>();
@@ -170,14 +170,21 @@ export function EquipmentDetail({ equipment, canEdit, onEdit, project, equipment
     } catch { /* не блокируем UI */ }
   }, [equipment.id]);
 
-  const loadLoan = useCallback(async () => {
+  const loadOpenLoans = useCallback(async () => {
     try {
-      const l = await loanService.getActiveLoan(equipment.id);
-      setActiveLoan(l);
+      const loans = await loanService.getOpenLoans(equipment.id);
+      setOpenLoans(loans);
     } catch { /* не блокируем UI */ }
   }, [equipment.id]);
 
-  useEffect(() => { void loadAssignment(); void loadLoan(); }, [loadAssignment, loadLoan]);
+  useEffect(() => { void loadAssignment(); void loadOpenLoans(); }, [loadAssignment, loadOpenLoans]);
+
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const activeLoan = openLoans.find((l) => {
+    const s = l.startDate ?? today;
+    return s <= today;
+  }) ?? null;
+  const upcomingLoans = openLoans.filter((l) => l.startDate && l.startDate > today);
 
   const handleStatusChange = (val: EquipmentStatus) => {
     setStatus(val);
@@ -268,7 +275,7 @@ export function EquipmentDetail({ equipment, canEdit, onEdit, project, equipment
               Выдать сотруднику
             </Button>
           )}
-          {canEdit && !assignment && !activeLoan && (
+          {canEdit && !assignment && (
             <Button
               icon={<SwapOutlined />}
               onClick={async () => {
@@ -337,7 +344,7 @@ export function EquipmentDetail({ equipment, canEdit, onEdit, project, equipment
               <Button size="small" danger onClick={async () => {
                 try {
                   await loanService.returnLoan(activeLoan.id, equipment.id);
-                  void loadLoan();
+                  void loadOpenLoans();
                   void message.success('Займ закрыт, оборудование на складе');
                 } catch {
                   void message.error('Ошибка при возврате');
@@ -347,6 +354,36 @@ export function EquipmentDetail({ equipment, canEdit, onEdit, project, equipment
               </Button>
             )}
           </Flex>
+        )}
+
+        {upcomingLoans.length > 0 && (
+          <div style={{ marginTop: 8 }} className="no-print">
+            {upcomingLoans.map((loan) => (
+              <Flex key={loan.id} align="center" gap={8} style={{ padding: '6px 12px', background: '#f0f5ff', borderRadius: 8, marginBottom: 4 }}>
+                <SwapOutlined style={{ color: '#597ef7', flexShrink: 0, fontSize: 14 }} />
+                <div style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 12 }}>
+                    Запланирован: {loan.loanType === 'employee'
+                      ? (loan.toProfileName ?? '—')
+                      : `отдел ${DEPT_LABEL[loan.toDepartment!]}`}
+                  </Text>
+                  <Text type="secondary" style={{ fontSize: 11, display: 'block' }}>
+                    {loan.startDate!.toLocaleDateString('ru-RU')}
+                    {loan.dueDate && ` — ${loan.dueDate.toLocaleDateString('ru-RU')}`}
+                    {loan.notes && ` · ${loan.notes}`}
+                  </Text>
+                </div>
+                {canEdit && (
+                  <Button size="small" type="text" danger onClick={async () => {
+                    try {
+                      await loanService.returnLoan(loan.id, equipment.id);
+                      void loadOpenLoans();
+                    } catch { void message.error('Ошибка'); }
+                  }}>Отменить</Button>
+                )}
+              </Flex>
+            ))}
+          </div>
         )}
 
       </Card>
@@ -521,11 +558,24 @@ export function EquipmentDetail({ equipment, canEdit, onEdit, project, equipment
           if (!loanEnd) return e >= loanStart;
           return loanStart <= e && s <= loanEnd;
         });
-        const blockedPeriods = conflictProjects.map((p) =>
-          `${p.startDate.toLocaleDateString('ru-RU')} — ${p.endDate.toLocaleDateString('ru-RU')}`
-        ).join(', ');
-        const hasConflict = conflictProjects.length > 0 && !!loanDueDate;
-        const hasSoftConflict = conflictProjects.length > 0 && !loanDueDate;
+        const conflictLoans = openLoans.filter((l) => {
+          const ls = l.startDate ?? today;
+          const le = l.dueDate;
+          if (!le || !loanEnd) return true;
+          return loanStart <= le && ls <= loanEnd;
+        });
+        const allConflictPeriods = [
+          ...conflictProjects.map((p) =>
+            `${p.startDate.toLocaleDateString('ru-RU')} — ${p.endDate.toLocaleDateString('ru-RU')}`
+          ),
+          ...conflictLoans.map((l) => {
+            const s = (l.startDate ?? l.issuedAt).toLocaleDateString('ru-RU');
+            return l.dueDate ? `${s} — ${l.dueDate.toLocaleDateString('ru-RU')}` : `с ${s}`;
+          }),
+        ];
+        const blockedPeriods = allConflictPeriods.join(', ');
+        const hasConflict = allConflictPeriods.length > 0 && !!loanDueDate;
+        const hasSoftConflict = (conflictProjects.length > 0 || conflictLoans.some(l => !l.dueDate)) && !loanDueDate;
         return (
       <Modal
         title="Временный займ"
@@ -558,7 +608,7 @@ export function EquipmentDetail({ equipment, canEdit, onEdit, project, equipment
               notes: loanNotes || undefined,
             });
             setLoanOpen(false);
-            void loadLoan();
+            void loadOpenLoans();
             void message.success('Займ оформлен');
           } catch {
             void message.error('Ошибка при оформлении займа');

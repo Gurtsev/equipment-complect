@@ -66,17 +66,17 @@ async function resolveNames(rows: Record<string, unknown>[]): Promise<Record<str
 }
 
 export const loanService = {
-  async getActiveLoan(equipmentId: string): Promise<Loan | null> {
+  async getOpenLoans(equipmentId: string): Promise<Loan[]> {
     const { data, error } = await supabase
       .from('equipment_loans')
       .select('*')
       .eq('equipment_id', equipmentId)
       .is('returned_at', null)
-      .maybeSingle();
+      .order('start_date', { ascending: true, nullsFirst: true });
     if (error) throw error;
-    if (!data) return null;
-    const names = await resolveNames([data as Record<string, unknown>]);
-    return mapLoan(data as Record<string, unknown>, names);
+    const rows = (data ?? []) as Record<string, unknown>[];
+    const names = await resolveNames(rows);
+    return rows.map((r) => mapLoan(r, names));
   },
 
   async getLoansForEquipment(equipmentId: string): Promise<Loan[]> {
@@ -153,10 +153,12 @@ export const loanService = {
   },
 
   async getAllActiveLoans(): Promise<Record<string, Loan>> {
+    const today = new Date().toISOString().slice(0, 10);
     const { data, error } = await supabase
       .from('equipment_loans')
       .select('*')
-      .is('returned_at', null);
+      .is('returned_at', null)
+      .or(`start_date.is.null,start_date.lte.${today}`);
     if (error) throw error;
     const rows = (data ?? []) as Record<string, unknown>[];
     const names = await resolveNames(rows);
