@@ -118,6 +118,7 @@ export const loanService = {
     toProfileId?: string;
     toDepartment?: EquipmentDepartment;
     fromDepartment: EquipmentDepartment;
+    currentLocation: EquipmentLocation;
     projectId?: string;
     dueDate?: string;
     notes?: string;
@@ -135,7 +136,7 @@ export const loanService = {
     if (error) throw error;
 
     const status: EquipmentStatus = params.loanType === 'employee' ? 'Выдан' : 'В Работе';
-    await historyService.addEntry(params.equipmentId, status, '' as EquipmentLocation, '');
+    await historyService.addEntry(params.equipmentId, status, params.currentLocation, '');
   },
 
   async returnLoan(loanId: string, equipmentId: string): Promise<void> {
@@ -145,5 +146,20 @@ export const loanService = {
       .eq('id', loanId);
     if (error) throw error;
     await historyService.addEntry(equipmentId, 'На Складе', 'Склад', '');
+  },
+
+  async getAllActiveLoans(): Promise<Record<string, Loan>> {
+    const { data, error } = await supabase
+      .from('equipment_loans')
+      .select('*')
+      .is('returned_at', null);
+    if (error) throw error;
+    const rows = (data ?? []) as Record<string, unknown>[];
+    const names = await resolveNames(rows);
+    const result: Record<string, Loan> = {};
+    rows.forEach((row) => {
+      result[row.equipment_id as string] = mapLoan(row, names);
+    });
+    return result;
   },
 };

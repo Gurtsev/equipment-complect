@@ -510,17 +510,19 @@ export function EquipmentDetail({ equipment, canEdit, onEdit, project, equipment
 
       {/* Модальное окно временного займа */}
       {(() => {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const loanEnd = loanDueDate ? new Date(loanDueDate) : null;
-        const conflictProject = (equipmentProjects ?? []).find((p) => {
+        const today = new Date(); today.setHours(0, 0, 0, 0);
+        const loanEnd = loanDueDate ? new Date(loanDueDate + 'T00:00:00') : null;
+        const conflictProjects = (equipmentProjects ?? []).filter((p) => {
           const s = p.startDate, e = p.endDate;
           if (!s || !e) return false;
           if (!loanEnd) return e >= today;
           return today <= e && s <= loanEnd;
         });
-        const hasConflict = !!conflictProject && !!loanDueDate;
-        const hasSoftConflict = !!conflictProject && !loanDueDate;
+        const blockedPeriods = conflictProjects.map((p) =>
+          `${p.startDate.toLocaleDateString('ru-RU')} — ${p.endDate.toLocaleDateString('ru-RU')}`
+        ).join(', ');
+        const hasConflict = conflictProjects.length > 0 && !!loanDueDate;
+        const hasSoftConflict = conflictProjects.length > 0 && !loanDueDate;
         return (
       <Modal
         title="Временный займ"
@@ -547,6 +549,7 @@ export function EquipmentDetail({ equipment, canEdit, onEdit, project, equipment
               toProfileId: loanType === 'employee' ? loanProfileId : undefined,
               toDepartment: loanType === 'department' ? loanDepartment : undefined,
               fromDepartment: equipment.department,
+              currentLocation: equipment.currentLocation,
               dueDate: loanDueDate || undefined,
               notes: loanNotes || undefined,
             });
@@ -594,20 +597,20 @@ export function EquipmentDetail({ equipment, canEdit, onEdit, project, equipment
             value={loanDueDate}
             onChange={(e) => setLoanDueDate(e.target.value)}
           />
-          {hasConflict && conflictProject && (
+          {hasConflict && (
             <Alert
               type="error"
               showIcon
-              message={`Конфликт с проектом «${conflictProject.name}»`}
-              description={`${conflictProject.startDate.toLocaleDateString('ru-RU')} — ${conflictProject.endDate.toLocaleDateString('ru-RU')}. Измените дату возврата.`}
+              message="Оборудование недоступно в выбранный период"
+              description={`Занято: ${blockedPeriods}. Укажите дату возврата до начала занятого периода.`}
             />
           )}
-          {hasSoftConflict && conflictProject && (
+          {hasSoftConflict && (
             <Alert
               type="warning"
               showIcon
-              message={`Проект «${conflictProject.name}» с ${conflictProject.startDate.toLocaleDateString('ru-RU')}`}
-              description="Укажите дату возврата до начала проекта."
+              message="Оборудование запланировано на проект"
+              description={`Занятые периоды: ${blockedPeriods}. Укажите дату возврата до начала ближайшего периода.`}
             />
           )}
           <Input

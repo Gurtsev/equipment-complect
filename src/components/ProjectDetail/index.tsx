@@ -36,6 +36,7 @@ import { Equipment, EquipmentStatus } from '../../models/Equipment';
 import { historyService } from '../../services/historyService';
 import { projectService } from '../../services/projectService';
 import { projectHistoryService, ProjectHistoryEntry } from '../../services/projectHistoryService';
+import { loanService, Loan } from '../../services/loanService';
 
 const { Title, Text } = Typography;
 
@@ -127,6 +128,7 @@ export function ProjectDetail({
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pickerSearch, setPickerSearch] = useState('');
   const [pickerSelected, setPickerSelected] = useState<string[]>([]);
+  const [activeLoans, setActiveLoans] = useState<Record<string, Loan>>({});
   const [projectHistory, setProjectHistory] = useState<ProjectHistoryEntry[]>([]);
   const [historyLoading, setHistoryLoading] = useState(true);
 
@@ -230,11 +232,16 @@ export function ProjectDetail({
       return;
     }
     const toAdd = allEquipment.filter((e) => pickerSelected.includes(e.id));
+    // Закрываем активные займы для добавляемого оборудования
+    const loansToClose = toAdd
+      .map((eq) => activeLoans[eq.id])
+      .filter(Boolean) as import('../../services/loanService').Loan[];
     toAdd.forEach((eq) =>
       eq.addHistoryEntry('Забронировано', eq.currentLocation, project.responsible),
     );
     project.equipmentIds = [...new Set([...project.equipmentIds, ...pickerSelected])];
     await Promise.all([
+      ...loansToClose.map((loan) => loanService.returnLoan(loan.id, loan.equipmentId)),
       ...toAdd.map((eq) =>
         historyService.addEntry(eq.id, 'Забронировано', eq.currentLocation, project.responsible),
       ),
@@ -251,7 +258,8 @@ export function ProjectDetail({
     void reloadHistory();
     setPickerSelected([]);
     setPickerOpen(false);
-    void message.success(`Добавлено ${toAdd.length} ед. оборудования`);
+    const closedMsg = loansToClose.length > 0 ? `, займов закрыто: ${loansToClose.length}` : '';
+    void message.success(`Добавлено ${toAdd.length} ед. оборудования${closedMsg}`);
   };
 
   const pickerFiltered = allEquipment.filter((e) => {
@@ -381,9 +389,13 @@ export function ProjectDetail({
               size="small"
               type="dashed"
               icon={<PlusOutlined />}
-              onClick={() => {
+              onClick={async () => {
                 setPickerSelected([]);
                 setPickerSearch('');
+                try {
+                  const loans = await loanService.getAllActiveLoans();
+                  setActiveLoans(loans);
+                } catch { setActiveLoans({}); }
                 setPickerOpen(true);
               }}
             >
@@ -430,7 +442,9 @@ export function ProjectDetail({
               return s1 <= e2 && s2 <= e1;
             })();
             const inOtherProject = !!datesOverlap;
-            const isAssigned = eq.currentStatus === 'Выдан';
+            const activeLoan = activeLoans[eq.id];
+            // Займ не блокирует — проект важнее. Постоянное назначение блокирует.
+            const isAssigned = eq.currentStatus === 'Выдан' && !activeLoan;
             const disabled = alreadyInThis || inOtherProject || isAssigned;
             const isSelected = pickerSelected.includes(eq.id);
 
@@ -479,6 +493,13 @@ export function ProjectDetail({
                     {isAssigned && (
                       <Text type="secondary" style={{ fontSize: 11 }}>выдано сотруднику</Text>
                     )}
+                    {activeLoan && (
+                      <Text style={{ fontSize: 11, color: '#1677ff' }}>
+                        займ до {activeLoan.dueDate
+                          ? activeLoan.dueDate.toLocaleDateString('ru-RU')
+                          : 'б/д'} — будет закрыт
+                      </Text>
+                    )}
                   </Flex>
                 </div>
                 {isSelected && <CheckOutlined style={{ color: '#1677ff', flexShrink: 0 }} />}
@@ -489,6 +510,8 @@ export function ProjectDetail({
               <Tooltip key={eq.id} title={`Конфликт дат: ${occupyingProject!.name} (${occupyingProject!.startDate.toLocaleDateString('ru-RU')} — ${occupyingProject!.endDate.toLocaleDateString('ru-RU')})`}>{row}</Tooltip>
             ) : isAssigned ? (
               <Tooltip key={eq.id} title="Выдано сотруднику. Верните оборудование, чтобы добавить в проект.">{row}</Tooltip>
+            ) : activeLoan ? (
+              <Tooltip key={eq.id} title="Активный займ будет автоматически закрыт при добавлении в проект.">{row}</Tooltip>
             ) : row;
           })}
         </div>
