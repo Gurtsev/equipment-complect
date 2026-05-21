@@ -15,6 +15,7 @@ export interface Loan {
   projectId: string | null;
   issuedByName: string | null;
   issuedAt: Date;
+  startDate: Date | null;
   dueDate: Date | null;
   returnedAt: Date | null;
   notes: string | null;
@@ -46,7 +47,8 @@ function mapLoan(row: Record<string, unknown>, profiles: Record<string, string>)
     projectId: (row.project_id as string) ?? null,
     issuedByName: row.issued_by ? (profiles[row.issued_by as string] ?? null) : null,
     issuedAt: new Date(row.issued_at as string),
-    dueDate: row.due_date ? new Date(row.due_date as string) : null,
+    startDate: row.start_date ? new Date(row.start_date as string + 'T00:00:00') : null,
+    dueDate: row.due_date ? new Date(row.due_date as string + 'T00:00:00') : null,
     returnedAt: row.returned_at ? new Date(row.returned_at as string) : null,
     notes: (row.notes as string) ?? null,
   };
@@ -119,6 +121,7 @@ export const loanService = {
     toDepartment?: EquipmentDepartment;
     fromDepartment: EquipmentDepartment;
     currentLocation: EquipmentLocation;
+    startDate?: string;
     projectId?: string;
     dueDate?: string;
     notes?: string;
@@ -129,6 +132,7 @@ export const loanService = {
       to_profile_id: params.toProfileId ?? null,
       to_department: params.toDepartment ?? null,
       from_department: params.fromDepartment,
+      start_date: params.startDate ?? null,
       project_id: params.projectId ?? null,
       due_date: params.dueDate ?? null,
       notes: params.notes?.trim() || null,

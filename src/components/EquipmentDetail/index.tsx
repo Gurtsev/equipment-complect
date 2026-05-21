@@ -158,6 +158,7 @@ export function EquipmentDetail({ equipment, canEdit, onEdit, project, equipment
   const [loanType, setLoanType] = useState<LoanType>('employee');
   const [loanProfileId, setLoanProfileId] = useState<string | undefined>();
   const [loanDepartment, setLoanDepartment] = useState<EquipmentDepartment | undefined>();
+  const [loanStartDate, setLoanStartDate] = useState('');
   const [loanDueDate, setLoanDueDate] = useState('');
   const [loanNotes, setLoanNotes] = useState('');
   const [loanLoading, setLoanLoading] = useState(false);
@@ -276,6 +277,7 @@ export function EquipmentDetail({ equipment, canEdit, onEdit, project, equipment
                 setLoanType('employee');
                 setLoanProfileId(undefined);
                 setLoanDepartment(undefined);
+                setLoanStartDate('');
                 setLoanDueDate('');
                 setLoanNotes('');
                 setLoanOpen(true);
@@ -326,8 +328,8 @@ export function EquipmentDetail({ equipment, canEdit, onEdit, project, equipment
                   : `Займ → ${DEPT_LABEL[activeLoan.toDepartment!]}`}
               </Text>
               <Text type="secondary" style={{ fontSize: 11, display: 'block' }}>
-                с {activeLoan.issuedAt.toLocaleDateString('ru-RU')}
-                {activeLoan.dueDate && ` · вернуть до ${activeLoan.dueDate.toLocaleDateString('ru-RU')}`}
+                {(activeLoan.startDate ?? activeLoan.issuedAt).toLocaleDateString('ru-RU')}
+                {activeLoan.dueDate && ` — ${activeLoan.dueDate.toLocaleDateString('ru-RU')}`}
                 {activeLoan.notes && ` · ${activeLoan.notes}`}
               </Text>
             </div>
@@ -511,12 +513,13 @@ export function EquipmentDetail({ equipment, canEdit, onEdit, project, equipment
       {/* Модальное окно временного займа */}
       {(() => {
         const today = new Date(); today.setHours(0, 0, 0, 0);
+        const loanStart = loanStartDate ? new Date(loanStartDate + 'T00:00:00') : today;
         const loanEnd = loanDueDate ? new Date(loanDueDate + 'T00:00:00') : null;
         const conflictProjects = (equipmentProjects ?? []).filter((p) => {
           const s = p.startDate, e = p.endDate;
           if (!s || !e) return false;
-          if (!loanEnd) return e >= today;
-          return today <= e && s <= loanEnd;
+          if (!loanEnd) return e >= loanStart;
+          return loanStart <= e && s <= loanEnd;
         });
         const blockedPeriods = conflictProjects.map((p) =>
           `${p.startDate.toLocaleDateString('ru-RU')} — ${p.endDate.toLocaleDateString('ru-RU')}`
@@ -550,6 +553,7 @@ export function EquipmentDetail({ equipment, canEdit, onEdit, project, equipment
               toDepartment: loanType === 'department' ? loanDepartment : undefined,
               fromDepartment: equipment.department,
               currentLocation: equipment.currentLocation,
+              startDate: loanStartDate || undefined,
               dueDate: loanDueDate || undefined,
               notes: loanNotes || undefined,
             });
@@ -591,6 +595,12 @@ export function EquipmentDetail({ equipment, canEdit, onEdit, project, equipment
               ]}
             />
           )}
+          <Input
+            type="date"
+            placeholder="Дата начала (по умолчанию сегодня)"
+            value={loanStartDate}
+            onChange={(e) => setLoanStartDate(e.target.value)}
+          />
           <Input
             type="date"
             placeholder="Дата возврата"
