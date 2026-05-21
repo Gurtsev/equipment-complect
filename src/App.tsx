@@ -239,6 +239,13 @@ function AppInner() {
       )
       .sort((a, b) => a.startDate.getTime() - b.startDate.getTime())[0];
 
+  const getEquipmentProjects = (equipmentId: string) =>
+    projects.filter(
+      (p) =>
+        p.equipmentIds.includes(equipmentId) &&
+        (p.status === 'Планируется' || p.status === 'Активен'),
+    );
+
   if (authLoading) {
     return (
       <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
@@ -365,6 +372,7 @@ function AppInner() {
       canEdit={canEditEquipment(selectedEquipment.department)}
       onEdit={() => setEquipmentDrawerMode('edit')}
       project={getEquipmentProject(selectedEquipment.id) ?? null}
+      equipmentProjects={getEquipmentProjects(selectedEquipment.id)}
       onProjectClick={handleProjectClick}
       onStatusUpdate={handleStatusUpdate}
       onBack={isMobile ? handleBack : undefined}

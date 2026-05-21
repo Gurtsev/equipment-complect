@@ -15,6 +15,7 @@ import {
   Grid,
   Avatar,
   Radio,
+  Alert,
 } from 'antd';
 import { QrcodeOutlined, EditOutlined, PrinterOutlined, ArrowLeftOutlined, UserOutlined, SwapOutlined } from '@ant-design/icons';
 import { QRCodeSVG } from 'qrcode.react';
@@ -129,12 +130,13 @@ interface Props {
   canEdit: boolean;
   onEdit: () => void;
   project?: Project | null;
+  equipmentProjects?: Project[];
   onProjectClick?: (project: Project) => void;
   onStatusUpdate?: (status: EquipmentStatus, location: EquipmentLocation, responsible: string) => Promise<void>;
   onBack?: () => void;
 }
 
-export function EquipmentDetail({ equipment, canEdit, onEdit, project, onProjectClick, onStatusUpdate, onBack }: Props) {
+export function EquipmentDetail({ equipment, canEdit, onEdit, project, equipmentProjects, onProjectClick, onStatusUpdate, onBack }: Props) {
   const { message } = App.useApp();
   const equipmentUrl = `${window.location.origin}${window.location.pathname}?eq=${equipment.id}`;
   const screens = Grid.useBreakpoint();
@@ -265,7 +267,7 @@ export function EquipmentDetail({ equipment, canEdit, onEdit, project, onProject
               Выдать сотруднику
             </Button>
           )}
-          {canEdit && !assignment && !activeLoan && equipment.currentStatus !== 'Забронировано' && (
+          {canEdit && !assignment && !activeLoan && (
             <Button
               icon={<SwapOutlined />}
               onClick={async () => {
@@ -507,6 +509,19 @@ export function EquipmentDetail({ equipment, canEdit, onEdit, project, onProject
       </Modal>
 
       {/* Модальное окно временного займа */}
+      {(() => {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const loanEnd = loanDueDate ? new Date(loanDueDate) : null;
+        const conflictProject = (equipmentProjects ?? []).find((p) => {
+          const s = p.startDate, e = p.endDate;
+          if (!s || !e) return false;
+          if (!loanEnd) return e >= today;
+          return today <= e && s <= loanEnd;
+        });
+        const hasConflict = !!conflictProject && !!loanDueDate;
+        const hasSoftConflict = !!conflictProject && !loanDueDate;
+        return (
       <Modal
         title="Временный займ"
         open={loanOpen}
@@ -514,6 +529,7 @@ export function EquipmentDetail({ equipment, canEdit, onEdit, project, onProject
         okText="Оформить"
         cancelText="Отмена"
         confirmLoading={loanLoading}
+        okButtonProps={{ disabled: hasConflict }}
         onOk={async () => {
           if (loanType === 'employee' && !loanProfileId) {
             void message.error('Выберите сотрудника');
@@ -578,6 +594,22 @@ export function EquipmentDetail({ equipment, canEdit, onEdit, project, onProject
             value={loanDueDate}
             onChange={(e) => setLoanDueDate(e.target.value)}
           />
+          {hasConflict && conflictProject && (
+            <Alert
+              type="error"
+              showIcon
+              message={`Конфликт с проектом «${conflictProject.name}»`}
+              description={`${conflictProject.startDate.toLocaleDateString('ru-RU')} — ${conflictProject.endDate.toLocaleDateString('ru-RU')}. Измените дату возврата.`}
+            />
+          )}
+          {hasSoftConflict && conflictProject && (
+            <Alert
+              type="warning"
+              showIcon
+              message={`Проект «${conflictProject.name}» с ${conflictProject.startDate.toLocaleDateString('ru-RU')}`}
+              description="Укажите дату возврата до начала проекта."
+            />
+          )}
           <Input
             placeholder="Комментарий (необязательно)"
             value={loanNotes}
@@ -585,6 +617,8 @@ export function EquipmentDetail({ equipment, canEdit, onEdit, project, onProject
           />
         </Flex>
       </Modal>
+        );
+      })()}
 
       <Modal
         title={`QR-код — ${equipment.model}`}
