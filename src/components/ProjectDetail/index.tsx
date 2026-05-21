@@ -253,14 +253,16 @@ export function ProjectDetail({
     const loansToClose = toAdd
       .map((eq) => activeLoans[eq.id])
       .filter(Boolean) as import('../../services/loanService').Loan[];
+    const addStatus: EquipmentStatus = project.status === 'Активен' ? 'В Работе' : 'Забронировано';
+    const addLocation = project.status === 'Активен' ? project.location : undefined;
     toAdd.forEach((eq) =>
-      eq.addHistoryEntry('Забронировано', eq.currentLocation, project.responsible),
+      eq.addHistoryEntry(addStatus, addLocation ?? eq.currentLocation, project.responsible),
     );
     project.equipmentIds = [...new Set([...project.equipmentIds, ...pickerSelected])];
     await Promise.all([
       ...loansToClose.map((loan) => loanService.returnLoan(loan.id, loan.equipmentId)),
       ...toAdd.map((eq) =>
-        historyService.addEntry(eq.id, 'Забронировано', eq.currentLocation, project.responsible),
+        historyService.addEntry(eq.id, addStatus, addLocation ?? eq.currentLocation, project.responsible),
       ),
       ...toAdd.map((eq) =>
         projectHistoryService.addEntry(project.id, 'equipment_added', {
