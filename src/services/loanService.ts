@@ -139,8 +139,13 @@ export const loanService = {
     });
     if (error) throw error;
 
-    const status: EquipmentStatus = params.loanType === 'employee' ? 'Выдан' : 'В Работе';
-    await historyService.addEntry(params.equipmentId, status, params.currentLocation, '');
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const startDate = params.startDate ? new Date(params.startDate + 'T00:00:00') : today;
+    if (startDate <= today) {
+      const status: EquipmentStatus = params.loanType === 'employee' ? 'Выдан' : 'В Работе';
+      await historyService.addEntry(params.equipmentId, status, params.currentLocation, '');
+    }
   },
 
   async returnLoan(loanId: string, equipmentId: string): Promise<void> {
