@@ -89,6 +89,7 @@ function formatDateRange(start: Date, end: Date): string {
 
 function exportCompletion(project: Project, equipment: Equipment[]) {
   const rows = equipment.map((e) => ({
+    'Раздел': e.department === 'studio' ? 'Студия' : 'АХО',
     'Инв. номер': e.invNumber,
     'Модель': e.model,
     'Серийный номер': e.serialNumber,
@@ -96,10 +97,11 @@ function exportCompletion(project: Project, equipment: Equipment[]) {
     'Ответственный': e.responsible,
   }));
   const ws = XLSX.utils.json_to_sheet(rows);
-  ws['!cols'] = [{ wch: 16 }, { wch: 28 }, { wch: 18 }, { wch: 16 }, { wch: 18 }];
+  ws['!cols'] = [{ wch: 10 }, { wch: 16 }, { wch: 28 }, { wch: 18 }, { wch: 16 }, { wch: 18 }];
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Комплект');
-  XLSX.writeFile(wb, `project-${project.name}-${new Date().toISOString().slice(0, 10)}.xlsx`);
+  const endDate = project.endDate.toLocaleDateString('ru-RU');
+  XLSX.writeFile(wb, `${project.name} до ${endDate}.xlsx`);
 }
 
 interface Props {
@@ -128,6 +130,7 @@ export function ProjectDetail({
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pickerSearch, setPickerSearch] = useState('');
   const [pickerSelected, setPickerSelected] = useState<string[]>([]);
+  const [pickerDept, setPickerDept] = useState<'studio' | 'aho'>('studio');
   const [activeLoans, setActiveLoans] = useState<Record<string, Loan>>({});
   const [projectHistory, setProjectHistory] = useState<ProjectHistoryEntry[]>([]);
   const [historyLoading, setHistoryLoading] = useState(true);
@@ -148,6 +151,20 @@ export function ProjectDetail({
   const projectEquipment = project.equipmentIds
     .map((id) => allEquipment.find((e) => e.id === id))
     .filter((e): e is Equipment => !!e);
+
+  const studioEquipment = projectEquipment.filter((e) => e.department === 'studio');
+  const ahoEquipment = projectEquipment.filter((e) => e.department === 'aho' || e.department === 'office');
+
+  const openPicker = async (dept: 'studio' | 'aho') => {
+    setPickerSelected([]);
+    setPickerSearch('');
+    setPickerDept(dept);
+    try {
+      const loans = await loanService.getAllActiveLoans();
+      setActiveLoans(loans);
+    } catch { setActiveLoans({}); }
+    setPickerOpen(true);
+  };
 
   // Выдать всё: проект → Активен, оборудование → В Работе
   const handleActivate = () => {
@@ -263,8 +280,11 @@ export function ProjectDetail({
   };
 
   const pickerFiltered = allEquipment.filter((e) => {
+    const deptMatch = pickerDept === 'studio'
+      ? e.department === 'studio'
+      : (e.department === 'aho' || e.department === 'office');
     const q = pickerSearch.toLowerCase().trim();
-    return !q || e.model.toLowerCase().includes(q) || e.invNumber.toLowerCase().includes(q);
+    return deptMatch && (!q || e.model.toLowerCase().includes(q) || e.invNumber.toLowerCase().includes(q));
   });
 
   const equipmentColumns = [
@@ -379,25 +399,18 @@ export function ProjectDetail({
         </div>
       </Card>
 
-      {/* Equipment list */}
+      {/* Студийное оборудование */}
       <Card
-        title={`Комплект оборудования (${projectEquipment.length} ед.)`}
+        title={`Комплект оборудования (${studioEquipment.length} ед.)`}
         size="small"
+        style={{ marginBottom: 12 }}
         extra={
           canEdit && project.status !== 'Завершён' && (
             <Button
               size="small"
               type="dashed"
               icon={<PlusOutlined />}
-              onClick={async () => {
-                setPickerSelected([]);
-                setPickerSearch('');
-                try {
-                  const loans = await loanService.getAllActiveLoans();
-                  setActiveLoans(loans);
-                } catch { setActiveLoans({}); }
-                setPickerOpen(true);
-              }}
+              onClick={() => void openPicker('studio')}
             >
               Добавить
             </Button>
@@ -405,7 +418,7 @@ export function ProjectDetail({
         }
       >
         <Table<Equipment>
-          dataSource={projectEquipment}
+          dataSource={studioEquipment}
           rowKey="id"
           columns={equipmentColumns}
           size="small"
@@ -414,9 +427,36 @@ export function ProjectDetail({
         />
       </Card>
 
+      {/* АХО */}
+      <Card
+        title={`АХО (${ahoEquipment.length} ед.)`}
+        size="small"
+        extra={
+          canEdit && project.status !== 'Завершён' && (
+            <Button
+              size="small"
+              type="dashed"
+              icon={<PlusOutlined />}
+              onClick={() => void openPicker('aho')}
+            >
+              Добавить
+            </Button>
+          )
+        }
+      >
+        <Table<Equipment>
+          dataSource={ahoEquipment}
+          rowKey="id"
+          columns={equipmentColumns}
+          size="small"
+          pagination={false}
+          locale={{ emptyText: 'Нет реквизита — добавьте из каталога' }}
+        />
+      </Card>
+
       {/* Equipment picker modal */}
       <Modal
-        title="Добавить оборудование в проект"
+        title={pickerDept === 'studio' ? 'Добавить оборудование в комплект' : 'Добавить в АХО'}
         open={pickerOpen}
         onCancel={() => setPickerOpen(false)}
         onOk={() => void handlePickerConfirm()}
