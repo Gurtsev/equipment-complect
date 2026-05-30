@@ -51,14 +51,11 @@ const STATUS_OPTIONS: Array<{ label: string; value: EquipmentStatus }> = [
 ];
 
 const LOCATION_OPTIONS: Array<{ label: string; value: EquipmentLocation }> = [
-  { label: 'Медиа Крыша', value: 'Студия Медиа Крыша' },
-  { label: 'Романовом', value: 'Студия на Романовом' },
   { label: 'Склад', value: 'Склад' },
   { label: 'Ремонт', value: 'Ремонт' },
   { label: 'В пути', value: 'В пути' },
-  { label: 'Знаменка-25', value: 'Знаменка-25' },
-  { label: 'Романов-96', value: 'Романов-96' },
-  { label: 'Знаменка-13', value: 'Знаменка-13' },
+  { label: 'На руках', value: 'На руках' },
+  { label: 'Офис', value: 'Офис' },
 ];
 
 const DEPT_OPTIONS: Array<{ label: string; value: EquipmentDepartment | 'all' }> = [

@@ -5,10 +5,9 @@ import { Project, ProjectData } from '../../models/Project';
 import { EquipmentLocation } from '../../models/Equipment';
 
 const LOCATIONS: Array<{ label: string; value: EquipmentLocation }> = [
-  { label: 'Студия Медиа Крыша', value: 'Студия Медиа Крыша' },
-  { label: 'Студия на Романовом', value: 'Студия на Романовом' },
   { label: 'Склад', value: 'Склад' },
   { label: 'В пути', value: 'В пути' },
+  { label: 'Офис', value: 'Офис' },
 ];
 
 interface FormValues {

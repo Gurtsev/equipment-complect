@@ -35,16 +35,7 @@ const { Title, Text } = Typography;
 
 // 'Забронировано' не включён — статус проставляется только через проекты
 const STATUSES: EquipmentStatus[] = ['В Работе', 'На Складе', 'В Ремонте', 'Списано', 'В Пути'];
-const LOCATIONS: EquipmentLocation[] = [
-  'Студия Медиа Крыша',
-  'Студия на Романовом',
-  'Склад',
-  'Ремонт',
-  'В пути',
-  'Знаменка-25',
-  'Романов-96',
-  'Знаменка-13',
-];
+const LOCATIONS: EquipmentLocation[] = ['Склад', 'Ремонт', 'В пути', 'На руках', 'Офис'];
 
 const DEPT_LABEL: Record<string, string> = {
   studio: 'Студия',
