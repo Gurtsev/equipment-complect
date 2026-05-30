@@ -13,6 +13,7 @@ interface EquipmentRow {
   serial_number: string;
   responsible: string;
   accessories: string[];
+  room_id: string | null;
 }
 
 interface HistoryRow {
@@ -37,6 +38,7 @@ function toEquipment(row: EquipmentRow, history: HistoryRow[], nameById: Map<str
     serialNumber: row.serial_number,
     responsible: row.responsible,
     accessories: row.accessories ?? [],
+    roomId: row.room_id ?? null,
     history: history.map((h) => ({
       date: new Date(h.recorded_at),
       status: h.status as EquipmentStatus,
@@ -96,6 +98,7 @@ export const equipmentService = {
       serial_number: equipment.serialNumber,
       responsible: equipment.responsible,
       accessories: equipment.accessories,
+      room_id: equipment.roomId ?? null,
     });
     if (eqErr) throw eqErr;
 
@@ -125,6 +128,7 @@ export const equipmentService = {
         serial_number: equipment.serialNumber,
         responsible: equipment.responsible,
         accessories: equipment.accessories,
+        room_id: equipment.roomId ?? null,
       })
       .eq('id', equipment.id);
     if (error) throw error;

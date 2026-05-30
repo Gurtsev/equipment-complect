@@ -29,6 +29,7 @@ import {
 import { Project } from '../../models/Project';
 import { assignmentService, Assignment } from '../../services/assignmentService';
 import { loanService, Loan, LoanType } from '../../services/loanService';
+import { getRoomPath } from '../../services/roomService';
 import { usersService, Profile } from '../../services/usersService';
 
 const { Title, Text } = Typography;
@@ -125,9 +126,10 @@ interface Props {
   onProjectClick?: (project: Project) => void;
   onStatusUpdate?: (status: EquipmentStatus, location: EquipmentLocation, responsible: string) => Promise<void>;
   onBack?: () => void;
+  rooms?: import('../../services/roomService').Room[];
 }
 
-export function EquipmentDetail({ equipment, canEdit, onEdit, project, equipmentProjects, onProjectClick, onStatusUpdate, onBack }: Props) {
+export function EquipmentDetail({ equipment, canEdit, onEdit, project, equipmentProjects, onProjectClick, onStatusUpdate, onBack, rooms = [] }: Props) {
   const { message } = App.useApp();
   const equipmentUrl = `${window.location.origin}${window.location.pathname}?eq=${equipment.id}`;
   const screens = Grid.useBreakpoint();
@@ -393,6 +395,11 @@ export function EquipmentDetail({ equipment, canEdit, onEdit, project, equipment
           </Descriptions.Item>
           <Descriptions.Item label="Ответственный">{equipment.responsible}</Descriptions.Item>
           <Descriptions.Item label="Отдел">{DEPT_LABEL[equipment.department] ?? equipment.department}</Descriptions.Item>
+          {equipment.roomId && rooms.length > 0 && (
+            <Descriptions.Item label="Помещение" span={2}>
+              {getRoomPath(rooms, equipment.roomId)}
+            </Descriptions.Item>
+          )}
           {project && (
             <Descriptions.Item label="Проект" span={2}>
               <Tag

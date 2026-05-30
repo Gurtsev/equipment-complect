@@ -18,6 +18,8 @@ import { equipmentService } from './services/equipmentService';
 import { historyService } from './services/historyService';
 import { projectService } from './services/projectService';
 import { consumablesService } from './services/consumablesService';
+import { roomService } from './services/roomService';
+import type { Room } from './services/roomService';
 import { Equipment, EquipmentLocation, EquipmentStatus } from './models/Equipment';
 import { Project } from './models/Project';
 import type { Consumable } from './services/consumablesService';
@@ -41,6 +43,7 @@ function AppInner() {
   const [items, setItems] = useState<Equipment[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [consumables, setConsumables] = useState<Consumable[]>([]);
+  const [rooms, setRooms] = useState<Room[]>([]);
   const [dataLoading, setDataLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [selectedEquipment, setSelectedEquipment] = useState<Equipment | null>(null);
@@ -58,14 +61,16 @@ function AppInner() {
   const isMobile = !screens.md;
 
   const loadAll = useCallback(async () => {
-    const [newItems, newProjects, newConsumables] = await Promise.all([
+    const [newItems, newProjects, newConsumables, newRooms] = await Promise.all([
       equipmentService.getAll(),
       projectService.getAll(),
       consumablesService.getAll(),
+      roomService.getAll(),
     ]);
     setItems(newItems);
     setProjects(newProjects);
     setConsumables(newConsumables);
+    setRooms(newRooms);
     return { newItems, newProjects };
   }, []);
 
@@ -376,6 +381,7 @@ function AppInner() {
       onProjectClick={handleProjectClick}
       onStatusUpdate={handleStatusUpdate}
       onBack={isMobile ? handleBack : undefined}
+      rooms={rooms}
     />
   ) : isMobile ? null : (
     <Dashboard items={items} />
@@ -442,6 +448,7 @@ function AppInner() {
         onCreated={handleEquipmentCreated}
         initialEquipment={equipmentDrawerMode === 'edit' ? (selectedEquipment ?? undefined) : undefined}
         onUpdated={handleEquipmentUpdated}
+        rooms={rooms}
       />
       <CreateProjectDrawer
         open={projectDrawerMode !== null}

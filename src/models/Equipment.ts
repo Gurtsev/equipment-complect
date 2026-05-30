@@ -40,6 +40,7 @@ export interface EquipmentData {
   responsible: string;
   accessories: string[];
   history: HistoryEntry[];
+  roomId?: string | null;
 }
 
 export class Equipment {
@@ -55,6 +56,7 @@ export class Equipment {
   responsible: string;
   readonly accessories: string[];
   history: HistoryEntry[];
+  roomId: string | null;
 
   constructor(data: EquipmentData) {
     this.id = data.id;
@@ -69,6 +71,7 @@ export class Equipment {
     this.responsible = data.responsible;
     this.accessories = data.accessories;
     this.history = data.history;
+    this.roomId = data.roomId ?? null;
   }
 
   get currentStatus(): EquipmentStatus {

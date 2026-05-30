@@ -9,11 +9,14 @@ import {
   Upload,
   App,
   Grid,
+  TreeSelect,
 } from 'antd';
 import type { UploadFile, UploadProps } from 'antd';
 import { PlusOutlined, MinusCircleOutlined, UploadOutlined } from '@ant-design/icons';
 import { Equipment, EquipmentCategory, EquipmentDepartment, EquipmentLocation, EquipmentStatus } from '../../models/Equipment';
 import { supabase } from '../../services/supabase';
+import { buildRoomTree, OFFICE_LABEL } from '../../services/roomService';
+import type { Room, RoomTreeNode } from '../../services/roomService';
 
 const CATEGORIES: Array<{ label: string; value: EquipmentCategory }> = [
   { label: '📹 Камера', value: 'camera' },
@@ -46,6 +49,7 @@ interface FormValues {
   serialNumber: string;
   responsible: string;
   accessories: Array<{ name: string }>;
+  roomId?: string;
 }
 
 interface Props {
@@ -54,6 +58,32 @@ interface Props {
   onCreated: (equipment: Equipment) => void;
   initialEquipment?: Equipment;
   onUpdated?: (equipment: Equipment) => void;
+  rooms?: Room[];
+}
+
+function toTreeData(nodes: RoomTreeNode[]): object[] {
+  return nodes.map((n) => ({
+    title: n.name,
+    value: n.id,
+    key: n.id,
+    children: n.children.length > 0 ? toTreeData(n.children) : undefined,
+    selectable: n.children.length === 0,
+  }));
+}
+
+function buildOfficeTree(rooms: Room[]): object[] {
+  const offices = ['A', 'B', 'C'] as const;
+  return offices.map((office) => {
+    const officeRooms = rooms.filter((r) => r.office === office);
+    const tree = buildRoomTree(officeRooms);
+    return {
+      title: OFFICE_LABEL[office],
+      value: `office-${office}`,
+      key: `office-${office}`,
+      selectable: false,
+      children: toTreeData(tree),
+    };
+  });
 }
 
 function generateId(): string {
@@ -61,7 +91,7 @@ function generateId(): string {
   return `EQP-${num}`;
 }
 
-export function CreateEquipmentDrawer({ open, onClose, onCreated, initialEquipment, onUpdated }: Props) {
+export function CreateEquipmentDrawer({ open, onClose, onCreated, initialEquipment, onUpdated, rooms = [] }: Props) {
   const { message } = App.useApp();
   const [form] = Form.useForm<FormValues>();
   const isEdit = !!initialEquipment;
@@ -83,6 +113,7 @@ export function CreateEquipmentDrawer({ open, onClose, onCreated, initialEquipme
         serialNumber: initialEquipment.serialNumber,
         responsible: initialEquipment.responsible,
         accessories: initialEquipment.accessories.map((name) => ({ name })),
+        roomId: initialEquipment.roomId ?? undefined,
       });
       setFileList(
         initialEquipment.image
@@ -136,6 +167,7 @@ export function CreateEquipmentDrawer({ open, onClose, onCreated, initialEquipme
         responsible: values.responsible.trim(),
         accessories: (values.accessories ?? []).map((a) => a.name).filter(Boolean),
         history: initialEquipment.history,
+        roomId: values.roomId ?? null,
       });
       onUpdated(updated);
       void message.success(`${updated.model} обновлено`);
@@ -155,6 +187,7 @@ export function CreateEquipmentDrawer({ open, onClose, onCreated, initialEquipme
       serialNumber: values.serialNumber?.trim() ?? '',
       responsible: values.responsible.trim(),
       accessories: (values.accessories ?? []).map((a) => a.name).filter(Boolean),
+      roomId: values.roomId ?? null,
       history: [
         {
           date: new Date(),
@@ -220,6 +253,19 @@ export function CreateEquipmentDrawer({ open, onClose, onCreated, initialEquipme
         >
           <Select options={DEPARTMENTS} />
         </Form.Item>
+
+        {rooms.length > 0 && (
+          <Form.Item name="roomId" label="Помещение">
+            <TreeSelect
+              treeData={buildOfficeTree(rooms)}
+              placeholder="Выберите помещение"
+              allowClear
+              showSearch
+              treeNodeFilterProp="title"
+              style={{ width: '100%' }}
+            />
+          </Form.Item>
+        )}
 
         <Form.Item name="description" label="Описание">
           <Input.TextArea rows={2} placeholder="Краткое описание характеристик" />
