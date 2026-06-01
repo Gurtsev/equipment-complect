@@ -553,7 +553,7 @@ function AppInner() {
       <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', background: '#fff' }}>
         {/* Compact header on mobile */}
         <div style={{ height: 48, background: '#fff', borderBottom: '1px solid #f0f0f0', display: 'flex', alignItems: 'center', padding: '0 16px', flexShrink: 0, gap: 8 }}>
-          <img src={logo} alt="Логотип" style={{ height: 28, width: 'auto', flex: 1 }} />
+          <div style={{ flex: 1 }}><img src={logo} alt="Логотип" style={{ height: 28, width: 'auto', display: 'block' }} /></div>
           <Text type="secondary" style={{ fontSize: 11 }}>{ROLE_LABEL[role ?? ''] ?? role}</Text>
           <Button size="small" icon={<LogoutOutlined />} onClick={() => void signOut()} />
         </div>
