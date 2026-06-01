@@ -7,6 +7,7 @@ export interface Room {
   name: string;
   parentId: string | null;
   sortOrder: number;
+  responsible: string;
 }
 
 export interface RoomTreeNode {
@@ -16,6 +17,7 @@ export interface RoomTreeNode {
   name: string;
   parentId: string | null;
   sortOrder: number;
+  responsible: string;
   children: RoomTreeNode[];
 }
 
@@ -33,6 +35,7 @@ function mapRoom(row: Record<string, unknown>): Room {
     name: row.name as string,
     parentId: (row.parent_id as string) ?? null,
     sortOrder: (row.sort_order as number) ?? 0,
+    responsible: (row.responsible as string) ?? '',
   };
 }
 
@@ -79,5 +82,13 @@ export const roomService = {
       .order('sort_order');
     if (error) throw error;
     return (data ?? []).map((r) => mapRoom(r as Record<string, unknown>));
+  },
+
+  async updateResponsible(id: string, responsible: string): Promise<void> {
+    const { error } = await supabase
+      .from('rooms')
+      .update({ responsible })
+      .eq('id', id);
+    if (error) throw error;
   },
 };

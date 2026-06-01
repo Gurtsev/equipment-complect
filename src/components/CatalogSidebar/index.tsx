@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Input, List, Avatar, Typography, Tag, Flex, Button, Select, Dropdown } from 'antd';
+import { Input, List, Avatar, Typography, Tag, Flex, Button, Select, Dropdown, TreeSelect } from 'antd';
 import { SearchOutlined, PlusOutlined, DownloadOutlined } from '@ant-design/icons';
 import * as XLSX from 'xlsx';
 import {
@@ -9,6 +9,8 @@ import {
   EquipmentStatus,
   EquipmentLocation,
 } from '../../models/Equipment';
+import { buildRoomTree, OFFICE_LABEL } from '../../services/roomService';
+import type { Room, RoomTreeNode } from '../../services/roomService';
 
 const { Text } = Typography;
 
@@ -82,6 +84,50 @@ const STATUS_COLOR: Record<EquipmentStatus, string> = {
   'Выдан': 'volcano',
 };
 
+// ── Room filter helpers ──────────────────────────────────────────────────────
+
+function toFilterTreeData(nodes: RoomTreeNode[]): object[] {
+  return nodes.map((n) => ({
+    title: n.name,
+    value: n.id,
+    key: n.id,
+    children: n.children.length > 0 ? toFilterTreeData(n.children) : undefined,
+  }));
+}
+
+function buildFilterOfficeTree(rooms: Room[]): object[] {
+  const offices = ['A', 'B', 'C'] as const;
+  return offices
+    .filter((office) => rooms.some((r) => r.office === office))
+    .map((office) => {
+      const officeRooms = rooms.filter((r) => r.office === office);
+      const tree = buildRoomTree(officeRooms);
+      return {
+        title: OFFICE_LABEL[office],
+        value: `office-${office}`,
+        key: `office-${office}`,
+        children: toFilterTreeData(tree),
+      };
+    });
+}
+
+function getRoomFilterIds(rooms: Room[], selectedValue: string): Set<string> {
+  if (selectedValue.startsWith('office-')) {
+    const office = selectedValue.replace('office-', '');
+    return new Set(rooms.filter((r) => r.office === office).map((r) => r.id));
+  }
+  const result = new Set<string>();
+  const queue = [selectedValue];
+  while (queue.length > 0) {
+    const id = queue.shift()!;
+    result.add(id);
+    rooms.filter((r) => r.parentId === id).forEach((r) => queue.push(r.id));
+  }
+  return result;
+}
+
+// ── Filter / sort ────────────────────────────────────────────────────────────
+
 function filterItems(
   items: Equipment[],
   category: EquipmentCategory | 'all',
@@ -89,6 +135,7 @@ function filterItems(
   statusFilter: EquipmentStatus | 'all',
   locationFilter: EquipmentLocation | 'all',
   deptFilter: EquipmentDepartment | 'all',
+  roomIds: Set<string> | null,
 ): Equipment[] {
   const q = query.toLowerCase().trim();
   return items.filter((item) => {
@@ -98,7 +145,8 @@ function filterItems(
     const matchesStatus = statusFilter === 'all' || item.currentStatus === statusFilter;
     const matchesLocation = locationFilter === 'all' || item.currentLocation === locationFilter;
     const matchesDept = deptFilter === 'all' || item.department === deptFilter;
-    return matchesCategory && matchesSearch && matchesStatus && matchesLocation && matchesDept;
+    const matchesRoom = !roomIds || (item.roomId != null && roomIds.has(item.roomId));
+    return matchesCategory && matchesSearch && matchesStatus && matchesLocation && matchesDept && matchesRoom;
   });
 }
 
@@ -174,38 +222,42 @@ interface Props {
   canEdit: boolean;
   onSelect: (equipment: Equipment) => void;
   onAdd: () => void;
+  rooms?: Room[];
 }
 
-export function CatalogSidebar({ items, selected, canEdit, onSelect, onAdd }: Props) {
+export function CatalogSidebar({ items, selected, canEdit, onSelect, onAdd, rooms = [] }: Props) {
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<EquipmentCategory | 'all'>('all');
   const [statusFilter, setStatusFilter] = useState<EquipmentStatus | undefined>(undefined);
   const [locationFilter, setLocationFilter] = useState<EquipmentLocation | undefined>(undefined);
   const [deptFilter, setDeptFilter] = useState<EquipmentDepartment | 'all'>('all');
   const [sortBy, setSortBy] = useState('default');
+  const [roomFilter, setRoomFilter] = useState<string | undefined>(undefined);
 
-  const hasActiveFilters = !!statusFilter || !!locationFilter || sortBy !== 'default';
+  const hasActiveFilters = !!statusFilter || !!locationFilter || sortBy !== 'default' || !!roomFilter;
 
   const statusVal: EquipmentStatus | 'all' = statusFilter ?? 'all';
   const locationVal: EquipmentLocation | 'all' = locationFilter ?? 'all';
+  const roomIds = roomFilter ? getRoomFilterIds(rooms, roomFilter) : null;
 
   const visibleCategories = CATEGORIES.filter((c) => {
     if (c.value === 'all') return true;
-    return filterItems(items, c.value, query, statusVal, locationVal, deptFilter).length > 0;
+    return filterItems(items, c.value, query, statusVal, locationVal, deptFilter, roomIds).length > 0;
   });
 
   useEffect(() => {
     if (category === 'all') return;
-    const count = filterItems(items, category, query, statusVal, locationVal, deptFilter).length;
+    const count = filterItems(items, category, query, statusVal, locationVal, deptFilter, roomIds).length;
     if (count === 0) setCategory('all');
-  }, [deptFilter, items]);
+  }, [deptFilter, roomFilter, items]);
 
-  const filtered = sortItems(filterItems(items, category, query, statusVal, locationVal, deptFilter), sortBy);
+  const filtered = sortItems(filterItems(items, category, query, statusVal, locationVal, deptFilter, roomIds), sortBy);
 
   const handleReset = () => {
     setStatusFilter(undefined);
     setLocationFilter(undefined);
     setSortBy('default');
+    setRoomFilter(undefined);
   };
 
   const deptFilterStyle = (val: EquipmentDepartment | 'all'): React.CSSProperties => ({
@@ -290,6 +342,20 @@ export function CatalogSidebar({ items, selected, canEdit, onSelect, onAdd }: Pr
             options={LOCATION_OPTIONS}
           />
         </Flex>
+        {rooms.length > 0 && (
+          <TreeSelect
+            size="small"
+            style={{ width: '100%', marginBottom: 6 }}
+            placeholder="Помещение"
+            treeData={buildFilterOfficeTree(rooms)}
+            value={roomFilter}
+            onChange={(v) => setRoomFilter(v)}
+            allowClear
+            showSearch
+            treeNodeFilterProp="title"
+            treeDefaultExpandAll={false}
+          />
+        )}
         <Flex gap={6} align="center">
           <Select
             size="small"
@@ -314,7 +380,7 @@ export function CatalogSidebar({ items, selected, canEdit, onSelect, onAdd }: Pr
       {/* Category list */}
       <div style={{ borderBottom: '1px solid #f0f0f0', padding: '4px 0' }}>
         {visibleCategories.map((c) => {
-          const count = filterItems(items, c.value, query, statusVal, locationVal, deptFilter).length;
+          const count = filterItems(items, c.value, query, statusVal, locationVal, deptFilter, roomIds).length;
           const isActive = category === c.value;
           return (
             <div

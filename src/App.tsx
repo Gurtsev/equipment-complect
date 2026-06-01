@@ -12,6 +12,7 @@ import { LoginPage } from './components/LoginPage';
 import { UsersPage } from './components/UsersPage';
 import { CalendarView } from './components/CalendarView';
 import { ConsumablesPage } from './components/ConsumablesPage';
+import { RoomsPage } from './components/RoomsPage';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { supabase } from './services/supabase';
 import { equipmentService } from './services/equipmentService';
@@ -27,7 +28,7 @@ import type { Consumable } from './services/consumablesService';
 const { Sider, Content } = Layout;
 const { Text } = Typography;
 
-type ActiveTab = 'catalog' | 'projects' | 'users' | 'calendar' | 'consumables';
+type ActiveTab = 'catalog' | 'projects' | 'users' | 'calendar' | 'consumables' | 'rooms';
 
 const ROLE_LABEL: Record<string, string> = {
   admin: 'Администратор',
@@ -48,6 +49,7 @@ function AppInner() {
   const [loadError, setLoadError] = useState(false);
   const [selectedEquipment, setSelectedEquipment] = useState<Equipment | null>(null);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+  const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
   const [activeTab, setActiveTab] = useState<ActiveTab>('catalog');
   const [detailKey, setDetailKey] = useState(0);
   const [equipmentDrawerMode, setEquipmentDrawerMode] = useState<'create' | 'edit' | null>(null);
@@ -71,7 +73,7 @@ function AppInner() {
     setProjects(newProjects);
     setConsumables(newConsumables);
     setRooms(newRooms);
-    return { newItems, newProjects };
+    return { newItems, newProjects, newRooms };
   }, []);
 
   useEffect(() => {
@@ -83,7 +85,7 @@ function AppInner() {
     }, 35000);
 
     void loadAll()
-      .then(({ newItems }) => {
+      .then(({ newItems, newRooms }) => {
         const params = new URLSearchParams(window.location.search);
         const eqId = params.get('eq');
         if (eqId) {
@@ -91,6 +93,15 @@ function AppInner() {
           if (found) {
             setSelectedEquipment(found);
             setActiveTab('catalog');
+          }
+          window.history.replaceState(null, '', window.location.pathname);
+        }
+        const roomCode = params.get('room');
+        if (roomCode) {
+          const found = newRooms.find((r) => r.code === roomCode);
+          if (found) {
+            setSelectedRoom(found);
+            setActiveTab('rooms');
           }
           window.history.replaceState(null, '', window.location.pathname);
         }
@@ -233,6 +244,14 @@ function AppInner() {
     setSelectedProject(project);
     setSelectedEquipment(null);
     setActiveTab('projects');
+  };
+
+  const handleRoomsChanged = async () => {
+    const newRooms = await roomService.getAll();
+    setRooms(newRooms);
+    if (selectedRoom) {
+      setSelectedRoom(newRooms.find((r) => r.id === selectedRoom.id) ?? null);
+    }
   };
 
   const getEquipmentProject = (equipmentId: string) =>
@@ -394,6 +413,7 @@ function AppInner() {
   const tabs: { key: ActiveTab; label: React.ReactNode; tabKey: ActiveTab }[] = [
     { key: 'catalog', tabKey: 'catalog', label: 'Каталог' },
     { key: 'projects', tabKey: 'projects', label: 'Проекты' },
+    { key: 'rooms', tabKey: 'rooms', label: 'Помещения' },
     { key: 'calendar', tabKey: 'calendar', label: 'Календарь' },
     ...(canEdit ? [{
       key: 'consumables' as ActiveTab,
@@ -426,6 +446,7 @@ function AppInner() {
           canEdit={canEdit}
           onSelect={handleEquipmentSelect}
           onAdd={() => setEquipmentDrawerMode('create')}
+          rooms={rooms}
         />
       </div>
       <div style={{ height: '100%', display: activeTab === 'projects' ? 'block' : 'none' }}>
@@ -511,7 +532,7 @@ function AppInner() {
       <div style={{ display: 'flex', alignItems: 'center', padding: '0 16px', borderRight: '1px solid #f0f0f0', flexShrink: 0 }}>
         <Text strong style={{ fontSize: 14, whiteSpace: 'nowrap' }}>Инвентарь студии</Text>
       </div>
-      <div style={{ flex: 1, overflow: 'hidden', display: 'flex' }}>
+      <div style={{ flex: 1, overflowX: 'auto', display: 'flex', scrollbarWidth: 'none' }}>
         {navTabs()}
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 12px', flexShrink: 0, borderLeft: '1px solid #f0f0f0' }}>
@@ -548,6 +569,8 @@ function AppInner() {
           <div style={{ flex: 1, overflow: 'auto', background: '#f5f7fa' }}><CalendarView {...calendarProps} /></div>
         ) : activeTab === 'consumables' ? (
           <div style={{ flex: 1, overflow: 'auto', background: '#f5f7fa' }}><ConsumablesPage consumables={consumables} canEdit={canEdit} onChanged={() => void loadAll()} /></div>
+        ) : activeTab === 'rooms' ? (
+          <div style={{ flex: 1, overflow: 'hidden', background: '#fff' }}><RoomsPage rooms={rooms} allEquipment={items} canEdit={canEdit} selectedRoom={selectedRoom} onRoomSelect={setSelectedRoom} onRoomsChanged={handleRoomsChanged} /></div>
         ) : tabContent}
         {drawers}
       </div>
@@ -572,6 +595,7 @@ function AppInner() {
           {activeTab === 'users' ? <UsersPage canEdit={canEdit} allEquipment={items} onEquipmentChanged={handleEquipmentChange} /> :
            activeTab === 'calendar' ? <CalendarView {...calendarProps} /> :
            activeTab === 'consumables' ? <ConsumablesPage consumables={consumables} canEdit={canEdit} onChanged={() => void loadAll()} /> :
+           activeTab === 'rooms' ? <RoomsPage rooms={rooms} allEquipment={items} canEdit={canEdit} selectedRoom={selectedRoom} onRoomSelect={setSelectedRoom} onRoomsChanged={handleRoomsChanged} /> :
            rightPane}
         </Content>
       </Layout>
