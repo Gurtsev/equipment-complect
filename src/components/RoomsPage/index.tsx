@@ -98,7 +98,7 @@ export function RoomsPage({
   const defaultExpandedKeys = ['office-A', 'office-B', 'office-C'];
 
   const qrUrl = selectedRoom
-    ? `${window.location.origin}/?room=${selectedRoom.code}`
+    ? `${window.location.origin}${import.meta.env.BASE_URL}?room=${selectedRoom.code}`
     : '';
 
   const handlePrint = () => {
