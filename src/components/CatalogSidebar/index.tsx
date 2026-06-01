@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Input, List, Avatar, Typography, Tag, Flex, Button, Select, Dropdown, TreeSelect } from 'antd';
-import { SearchOutlined, PlusOutlined, DownloadOutlined } from '@ant-design/icons';
+import { Input, List, Avatar, Typography, Tag, Flex, Button, Select, Dropdown, TreeSelect, Grid, Badge } from 'antd';
+import { SearchOutlined, PlusOutlined, DownloadOutlined, FilterOutlined } from '@ant-design/icons';
 import * as XLSX from 'xlsx';
 import {
   Equipment,
@@ -226,6 +226,9 @@ interface Props {
 }
 
 export function CatalogSidebar({ items, selected, canEdit, onSelect, onAdd, rooms = [] }: Props) {
+  const screens = Grid.useBreakpoint();
+  const isMobile = !screens.md;
+
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<EquipmentCategory | 'all'>('all');
   const [statusFilter, setStatusFilter] = useState<EquipmentStatus | undefined>(undefined);
@@ -233,6 +236,11 @@ export function CatalogSidebar({ items, selected, canEdit, onSelect, onAdd, room
   const [deptFilter, setDeptFilter] = useState<EquipmentDepartment | 'all'>('all');
   const [sortBy, setSortBy] = useState('default');
   const [roomFilter, setRoomFilter] = useState<string | undefined>(undefined);
+  const [filtersOpen, setFiltersOpen] = useState(true);
+
+  useEffect(() => {
+    setFiltersOpen(!isMobile);
+  }, [isMobile]);
 
   const hasActiveFilters = !!statusFilter || !!locationFilter || sortBy !== 'default' || !!roomFilter;
 
@@ -290,12 +298,22 @@ export function CatalogSidebar({ items, selected, canEdit, onSelect, onAdd, room
   return (
     <Flex vertical style={{ height: '100%' }}>
       {/* Header */}
-      <div style={{ padding: '16px 16px 12px', borderBottom: '1px solid #f0f0f0' }}>
-        <Flex justify="space-between" align="center" style={{ marginBottom: 10 }}>
+      <div style={{ padding: '12px 16px', borderBottom: filtersOpen ? 'none' : '1px solid #f0f0f0' }}>
+        <Flex justify="space-between" align="center" style={{ marginBottom: filtersOpen ? 10 : 0 }}>
           <Text strong style={{ fontSize: 15 }}>
             Оборудование
           </Text>
           <Flex gap={6}>
+            {isMobile && (
+              <Badge dot={hasActiveFilters} offset={[-2, 2]}>
+                <Button
+                  size="small"
+                  icon={<FilterOutlined />}
+                  onClick={() => setFiltersOpen((v) => !v)}
+                  type={filtersOpen ? 'primary' : 'default'}
+                />
+              </Badge>
+            )}
             <Dropdown menu={{ items: exportMenuItems }} placement="bottomRight">
               <Button size="small" icon={<DownloadOutlined />} disabled={items.length === 0} />
             </Dropdown>
@@ -306,75 +324,92 @@ export function CatalogSidebar({ items, selected, canEdit, onSelect, onAdd, room
             )}
           </Flex>
         </Flex>
-        <Flex gap={6} wrap="wrap" style={{ marginBottom: 8 }}>
-          {DEPT_OPTIONS.map((d) => (
-            <span key={d.value} style={deptFilterStyle(d.value)} onClick={() => setDeptFilter(d.value)}>
-              {d.label}
-            </span>
-          ))}
-        </Flex>
-        <Input
-          prefix={<SearchOutlined style={{ color: '#bfbfbf' }} />}
-          placeholder="Модель или INV-номер..."
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          allowClear
-          size="small"
-          style={{ marginBottom: 8 }}
-        />
-        <Flex gap={6} style={{ marginBottom: 6 }}>
-          <Select<EquipmentStatus>
-            size="small"
-            style={{ flex: 1, minWidth: 0 }}
-            placeholder="Статус"
+
+        {filtersOpen && (
+          <div style={{ borderTop: isMobile ? '1px solid #f0f0f0' : 'none', paddingTop: isMobile ? 10 : 0 }}>
+            <Flex gap={6} wrap="wrap" style={{ marginBottom: 8 }}>
+              {DEPT_OPTIONS.map((d) => (
+                <span key={d.value} style={deptFilterStyle(d.value)} onClick={() => setDeptFilter(d.value)}>
+                  {d.label}
+                </span>
+              ))}
+            </Flex>
+            <Input
+              prefix={<SearchOutlined style={{ color: '#bfbfbf' }} />}
+              placeholder="Модель или INV-номер..."
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              allowClear
+              size="small"
+              style={{ marginBottom: 8 }}
+            />
+            <Flex gap={6} style={{ marginBottom: 6 }}>
+              <Select<EquipmentStatus>
+                size="small"
+                style={{ flex: 1, minWidth: 0 }}
+                placeholder="Статус"
+                allowClear
+                value={statusFilter}
+                onChange={(v) => setStatusFilter(v)}
+                options={STATUS_OPTIONS}
+              />
+              <Select<EquipmentLocation>
+                size="small"
+                style={{ flex: 1, minWidth: 0 }}
+                placeholder="Локация"
+                allowClear
+                value={locationFilter}
+                onChange={(v) => setLocationFilter(v)}
+                options={LOCATION_OPTIONS}
+              />
+            </Flex>
+            {rooms.length > 0 && (
+              <TreeSelect
+                size="small"
+                style={{ width: '100%', marginBottom: 6 }}
+                placeholder="Помещение"
+                treeData={buildFilterOfficeTree(rooms)}
+                value={roomFilter}
+                onChange={(v) => setRoomFilter(v)}
+                allowClear
+                showSearch
+                treeNodeFilterProp="title"
+                treeDefaultExpandAll={false}
+              />
+            )}
+            <Flex gap={6} align="center" style={{ borderBottom: '1px solid #f0f0f0', paddingBottom: 12 }}>
+              <Select
+                size="small"
+                style={{ flex: 1 }}
+                value={sortBy}
+                onChange={setSortBy}
+                options={SORT_OPTIONS}
+              />
+              {hasActiveFilters && (
+                <Button
+                  size="small"
+                  type="link"
+                  onClick={handleReset}
+                  style={{ padding: '0 4px', fontSize: 12, flexShrink: 0 }}
+                >
+                  Сбросить
+                </Button>
+              )}
+            </Flex>
+          </div>
+        )}
+
+        {!filtersOpen && (
+          <Input
+            prefix={<SearchOutlined style={{ color: '#bfbfbf' }} />}
+            placeholder="Модель или INV-номер..."
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
             allowClear
-            value={statusFilter}
-            onChange={(v) => setStatusFilter(v)}
-            options={STATUS_OPTIONS}
-          />
-          <Select<EquipmentLocation>
             size="small"
-            style={{ flex: 1, minWidth: 0 }}
-            placeholder="Локация"
-            allowClear
-            value={locationFilter}
-            onChange={(v) => setLocationFilter(v)}
-            options={LOCATION_OPTIONS}
-          />
-        </Flex>
-        {rooms.length > 0 && (
-          <TreeSelect
-            size="small"
-            style={{ width: '100%', marginBottom: 6 }}
-            placeholder="Помещение"
-            treeData={buildFilterOfficeTree(rooms)}
-            value={roomFilter}
-            onChange={(v) => setRoomFilter(v)}
-            allowClear
-            showSearch
-            treeNodeFilterProp="title"
-            treeDefaultExpandAll={false}
+            style={{ marginTop: 8, marginBottom: 4 }}
           />
         )}
-        <Flex gap={6} align="center">
-          <Select
-            size="small"
-            style={{ flex: 1 }}
-            value={sortBy}
-            onChange={setSortBy}
-            options={SORT_OPTIONS}
-          />
-          {hasActiveFilters && (
-            <Button
-              size="small"
-              type="link"
-              onClick={handleReset}
-              style={{ padding: '0 4px', fontSize: 12, flexShrink: 0 }}
-            >
-              Сбросить
-            </Button>
-          )}
-        </Flex>
       </div>
 
       {/* Category list */}
