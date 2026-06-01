@@ -10,12 +10,14 @@ import {
   Flex,
   Empty,
   App,
+  Grid,
 } from 'antd';
 import {
   PrinterOutlined,
   EditOutlined,
   CheckOutlined,
   CloseOutlined,
+  ArrowLeftOutlined,
 } from '@ant-design/icons';
 import type { DataNode } from 'antd/es/tree';
 import { QRCodeSVG } from 'qrcode.react';
@@ -89,6 +91,8 @@ export function RoomsPage({
   onRoomsChanged,
 }: Props) {
   const { message } = App.useApp();
+  const screens = Grid.useBreakpoint();
+  const isMobile = !screens.md;
   const qrRef = useRef<HTMLDivElement>(null);
   const [editingResponsible, setEditingResponsible] = useState(false);
   const [responsibleValue, setResponsibleValue] = useState('');
@@ -197,35 +201,24 @@ export function RoomsPage({
     },
   ];
 
-  return (
-    <Flex style={{ height: '100%' }}>
-      {/* Левое дерево */}
-      <div
-        style={{
-          width: 260,
-          borderRight: '1px solid #f0f0f0',
-          overflow: 'auto',
-          padding: '12px 0',
-          flexShrink: 0,
-        }}
-      >
-        <div style={{ padding: '4px 16px 10px' }}>
-          <Text strong style={{ fontSize: 15 }}>
-            Помещения
-          </Text>
-        </div>
-        <Tree
-          treeData={treeData}
-          defaultExpandedKeys={defaultExpandedKeys}
-          selectedKeys={selectedRoom ? [selectedRoom.id] : []}
-          onSelect={handleTreeSelect}
-          blockNode
-          style={{ fontSize: 13, paddingRight: 8 }}
-        />
+  const tree = (
+    <div style={{ overflow: 'auto', padding: '12px 0', flex: 1 }}>
+      <div style={{ padding: '4px 16px 10px' }}>
+        <Text strong style={{ fontSize: 15 }}>Помещения</Text>
       </div>
+      <Tree
+        treeData={treeData}
+        defaultExpandedKeys={defaultExpandedKeys}
+        selectedKeys={selectedRoom ? [selectedRoom.id] : []}
+        onSelect={handleTreeSelect}
+        blockNode
+        style={{ fontSize: 13, paddingRight: 8 }}
+      />
+    </div>
+  );
 
-      {/* Правая панель */}
-      <div style={{ flex: 1, overflow: 'auto', padding: 24 }}>
+  const detail = (
+    <div style={{ flex: 1, overflow: 'auto', padding: isMobile ? 16 : 24 }}>
         {!selectedRoom ? (
           <Empty description="Выберите помещение" style={{ marginTop: 80 }} />
         ) : (
@@ -314,7 +307,7 @@ export function RoomsPage({
                 ) : (
                   <Table
                     dataSource={roomEquipment}
-                    columns={columns}
+                    columns={isMobile ? columns.slice(0, 2) : columns}
                     rowKey="id"
                     size="small"
                     pagination={false}
@@ -325,7 +318,42 @@ export function RoomsPage({
             </div>
           </>
         )}
+    </div>
+  );
+
+  // Мобильный: дерево ИЛИ деталь
+  if (isMobile) {
+    if (selectedRoom) {
+      return (
+        <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ padding: '8px 16px', borderBottom: '1px solid #f0f0f0', flexShrink: 0 }}>
+            <Button
+              type="text"
+              icon={<ArrowLeftOutlined />}
+              onClick={() => onRoomSelect(null)}
+              style={{ padding: '0 4px' }}
+            >
+              Помещения
+            </Button>
+          </div>
+          {detail}
+        </div>
+      );
+    }
+    return (
+      <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+        {tree}
       </div>
+    );
+  }
+
+  // Десктоп: сплит
+  return (
+    <Flex style={{ height: '100%' }}>
+      <div style={{ width: 260, borderRight: '1px solid #f0f0f0', flexShrink: 0, display: 'flex', flexDirection: 'column' }}>
+        {tree}
+      </div>
+      {detail}
     </Flex>
   );
 }
