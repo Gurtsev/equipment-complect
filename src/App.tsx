@@ -14,6 +14,7 @@ import { CalendarView } from './components/CalendarView';
 import { ConsumablesPage } from './components/ConsumablesPage';
 import { RoomsPage } from './components/RoomsPage';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import logo from './data/мм.webp';
 import { supabase } from './services/supabase';
 import { equipmentService } from './services/equipmentService';
 import { historyService } from './services/historyService';
@@ -529,8 +530,8 @@ function AppInner() {
       flexShrink: 0,
       overflow: 'hidden',
     }}>
-      <div style={{ display: 'flex', alignItems: 'center', padding: '0 16px', borderRight: '1px solid #f0f0f0', flexShrink: 0 }}>
-        <Text strong style={{ fontSize: 14, whiteSpace: 'nowrap' }}>Инвентарь студии</Text>
+      <div style={{ display: 'flex', alignItems: 'center', padding: '0 12px', borderRight: '1px solid #f0f0f0', flexShrink: 0 }}>
+        <img src={logo} alt="Логотип" style={{ height: 32, width: 'auto', display: 'block' }} />
       </div>
       <div style={{ flex: 1, overflowX: 'auto', display: 'flex', scrollbarWidth: 'none' }}>
         {navTabs()}
@@ -552,7 +553,7 @@ function AppInner() {
       <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', background: '#fff' }}>
         {/* Compact header on mobile */}
         <div style={{ height: 48, background: '#fff', borderBottom: '1px solid #f0f0f0', display: 'flex', alignItems: 'center', padding: '0 16px', flexShrink: 0, gap: 8 }}>
-          <Text strong style={{ flex: 1, fontSize: 14 }}>Инвентарь студии</Text>
+          <img src={logo} alt="Логотип" style={{ height: 28, width: 'auto', flex: 1 }} />
           <Text type="secondary" style={{ fontSize: 11 }}>{ROLE_LABEL[role ?? ''] ?? role}</Text>
           <Button size="small" icon={<LogoutOutlined />} onClick={() => void signOut()} />
         </div>
