@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import {
   Typography,
   Tree,
@@ -89,6 +89,7 @@ export function RoomsPage({
   onRoomsChanged,
 }: Props) {
   const { message } = App.useApp();
+  const qrRef = useRef<HTMLDivElement>(null);
   const [editingResponsible, setEditingResponsible] = useState(false);
   const [responsibleValue, setResponsibleValue] = useState('');
   const [saving, setSaving] = useState(false);
@@ -99,6 +100,33 @@ export function RoomsPage({
   const qrUrl = selectedRoom
     ? `${window.location.origin}/?room=${selectedRoom.code}`
     : '';
+
+  const handlePrint = () => {
+    if (!selectedRoom) return;
+    const svgHtml = qrRef.current?.querySelector('svg')?.outerHTML ?? '';
+    const win = window.open('', '_blank', 'width=420,height=580');
+    if (!win) return;
+    win.document.write(`<!DOCTYPE html><html><head>
+      <meta charset="utf-8">
+      <title>QR — ${selectedRoom.name}</title>
+      <style>
+        body { margin: 0; padding: 32px; font-family: -apple-system, BlinkMacSystemFont, sans-serif; text-align: center; }
+        h3 { margin: 0 0 4px; font-size: 18px; font-weight: 600; }
+        .path { color: #666; font-size: 13px; margin-bottom: 24px; }
+        svg { width: 220px; height: 220px; }
+        .responsible { color: #333; font-size: 13px; margin-top: 16px; }
+        .url { color: #999; font-size: 10px; margin-top: 8px; word-break: break-all; max-width: 220px; margin-left: auto; margin-right: auto; }
+      </style>
+    </head><body>
+      <h3>${selectedRoom.name}</h3>
+      <div class="path">${getRoomPath(rooms, selectedRoom.id)}</div>
+      ${svgHtml}
+      ${selectedRoom.responsible ? `<div class="responsible">Ответственный: ${selectedRoom.responsible}</div>` : ''}
+      <div class="url">${qrUrl}</div>
+      <script>window.onload = function() { window.print(); window.close(); }<\/script>
+    </body></html>`);
+    win.document.close();
+  };
 
   const roomEquipment = selectedRoom
     ? (() => {
@@ -202,24 +230,7 @@ export function RoomsPage({
           <Empty description="Выберите помещение" style={{ marginTop: 80 }} />
         ) : (
           <>
-            {/* Только для печати */}
-            <div className="print-only" style={{ textAlign: 'center', padding: 32 }}>
-              <div style={{ fontSize: 18, fontWeight: 600, marginBottom: 4 }}>
-                {selectedRoom.name}
-              </div>
-              <div style={{ color: '#595959', marginBottom: 20 }}>
-                {getRoomPath(rooms, selectedRoom.id)}
-              </div>
-              <QRCodeSVG value={qrUrl} size={200} />
-              {selectedRoom.responsible && (
-                <div style={{ marginTop: 16 }}>
-                  Ответственный: {selectedRoom.responsible}
-                </div>
-              )}
-            </div>
-
-            {/* Обычный вид */}
-            <div className="no-print">
+            <div>
               <Flex justify="space-between" align="flex-start" style={{ marginBottom: 24 }}>
                 <div>
                   <Title level={4} style={{ margin: 0 }}>
@@ -227,14 +238,14 @@ export function RoomsPage({
                   </Title>
                   <Text type="secondary">{getRoomPath(rooms, selectedRoom.id)}</Text>
                 </div>
-                <Button icon={<PrinterOutlined />} onClick={() => window.print()}>
+                <Button icon={<PrinterOutlined />} onClick={handlePrint}>
                   Печать QR
                 </Button>
               </Flex>
 
               <Flex gap={32} align="flex-start" style={{ marginBottom: 32 }}>
                 {/* QR-код */}
-                <div style={{ flexShrink: 0, textAlign: 'center' }}>
+                <div ref={qrRef} style={{ flexShrink: 0, textAlign: 'center' }}>
                   <QRCodeSVG value={qrUrl} size={160} />
                   <div
                     style={{
