@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Calendar, Badge, Card, Tag, Typography, Flex, Empty, Divider } from 'antd';
+import { Calendar, Badge, Card, Tag, Typography, Flex, Empty, Divider, Button } from 'antd';
 import type { Dayjs } from 'dayjs';
 import dayjs from 'dayjs';
 import 'dayjs/locale/ru';
@@ -22,12 +22,12 @@ interface Props {
   onProjectSelect: (project: Project) => void;
 }
 
-export function CalendarView({ projects, allEquipment, onProjectSelect }: Props) {
+export function CalendarView({ projects: source, allEquipment, onProjectSelect }: Props) {
   const [selectedDate, setSelectedDate] = useState<Dayjs>(dayjs());
-
-  const getProjectsForDate = (date: Dayjs): Project[] => {
+  const [onlyActive, setOnlyActive] = useState(false);
+  const getProjectsForDate = (source: Project[], date: Dayjs): Project[] => {
     const d = date.startOf('day');
-    return projects.filter(p => {
+    return source.filter(p => {
       if (p.status === 'Завершён') return false;
       const start = dayjs(p.startDate).startOf('day');
       const end = dayjs(p.endDate).startOf('day');
@@ -35,21 +35,27 @@ export function CalendarView({ projects, allEquipment, onProjectSelect }: Props)
     });
   };
 
-  const selectedProjects = getProjectsForDate(selectedDate);
+  
+  const activeCount = source.filter(p => p.status === 'Активен').length;
+  const visibleProjects = onlyActive ? source.filter(p => p.status === 'Активен') : source;
+  const selectedProjects = getProjectsForDate(visibleProjects, selectedDate);
   const bookedIds = new Set(selectedProjects.flatMap(p => p.equipmentIds));
   const bookedCount = allEquipment.filter(e => bookedIds.has(e.id)).length;
   const freeCount = allEquipment.length - bookedCount;
-
+  
   return (
     <div style={{ padding: 24, maxWidth: 900, margin: '0 auto' }}>
       <Title level={4} style={{ marginTop: 0, marginBottom: 16 }}>Календарь занятости</Title>
-
+      <Text type="secondary" style={{display: 'block', marginBottom: 16 }}>Активных проектов: {activeCount}</Text>
+      <Button type="primary" onClick={() => setOnlyActive(!onlyActive)}>
+        {onlyActive ? 'Показать все' : 'Показать только активные'}
+      </Button>
       <Card size="small" style={{ marginBottom: 16 }}>
         <Calendar
           fullscreen={false}
           cellRender={(date, info) => {
             if (info.type !== 'date') return info.originNode;
-            const dayProjects = getProjectsForDate(date);
+            const dayProjects = getProjectsForDate(visibleProjects, date);
             if (dayProjects.length === 0) return null;
             return (
               <Flex gap={2} wrap="wrap" style={{ marginTop: 2 }}>
