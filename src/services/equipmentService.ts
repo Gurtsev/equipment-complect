@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import { Equipment, EquipmentCategory, EquipmentDepartment, EquipmentLocation, EquipmentStatus } from '../models/Equipment';
+import { Equipment, EquipmentCategory, EquipmentDepartment, EquipmentLocation, EquipmentSection, EquipmentStatus } from '../models/Equipment';
 
 interface EquipmentRow {
   id: string;
@@ -7,6 +7,7 @@ interface EquipmentRow {
   subtitle: string;
   category: string;
   department: string;
+  section: string;
   description: string;
   image: string;
   inv_number: string;
@@ -14,6 +15,8 @@ interface EquipmentRow {
   responsible: string;
   accessories: string[];
   room_id: string | null;
+  attributes: Record<string, string> | null;
+  quantity: number | null;
 }
 
 interface HistoryRow {
@@ -32,6 +35,7 @@ function toEquipment(row: EquipmentRow, history: HistoryRow[], nameById: Map<str
     subtitle: row.subtitle,
     category: row.category as EquipmentCategory,
     department: (row.department ?? 'studio') as EquipmentDepartment,
+    section: (row.section ?? 'tech') as EquipmentSection,
     description: row.description,
     image: row.image,
     invNumber: row.inv_number,
@@ -39,6 +43,8 @@ function toEquipment(row: EquipmentRow, history: HistoryRow[], nameById: Map<str
     responsible: row.responsible,
     accessories: row.accessories ?? [],
     roomId: row.room_id ?? null,
+    attributes: row.attributes ?? null,
+    quantity: row.quantity ?? null,
     history: history.map((h) => ({
       date: new Date(h.recorded_at),
       status: h.status as EquipmentStatus,
@@ -92,6 +98,7 @@ export const equipmentService = {
       subtitle: equipment.subtitle,
       category: equipment.category,
       department: equipment.department,
+      section: equipment.section,
       description: equipment.description,
       image: equipment.image,
       inv_number: equipment.invNumber,
@@ -99,6 +106,8 @@ export const equipmentService = {
       responsible: equipment.responsible,
       accessories: equipment.accessories,
       room_id: equipment.roomId ?? null,
+      attributes: equipment.attributes ?? null,
+      quantity: equipment.quantity ?? null,
     });
     if (eqErr) throw eqErr;
 
@@ -123,12 +132,15 @@ export const equipmentService = {
         subtitle: equipment.subtitle,
         category: equipment.category,
         department: equipment.department,
+        section: equipment.section,
         description: equipment.description,
         image: equipment.image,
         serial_number: equipment.serialNumber,
         responsible: equipment.responsible,
         accessories: equipment.accessories,
         room_id: equipment.roomId ?? null,
+        attributes: equipment.attributes ?? null,
+        quantity: equipment.quantity ?? null,
       })
       .eq('id', equipment.id);
     if (error) throw error;

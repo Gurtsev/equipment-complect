@@ -5,7 +5,7 @@ import * as XLSX from 'xlsx';
 import {
   Equipment,
   EquipmentCategory,
-  EquipmentDepartment,
+  EquipmentSection,
   EquipmentStatus,
   EquipmentLocation,
 } from '../../models/Equipment';
@@ -14,20 +14,50 @@ import type { Room, RoomTreeNode } from '../../services/roomService';
 
 const { Text } = Typography;
 
-const CATEGORIES: Array<{ label: string; value: EquipmentCategory | 'all' }> = [
-  { label: 'Все категории', value: 'all' },
-  { label: 'Камеры', value: 'camera' },
-  { label: 'Микрофоны', value: 'microphone' },
-  { label: 'Свет', value: 'light' },
-  { label: 'Компьютеры', value: 'computer' },
-  { label: 'Аудио', value: 'audio' },
-  { label: 'Аксессуары', value: 'accessory' },
-  { label: 'Оптика', value: 'optics' },
-  { label: 'Телефоны', value: 'phone' },
+const SECTION_OPTIONS: Array<{ label: string; value: EquipmentSection | 'all' }> = [
+  { label: 'Все', value: 'all' },
+  { label: 'Техника', value: 'tech' },
   { label: 'Мебель', value: 'furniture' },
   { label: 'Реквизит', value: 'prop' },
-  { label: 'Инструмент', value: 'tool' },
 ];
+
+const CATEGORIES_BY_SECTION: Record<EquipmentSection | 'all', Array<{ label: string; value: EquipmentCategory | 'all' }>> = {
+  all: [
+    { label: 'Все категории', value: 'all' },
+    { label: 'Камеры', value: 'camera' },
+    { label: 'Микрофоны', value: 'microphone' },
+    { label: 'Свет', value: 'light' },
+    { label: 'Компьютеры', value: 'computer' },
+    { label: 'Аудио', value: 'audio' },
+    { label: 'Оптика', value: 'optics' },
+    { label: 'Телефоны', value: 'phone' },
+    { label: 'Инструмент', value: 'tool' },
+    { label: 'Аксессуары', value: 'accessory' },
+    { label: 'Мебель', value: 'furniture' },
+    { label: 'Реквизит', value: 'prop' },
+  ],
+  tech: [
+    { label: 'Все категории', value: 'all' },
+    { label: 'Камеры', value: 'camera' },
+    { label: 'Микрофоны', value: 'microphone' },
+    { label: 'Свет', value: 'light' },
+    { label: 'Компьютеры', value: 'computer' },
+    { label: 'Аудио', value: 'audio' },
+    { label: 'Оптика', value: 'optics' },
+    { label: 'Телефоны', value: 'phone' },
+    { label: 'Инструмент', value: 'tool' },
+    { label: 'Аксессуары', value: 'accessory' },
+  ],
+  furniture: [
+    { label: 'Все категории', value: 'all' },
+    { label: 'Мебель', value: 'furniture' },
+  ],
+  prop: [
+    { label: 'Все категории', value: 'all' },
+    { label: 'Реквизит', value: 'prop' },
+    { label: 'Аксессуары', value: 'accessory' },
+  ],
+};
 
 const CATEGORY_LABEL: Record<EquipmentCategory, string> = {
   camera: 'Камера',
@@ -60,12 +90,6 @@ const LOCATION_OPTIONS: Array<{ label: string; value: EquipmentLocation }> = [
   { label: 'Офис', value: 'Офис' },
 ];
 
-const DEPT_OPTIONS: Array<{ label: string; value: EquipmentDepartment | 'all' }> = [
-  { label: 'Все', value: 'all' },
-  { label: 'Студия', value: 'studio' },
-  { label: 'АХО', value: 'aho' },
-  { label: 'Офис', value: 'office' },
-];
 
 const SORT_OPTIONS = [
   { label: 'По умолчанию', value: 'default' },
@@ -134,7 +158,7 @@ function filterItems(
   query: string,
   statusFilter: EquipmentStatus | 'all',
   locationFilter: EquipmentLocation | 'all',
-  deptFilter: EquipmentDepartment | 'all',
+  sectionFilter: EquipmentSection | 'all',
   roomIds: Set<string> | null,
 ): Equipment[] {
   const q = query.toLowerCase().trim();
@@ -144,9 +168,9 @@ function filterItems(
       !q || item.model.toLowerCase().includes(q) || item.invNumber.toLowerCase().includes(q);
     const matchesStatus = statusFilter === 'all' || item.currentStatus === statusFilter;
     const matchesLocation = locationFilter === 'all' || item.currentLocation === locationFilter;
-    const matchesDept = deptFilter === 'all' || item.department === deptFilter;
+    const matchesSection = sectionFilter === 'all' || item.section === sectionFilter;
     const matchesRoom = !roomIds || (item.roomId != null && roomIds.has(item.roomId));
-    return matchesCategory && matchesSearch && matchesStatus && matchesLocation && matchesDept && matchesRoom;
+    return matchesCategory && matchesSearch && matchesStatus && matchesLocation && matchesSection && matchesRoom;
   });
 }
 
@@ -233,7 +257,7 @@ export function CatalogSidebar({ items, selected, canEdit, onSelect, onAdd, room
   const [category, setCategory] = useState<EquipmentCategory | 'all'>('all');
   const [statusFilter, setStatusFilter] = useState<EquipmentStatus | undefined>(undefined);
   const [locationFilter, setLocationFilter] = useState<EquipmentLocation | undefined>(undefined);
-  const [deptFilter, setDeptFilter] = useState<EquipmentDepartment | 'all'>('all');
+  const [sectionFilter, setSectionFilter] = useState<EquipmentSection | 'all'>('all');
   const [sortBy, setSortBy] = useState('default');
   const [roomFilter, setRoomFilter] = useState<string | undefined>(undefined);
   const [filtersOpen, setFiltersOpen] = useState(true);
@@ -248,18 +272,19 @@ export function CatalogSidebar({ items, selected, canEdit, onSelect, onAdd, room
   const locationVal: EquipmentLocation | 'all' = locationFilter ?? 'all';
   const roomIds = roomFilter ? getRoomFilterIds(rooms, roomFilter) : null;
 
-  const visibleCategories = CATEGORIES.filter((c) => {
+  const currentCategories = CATEGORIES_BY_SECTION[sectionFilter];
+  const visibleCategories = currentCategories.filter((c) => {
     if (c.value === 'all') return true;
-    return filterItems(items, c.value, query, statusVal, locationVal, deptFilter, roomIds).length > 0;
+    return filterItems(items, c.value, query, statusVal, locationVal, sectionFilter, roomIds).length > 0;
   });
 
   useEffect(() => {
     if (category === 'all') return;
-    const count = filterItems(items, category, query, statusVal, locationVal, deptFilter, roomIds).length;
+    const count = filterItems(items, category, query, statusVal, locationVal, sectionFilter, roomIds).length;
     if (count === 0) setCategory('all');
-  }, [deptFilter, roomFilter, items]);
+  }, [sectionFilter, roomFilter, items]);
 
-  const filtered = sortItems(filterItems(items, category, query, statusVal, locationVal, deptFilter, roomIds), sortBy);
+  const filtered = sortItems(filterItems(items, category, query, statusVal, locationVal, sectionFilter, roomIds), sortBy);
 
   const handleReset = () => {
     setStatusFilter(undefined);
@@ -268,14 +293,14 @@ export function CatalogSidebar({ items, selected, canEdit, onSelect, onAdd, room
     setRoomFilter(undefined);
   };
 
-  const deptFilterStyle = (val: EquipmentDepartment | 'all'): React.CSSProperties => ({
+  const sectionFilterStyle = (val: EquipmentSection | 'all'): React.CSSProperties => ({
     padding: '2px 10px',
     borderRadius: 12,
     fontSize: 12,
     cursor: 'pointer',
     userSelect: 'none',
-    background: deptFilter === val ? '#1677ff' : '#f0f0f0',
-    color: deptFilter === val ? '#fff' : '#595959',
+    background: sectionFilter === val ? '#1677ff' : '#f0f0f0',
+    color: sectionFilter === val ? '#fff' : '#595959',
     transition: 'all 0.15s',
     flexShrink: 0,
   });
@@ -328,9 +353,9 @@ export function CatalogSidebar({ items, selected, canEdit, onSelect, onAdd, room
         {filtersOpen && (
           <div style={{ borderTop: isMobile ? '1px solid #f0f0f0' : 'none', paddingTop: isMobile ? 10 : 0 }}>
             <Flex gap={6} wrap="wrap" style={{ marginBottom: 8 }}>
-              {DEPT_OPTIONS.map((d) => (
-                <span key={d.value} style={deptFilterStyle(d.value)} onClick={() => setDeptFilter(d.value)}>
-                  {d.label}
+              {SECTION_OPTIONS.map((s) => (
+                <span key={s.value} style={sectionFilterStyle(s.value)} onClick={() => { setSectionFilter(s.value); setCategory('all'); }}>
+                  {s.label}
                 </span>
               ))}
             </Flex>
@@ -415,7 +440,7 @@ export function CatalogSidebar({ items, selected, canEdit, onSelect, onAdd, room
       {/* Category list */}
       <div style={{ borderBottom: '1px solid #f0f0f0', padding: '4px 0' }}>
         {visibleCategories.map((c) => {
-          const count = filterItems(items, c.value, query, statusVal, locationVal, deptFilter, roomIds).length;
+          const count = filterItems(items, c.value, query, statusVal, locationVal, sectionFilter, roomIds).length;
           const isActive = category === c.value;
           return (
             <div

@@ -415,15 +415,39 @@ export function EquipmentDetail({ equipment, canEdit, onEdit, project, equipment
       </Card>
 
       {/* Accessories */}
-      <Card title="Комплектация" size="small" style={{ marginBottom: 16 }} className="no-print">
-        <Flex wrap gap={6}>
-          {equipment.accessories.map((acc) => (
-            <Tag key={acc} style={{ margin: 0 }}>
-              {acc}
-            </Tag>
-          ))}
-        </Flex>
-      </Card>
+      {equipment.accessories.length > 0 && (
+        <Card title="Комплектация" size="small" style={{ marginBottom: 16 }} className="no-print">
+          <Flex wrap gap={6}>
+            {equipment.accessories.map((acc) => (
+              <Tag key={acc} style={{ margin: 0 }}>
+                {acc}
+              </Tag>
+            ))}
+          </Flex>
+        </Card>
+      )}
+
+      {/* Quantity */}
+      {equipment.quantity != null && (
+        <Card title="Количество" size="small" style={{ marginBottom: 16 }}>
+          <Text strong style={{ fontSize: 20 }}>{equipment.quantity}</Text>
+          <Text type="secondary" style={{ marginLeft: 6 }}>шт.</Text>
+        </Card>
+      )}
+
+      {/* Attributes */}
+      {equipment.attributes && Object.keys(equipment.attributes).length > 0 && (
+        <Card title="Атрибуты" size="small" style={{ marginBottom: 16 }}>
+          <Flex vertical gap={6}>
+            {Object.entries(equipment.attributes).map(([key, value]) => (
+              <Flex key={key} gap={8}>
+                <Text type="secondary" style={{ minWidth: 100 }}>{key}</Text>
+                <Text>{value}</Text>
+              </Flex>
+            ))}
+          </Flex>
+        </Card>
+      )}
 
       {/* Status update */}
       {canEdit && (

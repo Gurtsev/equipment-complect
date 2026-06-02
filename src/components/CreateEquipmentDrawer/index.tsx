@@ -1,35 +1,35 @@
 import { useEffect, useState } from 'react';
 import {
-  Drawer,
-  Form,
-  Input,
-  Select,
-  Button,
-  Space,
-  Upload,
-  App,
-  Grid,
-  TreeSelect,
+  Drawer, Form, Input, InputNumber, Select, Button, Space,
+  Upload, App, Grid, TreeSelect, Segmented,
 } from 'antd';
 import type { UploadFile, UploadProps } from 'antd';
 import { PlusOutlined, MinusCircleOutlined, UploadOutlined } from '@ant-design/icons';
-import { Equipment, EquipmentCategory, EquipmentDepartment, EquipmentLocation, EquipmentStatus } from '../../models/Equipment';
+import {
+  Equipment, EquipmentCategory, EquipmentDepartment,
+  EquipmentLocation, EquipmentSection, EquipmentStatus,
+} from '../../models/Equipment';
 import { supabase } from '../../services/supabase';
 import { buildRoomTree, OFFICE_LABEL } from '../../services/roomService';
 import type { Room, RoomTreeNode } from '../../services/roomService';
 
-const CATEGORIES: Array<{ label: string; value: EquipmentCategory }> = [
-  { label: '📹 Камера', value: 'camera' },
-  { label: '🎤 Микрофон', value: 'microphone' },
-  { label: '💡 Свет', value: 'light' },
-  { label: '💻 Компьютер', value: 'computer' },
-  { label: '🎧 Аудио', value: 'audio' },
-  { label: '🔧 Аксессуар', value: 'accessory' },
-  { label: '🔭 Оптика', value: 'optics' },
-  { label: '📱 Телефон', value: 'phone' },
-  { label: '🪑 Мебель', value: 'furniture' },
-  { label: '🎭 Реквизит', value: 'prop' },
-  { label: '🔨 Инструмент', value: 'tool' },
+// ── Категории по разделам ────────────────────────────────────────────────────
+
+const TECH_CATEGORIES: Array<{ label: string; value: EquipmentCategory }> = [
+  { label: 'Камера', value: 'camera' },
+  { label: 'Микрофон', value: 'microphone' },
+  { label: 'Свет', value: 'light' },
+  { label: 'Компьютер', value: 'computer' },
+  { label: 'Аудио', value: 'audio' },
+  { label: 'Оптика', value: 'optics' },
+  { label: 'Телефон', value: 'phone' },
+  { label: 'Инструмент', value: 'tool' },
+  { label: 'Аксессуар', value: 'accessory' },
+];
+
+const PROP_CATEGORIES: Array<{ label: string; value: EquipmentCategory }> = [
+  { label: 'Реквизит', value: 'prop' },
+  { label: 'Аксессуар', value: 'accessory' },
 ];
 
 const DEPARTMENTS: Array<{ label: string; value: EquipmentDepartment }> = [
@@ -38,28 +38,13 @@ const DEPARTMENTS: Array<{ label: string; value: EquipmentDepartment }> = [
   { label: 'Офис', value: 'office' },
 ];
 
-interface FormValues {
-  model: string;
-  subtitle: string;
-  category: EquipmentCategory;
-  department: EquipmentDepartment;
-  description: string;
-  image: string;
-  invNumber: string;
-  serialNumber: string;
-  responsible: string;
-  accessories: Array<{ name: string }>;
-  roomId?: string;
-}
+const SECTION_OPTIONS = [
+  { label: 'Техника', value: 'tech' },
+  { label: 'Мебель', value: 'furniture' },
+  { label: 'Реквизит', value: 'prop' },
+];
 
-interface Props {
-  open: boolean;
-  onClose: () => void;
-  onCreated: (equipment: Equipment) => void;
-  initialEquipment?: Equipment;
-  onUpdated?: (equipment: Equipment) => void;
-  rooms?: Room[];
-}
+// ── Helpers ──────────────────────────────────────────────────────────────────
 
 function toTreeData(nodes: RoomTreeNode[]): object[] {
   return nodes.map((n) => ({
@@ -73,23 +58,56 @@ function toTreeData(nodes: RoomTreeNode[]): object[] {
 
 function buildOfficeTree(rooms: Room[]): object[] {
   const offices = ['A', 'B', 'C'] as const;
-  return offices.map((office) => {
-    const officeRooms = rooms.filter((r) => r.office === office);
-    const tree = buildRoomTree(officeRooms);
-    return {
+  return offices
+    .filter((o) => rooms.some((r) => r.office === o))
+    .map((office) => ({
       title: OFFICE_LABEL[office],
       value: `office-${office}`,
       key: `office-${office}`,
       selectable: false,
-      children: toTreeData(tree),
-    };
-  });
+      children: toTreeData(buildRoomTree(rooms.filter((r) => r.office === office))),
+    }));
 }
 
 function generateId(): string {
   const num = Math.floor(1000 + Math.random() * 9000);
   return `EQP-${num}`;
 }
+
+function sectionFromCategory(cat: EquipmentCategory): EquipmentSection {
+  if (cat === 'furniture') return 'furniture';
+  if (cat === 'prop') return 'prop';
+  return 'tech';
+}
+
+// ── Types ────────────────────────────────────────────────────────────────────
+
+interface FormValues {
+  model: string;
+  subtitle?: string;
+  category?: EquipmentCategory;
+  department: EquipmentDepartment;
+  description?: string;
+  image?: string;
+  invNumber: string;
+  serialNumber?: string;
+  responsible?: string;
+  accessories?: Array<{ name: string }>;
+  roomId?: string;
+  quantity?: number;
+  attributes?: Array<{ key: string; value: string }>;
+}
+
+interface Props {
+  open: boolean;
+  onClose: () => void;
+  onCreated: (equipment: Equipment) => void;
+  initialEquipment?: Equipment;
+  onUpdated?: (equipment: Equipment) => void;
+  rooms?: Room[];
+}
+
+// ── Component ────────────────────────────────────────────────────────────────
 
 export function CreateEquipmentDrawer({ open, onClose, onCreated, initialEquipment, onUpdated, rooms = [] }: Props) {
   const { message } = App.useApp();
@@ -98,10 +116,16 @@ export function CreateEquipmentDrawer({ open, onClose, onCreated, initialEquipme
   const screens = Grid.useBreakpoint();
   const drawerWidth = screens.md ? 480 : '100%';
   const [fileList, setFileList] = useState<UploadFile[]>([]);
+  const [section, setSection] = useState<EquipmentSection>('tech');
 
   useEffect(() => {
     if (!open) return;
     if (initialEquipment) {
+      const sec = initialEquipment.section ?? sectionFromCategory(initialEquipment.category);
+      setSection(sec);
+      const attrs = initialEquipment.attributes
+        ? Object.entries(initialEquipment.attributes).map(([key, value]) => ({ key, value }))
+        : [];
       form.setFieldsValue({
         model: initialEquipment.model,
         subtitle: initialEquipment.subtitle,
@@ -114,6 +138,8 @@ export function CreateEquipmentDrawer({ open, onClose, onCreated, initialEquipme
         responsible: initialEquipment.responsible,
         accessories: initialEquipment.accessories.map((name) => ({ name })),
         roomId: initialEquipment.roomId ?? undefined,
+        quantity: initialEquipment.quantity ?? undefined,
+        attributes: attrs,
       });
       setFileList(
         initialEquipment.image
@@ -121,6 +147,7 @@ export function CreateEquipmentDrawer({ open, onClose, onCreated, initialEquipme
           : [],
       );
     } else {
+      setSection('tech');
       form.resetFields();
       setFileList([]);
     }
@@ -152,22 +179,42 @@ export function CreateEquipmentDrawer({ open, onClose, onCreated, initialEquipme
     },
   };
 
+  const buildAttributes = (list?: Array<{ key: string; value: string }>): Record<string, string> | null => {
+    if (!list || list.length === 0) return null;
+    const result: Record<string, string> = {};
+    list.forEach(({ key, value }) => {
+      if (key?.trim()) result[key.trim()] = value?.trim() ?? '';
+    });
+    return Object.keys(result).length > 0 ? result : null;
+  };
+
+  const resolveCategory = (values: FormValues): EquipmentCategory => {
+    if (section === 'furniture') return 'furniture';
+    return values.category ?? (section === 'prop' ? 'prop' : 'camera');
+  };
+
   const handleFinish = (values: FormValues) => {
+    const category = resolveCategory(values);
+    const attributes = buildAttributes(values.attributes);
+
     if (isEdit && initialEquipment && onUpdated) {
       const updated = new Equipment({
         id: initialEquipment.id,
         model: values.model.trim(),
         subtitle: values.subtitle?.trim() ?? '',
-        category: values.category,
+        category,
         department: values.department ?? initialEquipment.department,
+        section,
         description: values.description?.trim() ?? '',
         image: values.image?.trim() ?? '',
         invNumber: initialEquipment.invNumber,
         serialNumber: values.serialNumber?.trim() ?? '',
-        responsible: values.responsible.trim(),
+        responsible: values.responsible?.trim() ?? '',
         accessories: (values.accessories ?? []).map((a) => a.name).filter(Boolean),
         history: initialEquipment.history,
         roomId: values.roomId ?? null,
+        attributes,
+        quantity: values.quantity ?? null,
       });
       onUpdated(updated);
       void message.success(`${updated.model} обновлено`);
@@ -179,23 +226,24 @@ export function CreateEquipmentDrawer({ open, onClose, onCreated, initialEquipme
       id: generateId(),
       model: values.model.trim(),
       subtitle: values.subtitle?.trim() ?? '',
-      category: values.category,
+      category,
       department: values.department ?? 'studio',
+      section,
       description: values.description?.trim() ?? '',
       image: values.image?.trim() ?? '',
       invNumber: values.invNumber.trim(),
       serialNumber: values.serialNumber?.trim() ?? '',
-      responsible: values.responsible.trim(),
+      responsible: values.responsible?.trim() ?? '',
       accessories: (values.accessories ?? []).map((a) => a.name).filter(Boolean),
       roomId: values.roomId ?? null,
-      history: [
-        {
-          date: new Date(),
-          status: 'На Складе' as EquipmentStatus,
-          location: 'Склад' as EquipmentLocation,
-          responsible: values.responsible.trim(),
-        },
-      ],
+      attributes,
+      quantity: values.quantity ?? null,
+      history: [{
+        date: new Date(),
+        status: 'На Складе' as EquipmentStatus,
+        location: 'Склад' as EquipmentLocation,
+        responsible: values.responsible?.trim() ?? '',
+      }],
     });
 
     onCreated(equipment);
@@ -203,9 +251,13 @@ export function CreateEquipmentDrawer({ open, onClose, onCreated, initialEquipme
     onClose();
   };
 
+  const isTech = section === 'tech';
+  const isFurniture = section === 'furniture';
+  const isProp = section === 'prop';
+
   return (
     <Drawer
-      title={isEdit ? 'Редактировать оборудование' : 'Новое оборудование'}
+      title={isEdit ? 'Редактировать' : 'Новая запись'}
       open={open}
       onClose={onClose}
       width={drawerWidth}
@@ -219,32 +271,51 @@ export function CreateEquipmentDrawer({ open, onClose, onCreated, initialEquipme
       }
       destroyOnClose
     >
-      <Form
-        form={form}
-        layout="vertical"
-        onFinish={handleFinish}
-        requiredMark="optional"
-      >
+      <Form form={form} layout="vertical" onFinish={handleFinish} requiredMark="optional">
+
+        {/* Раздел */}
+        {!isEdit && (
+          <Form.Item label="Раздел">
+            <Segmented
+              options={SECTION_OPTIONS}
+              value={section}
+              onChange={(v) => {
+                setSection(v as EquipmentSection);
+                form.setFieldValue('category', undefined);
+              }}
+              block
+            />
+          </Form.Item>
+        )}
+
+        {/* Название */}
         <Form.Item
           name="model"
-          label="Модель"
-          rules={[{ required: true, message: 'Введите название модели' }]}
+          label="Название"
+          rules={[{ required: true, message: 'Введите название' }]}
         >
-          <Input placeholder="Sony ILME-FX6" />
+          <Input placeholder={isTech ? 'Sony ILME-FX6' : isFurniture ? 'Стол переговорный' : 'Новогодние шарики'} />
         </Form.Item>
 
         <Form.Item name="subtitle" label="Подзаголовок">
-          <Input placeholder="Кинокамера Full-Frame 4K" />
+          <Input placeholder={isTech ? 'Кинокамера Full-Frame 4K' : isFurniture ? '180×90 см, белый' : 'Красные, 5 см'} />
         </Form.Item>
 
-        <Form.Item
-          name="category"
-          label="Категория"
-          rules={[{ required: true, message: 'Выберите категорию' }]}
-        >
-          <Select placeholder="Выберите категорию" options={CATEGORIES} />
-        </Form.Item>
+        {/* Категория — только для Техники и Реквизита */}
+        {(isTech || isProp) && (
+          <Form.Item
+            name="category"
+            label="Категория"
+            rules={[{ required: true, message: 'Выберите категорию' }]}
+          >
+            <Select
+              placeholder="Выберите категорию"
+              options={isTech ? TECH_CATEGORIES : PROP_CATEGORIES}
+            />
+          </Form.Item>
+        )}
 
+        {/* Отдел */}
         <Form.Item
           name="department"
           label="Отдел"
@@ -254,6 +325,7 @@ export function CreateEquipmentDrawer({ open, onClose, onCreated, initialEquipme
           <Select options={DEPARTMENTS} />
         </Form.Item>
 
+        {/* Помещение */}
         {rooms.length > 0 && (
           <Form.Item name="roomId" label="Помещение">
             <TreeSelect
@@ -267,21 +339,15 @@ export function CreateEquipmentDrawer({ open, onClose, onCreated, initialEquipme
           </Form.Item>
         )}
 
-        <Form.Item name="description" label="Описание">
-          <Input.TextArea rows={2} placeholder="Краткое описание характеристик" />
-        </Form.Item>
-
+        {/* Фото */}
         <Form.Item label="Фотография">
           <Upload {...uploadProps}>
-            {fileList.length === 0 && (
-              <Button icon={<UploadOutlined />}>Загрузить фото</Button>
-            )}
+            {fileList.length === 0 && <Button icon={<UploadOutlined />}>Загрузить фото</Button>}
           </Upload>
         </Form.Item>
-        <Form.Item name="image" hidden>
-          <Input />
-        </Form.Item>
+        <Form.Item name="image" hidden><Input /></Form.Item>
 
+        {/* Инв. номер */}
         <Form.Item
           name="invNumber"
           label="Инвентарный номер"
@@ -290,51 +356,101 @@ export function CreateEquipmentDrawer({ open, onClose, onCreated, initialEquipme
           <Input placeholder="INV-2024-0001" disabled={isEdit} />
         </Form.Item>
 
-        <Form.Item name="serialNumber" label="Серийный номер">
-          <Input placeholder="SN-..." />
+        {/* Серийный номер — только Техника */}
+        {isTech && (
+          <Form.Item name="serialNumber" label="Серийный номер">
+            <Input placeholder="SN-..." />
+          </Form.Item>
+        )}
+
+        {/* Количество — только Реквизит */}
+        {isProp && (
+          <Form.Item name="quantity" label="Количество">
+            <InputNumber min={1} style={{ width: '100%' }} placeholder="20" />
+          </Form.Item>
+        )}
+
+        {/* Ответственный — Техника и Мебель */}
+        {(isTech || isFurniture) && (
+          <Form.Item name="responsible" label="Ответственный">
+            <Input placeholder="Иван Петров" />
+          </Form.Item>
+        )}
+
+        {/* Комплектация — только Техника */}
+        {isTech && (
+          <Form.List name="accessories">
+            {(fields, { add, remove }) => (
+              <Form.Item label="Комплектация">
+                <Space direction="vertical" style={{ width: '100%' }} size={6}>
+                  {fields.map(({ key, name, ...rest }) => (
+                    <Space key={key} align="baseline" style={{ width: '100%' }}>
+                      <Form.Item
+                        {...rest}
+                        name={[name, 'name']}
+                        rules={[{ required: true, message: '' }]}
+                        style={{ margin: 0, flex: 1 }}
+                      >
+                        <Input placeholder="Название аксессуара" style={{ width: 340 }} />
+                      </Form.Item>
+                      <MinusCircleOutlined
+                        onClick={() => remove(name)}
+                        style={{ color: '#ff4d4f', cursor: 'pointer' }}
+                      />
+                    </Space>
+                  ))}
+                  <Button type="dashed" onClick={() => add()} icon={<PlusOutlined />} style={{ width: '100%' }} size="small">
+                    Добавить позицию
+                  </Button>
+                </Space>
+              </Form.Item>
+            )}
+          </Form.List>
+        )}
+
+        {/* Атрибуты — Мебель и Реквизит */}
+        {(isFurniture || isProp) && (
+          <Form.List name="attributes">
+            {(fields, { add, remove }) => (
+              <Form.Item label="Атрибуты">
+                <Space direction="vertical" style={{ width: '100%' }} size={6}>
+                  {fields.map(({ key, name, ...rest }) => (
+                    <Space key={key} align="baseline" style={{ width: '100%' }} size={8}>
+                      <Form.Item
+                        {...rest}
+                        name={[name, 'key']}
+                        rules={[{ required: true, message: '' }]}
+                        style={{ margin: 0 }}
+                      >
+                        <Input placeholder={isFurniture ? 'Высота' : 'Цвет'} style={{ width: 140 }} />
+                      </Form.Item>
+                      <Form.Item
+                        {...rest}
+                        name={[name, 'value']}
+                        style={{ margin: 0 }}
+                      >
+                        <Input placeholder={isFurniture ? '75 см' : 'Красный'} style={{ width: 170 }} />
+                      </Form.Item>
+                      <MinusCircleOutlined
+                        onClick={() => remove(name)}
+                        style={{ color: '#ff4d4f', cursor: 'pointer' }}
+                      />
+                    </Space>
+                  ))}
+                  <Button type="dashed" onClick={() => add()} icon={<PlusOutlined />} style={{ width: '100%' }} size="small">
+                    Добавить атрибут
+                  </Button>
+                </Space>
+              </Form.Item>
+            )}
+          </Form.List>
+        )}
+
+        {/* Описание */}
+        <Form.Item name="description" label="Описание">
+          <Input.TextArea rows={2} placeholder="Краткое описание" />
         </Form.Item>
 
-        <Form.Item
-          name="responsible"
-          label="Ответственный"
-          rules={[{ required: true, message: 'Укажите ответственного' }]}
-        >
-          <Input placeholder="Иван Петров" />
-        </Form.Item>
-
-        <Form.List name="accessories">
-          {(fields, { add, remove }) => (
-            <Form.Item label="Комплектация">
-              <Space direction="vertical" style={{ width: '100%' }} size={6}>
-                {fields.map(({ key, name, ...rest }) => (
-                  <Space key={key} align="baseline" style={{ width: '100%' }}>
-                    <Form.Item
-                      {...rest}
-                      name={[name, 'name']}
-                      rules={[{ required: true, message: '' }]}
-                      style={{ margin: 0, flex: 1 }}
-                    >
-                      <Input placeholder="Название аксессуара" style={{ width: 340 }} />
-                    </Form.Item>
-                    <MinusCircleOutlined
-                      onClick={() => remove(name)}
-                      style={{ color: '#ff4d4f', cursor: 'pointer' }}
-                    />
-                  </Space>
-                ))}
-                <Button
-                  type="dashed"
-                  onClick={() => add()}
-                  icon={<PlusOutlined />}
-                  style={{ width: '100%' }}
-                  size="small"
-                >
-                  Добавить позицию
-                </Button>
-              </Space>
-            </Form.Item>
-          )}
-        </Form.List>
       </Form>
     </Drawer>
   );

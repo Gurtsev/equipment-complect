@@ -1,3 +1,5 @@
+export type EquipmentSection = 'tech' | 'furniture' | 'prop';
+
 export type EquipmentStatus = 'В Работе' | 'На Складе' | 'В Ремонте' | 'Списано' | 'В Пути' | 'Забронировано' | 'Выдан';
 export type EquipmentLocation =
   | 'Склад'
@@ -33,6 +35,7 @@ export interface EquipmentData {
   subtitle: string;
   category: EquipmentCategory;
   department: EquipmentDepartment;
+  section: EquipmentSection;
   description: string;
   image: string;
   invNumber: string;
@@ -41,6 +44,8 @@ export interface EquipmentData {
   accessories: string[];
   history: HistoryEntry[];
   roomId?: string | null;
+  attributes?: Record<string, string> | null;
+  quantity?: number | null;
 }
 
 export class Equipment {
@@ -49,6 +54,7 @@ export class Equipment {
   readonly subtitle: string;
   readonly category: EquipmentCategory;
   readonly department: EquipmentDepartment;
+  readonly section: EquipmentSection;
   readonly description: string;
   readonly image: string;
   readonly invNumber: string;
@@ -57,6 +63,8 @@ export class Equipment {
   readonly accessories: string[];
   history: HistoryEntry[];
   roomId: string | null;
+  readonly attributes: Record<string, string> | null;
+  readonly quantity: number | null;
 
   constructor(data: EquipmentData) {
     this.id = data.id;
@@ -64,6 +72,7 @@ export class Equipment {
     this.subtitle = data.subtitle;
     this.category = data.category;
     this.department = data.department;
+    this.section = data.section;
     this.description = data.description;
     this.image = data.image;
     this.invNumber = data.invNumber;
@@ -72,6 +81,8 @@ export class Equipment {
     this.accessories = data.accessories;
     this.history = data.history;
     this.roomId = data.roomId ?? null;
+    this.attributes = data.attributes ?? null;
+    this.quantity = data.quantity ?? null;
   }
 
   get currentStatus(): EquipmentStatus {
