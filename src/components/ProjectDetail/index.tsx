@@ -175,7 +175,7 @@ export function ProjectDetail({
       cancelText: 'Отмена',
       onOk: async () => {
         projectEquipment.forEach((eq) =>
-          eq.addHistoryEntry('В Работе', project.location, project.responsible),
+          eq.addHistoryEntry('В Работе', project.location as import('../../models/Equipment').EquipmentLocation, project.responsible),
         );
         project.status = 'Активен';
         await Promise.all([
@@ -256,7 +256,7 @@ export function ProjectDetail({
     const addStatus: EquipmentStatus = project.status === 'Активен' ? 'В Работе' : 'Забронировано';
     const addLocation = project.status === 'Активен' ? project.location : undefined;
     toAdd.forEach((eq) =>
-      eq.addHistoryEntry(addStatus, addLocation ?? eq.currentLocation, project.responsible),
+      eq.addHistoryEntry(addStatus, (addLocation ?? eq.currentLocation) as import('../../models/Equipment').EquipmentLocation, project.responsible),
     );
     project.equipmentIds = [...new Set([...project.equipmentIds, ...pickerSelected])];
     await Promise.all([

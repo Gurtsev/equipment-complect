@@ -1,11 +1,11 @@
 import { supabase } from './supabase';
-import { EquipmentStatus, EquipmentLocation } from '../models/Equipment';
+import { EquipmentStatus } from '../models/Equipment';
 
 export const historyService = {
   async addEntry(
     equipmentId: string,
     status: EquipmentStatus,
-    location: EquipmentLocation,
+    location: string,
     responsible: string,
   ): Promise<void> {
     const { error } = await supabase.from('equipment_history').insert({

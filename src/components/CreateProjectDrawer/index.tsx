@@ -1,21 +1,17 @@
-import { useEffect } from 'react';
-import { Drawer, Form, Input, Select, Button, Space, DatePicker, App, Grid } from 'antd';
+import { useEffect, useState } from 'react';
+import { Drawer, Form, Input, Button, Space, DatePicker, App, Grid, Radio } from 'antd';
 import dayjs, { type Dayjs } from 'dayjs';
 import { Project, ProjectData } from '../../models/Project';
-import { EquipmentLocation } from '../../models/Equipment';
 
-const LOCATIONS: Array<{ label: string; value: EquipmentLocation }> = [
-  { label: 'Склад', value: 'Склад' },
-  { label: 'В пути', value: 'В пути' },
-  { label: 'Офис', value: 'Офис' },
-];
+type LocationType = 'Романов' | 'Знаменка' | 'Выезд';
 
 interface FormValues {
   name: string;
   client: string;
   startDate: Dayjs;
   endDate: Dayjs;
-  location: EquipmentLocation;
+  locationType: LocationType;
+  locationAddress?: string;
   responsible: string;
   notes: string;
 }
@@ -33,38 +29,61 @@ function generateProjectId(): string {
   return `PRJ-${num}`;
 }
 
+function parseLocation(location: string): { locationType: LocationType; locationAddress: string } {
+  if (location === 'Романов' || location === 'Знаменка') {
+    return { locationType: location, locationAddress: '' };
+  }
+  if (location.startsWith('Выезд')) {
+    return {
+      locationType: 'Выезд',
+      locationAddress: location.startsWith('Выезд: ') ? location.slice(7) : '',
+    };
+  }
+  return { locationType: 'Романов', locationAddress: '' };
+}
+
 export function CreateProjectDrawer({ open, onClose, onCreated, initialProject, onUpdated }: Props) {
   const { message } = App.useApp();
   const [form] = Form.useForm<FormValues>();
   const isEdit = !!initialProject;
   const screens = Grid.useBreakpoint();
   const drawerWidth = screens.md ? 480 : '100%';
+  const [locationType, setLocationType] = useState<LocationType>('Романов');
 
   useEffect(() => {
     if (!open) return;
     if (initialProject) {
+      const { locationType: lt, locationAddress } = parseLocation(initialProject.location);
+      setLocationType(lt);
       form.setFieldsValue({
         name: initialProject.name,
         client: initialProject.client,
         startDate: dayjs(initialProject.startDate),
         endDate: dayjs(initialProject.endDate),
-        location: initialProject.location,
+        locationType: lt,
+        locationAddress,
         responsible: initialProject.responsible,
         notes: initialProject.notes,
       });
     } else {
+      setLocationType('Романов');
       form.resetFields();
     }
   }, [open, initialProject, form]);
 
   const handleFinish = (values: FormValues) => {
+    const location =
+      values.locationType === 'Выезд' && values.locationAddress?.trim()
+        ? `Выезд: ${values.locationAddress.trim()}`
+        : values.locationType;
+
     const data: ProjectData = {
       id: isEdit ? initialProject!.id : generateProjectId(),
       name: values.name.trim(),
       client: values.client?.trim() ?? '',
       startDate: values.startDate.toDate(),
       endDate: values.endDate.toDate(),
-      location: values.location,
+      location,
       responsible: values.responsible.trim(),
       status: isEdit ? initialProject!.status : 'Планируется',
       equipmentIds: isEdit ? initialProject!.equipmentIds : [],
@@ -131,12 +150,23 @@ export function CreateProjectDrawer({ open, onClose, onCreated, initialProject, 
         </Space>
 
         <Form.Item
-          name="location"
-          label="Локация съёмки"
+          name="locationType"
+          label="Локация"
           rules={[{ required: true, message: 'Выберите локацию' }]}
+          initialValue="Романов"
         >
-          <Select placeholder="Куда едет техника" options={LOCATIONS} />
+          <Radio.Group onChange={(e) => setLocationType(e.target.value as LocationType)}>
+            <Radio value="Романов">Романов</Radio>
+            <Radio value="Знаменка">Знаменка</Radio>
+            <Radio value="Выезд">Выезд</Radio>
+          </Radio.Group>
         </Form.Item>
+
+        {locationType === 'Выезд' && (
+          <Form.Item name="locationAddress" label="Адрес площадки">
+            <Input placeholder="Без адреса — просто «Выезд»" />
+          </Form.Item>
+        )}
 
         <Form.Item
           name="responsible"

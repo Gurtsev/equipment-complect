@@ -1,5 +1,3 @@
-import { EquipmentLocation } from './Equipment';
-
 export type ProjectStatus = 'Планируется' | 'Активен' | 'Завершён';
 
 export interface ProjectData {
@@ -8,7 +6,7 @@ export interface ProjectData {
   client: string;
   startDate: Date;
   endDate: Date;
-  location: EquipmentLocation;
+  location: string;
   responsible: string;
   status: ProjectStatus;
   equipmentIds: string[];
@@ -21,7 +19,7 @@ export class Project {
   client: string;
   startDate: Date;
   endDate: Date;
-  location: EquipmentLocation;
+  location: string;
   responsible: string;
   status: ProjectStatus;
   equipmentIds: string[];

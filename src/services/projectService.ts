@@ -1,6 +1,5 @@
 import { supabase } from './supabase';
 import { Project } from '../models/Project';
-import { EquipmentLocation } from '../models/Equipment';
 
 interface ProjectRow {
   id: string;
@@ -22,7 +21,7 @@ function toProject(row: ProjectRow): Project {
     client: row.client,
     startDate: new Date(row.start_date),
     endDate: new Date(row.end_date),
-    location: row.location as EquipmentLocation,
+    location: row.location,
     responsible: row.responsible,
     status: row.status as Project['status'],
     notes: row.notes,
