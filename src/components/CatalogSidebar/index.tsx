@@ -520,9 +520,15 @@ export function CatalogSidebar({ items, selected, canEdit, onSelect, onAdd, room
                       >
                         {item.currentStatus}
                       </Tag>
-                      <Text type="secondary" style={{ fontSize: 10 }}>
-                        {item.invNumber}
-                      </Text>
+                      {item.invNumber ? (
+                        <Text type="secondary" style={{ fontSize: 10 }}>
+                          {item.invNumber}
+                        </Text>
+                      ) : (
+                        <Tag color="orange" style={{ fontSize: 10, padding: '0 4px', lineHeight: '16px', margin: 0 }}>
+                          Без инв. №
+                        </Tag>
+                      )}
                     </Flex>
                   </div>
                 }

@@ -117,6 +117,7 @@ export function CreateEquipmentDrawer({ open, onClose, onCreated, initialEquipme
   const drawerWidth = screens.md ? 480 : '100%';
   const [fileList, setFileList] = useState<UploadFile[]>([]);
   const [section, setSection] = useState<EquipmentSection>('tech');
+  const [snLoading, setSnLoading] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -188,6 +189,28 @@ export function CreateEquipmentDrawer({ open, onClose, onCreated, initialEquipme
     return Object.keys(result).length > 0 ? result : null;
   };
 
+  const handleGenerateSN = async () => {
+    setSnLoading(true);
+    try {
+      const year = new Date().getFullYear();
+      const prefix = `SN-INT-${year}-`;
+      const { data } = await supabase
+        .from('equipment')
+        .select('serial_number')
+        .like('serial_number', `${prefix}%`);
+      let maxNum = 0;
+      for (const row of data ?? []) {
+        const num = parseInt((row.serial_number as string).replace(prefix, ''), 10);
+        if (!isNaN(num) && num > maxNum) maxNum = num;
+      }
+      form.setFieldValue('serialNumber', `${prefix}${String(maxNum + 1).padStart(4, '0')}`);
+    } catch {
+      void message.error('Не удалось сгенерировать номер');
+    } finally {
+      setSnLoading(false);
+    }
+  };
+
   const resolveCategory = (values: FormValues): EquipmentCategory => {
     if (section === 'furniture') return 'furniture';
     return values.category ?? (section === 'prop' ? 'prop' : 'camera');
@@ -231,7 +254,7 @@ export function CreateEquipmentDrawer({ open, onClose, onCreated, initialEquipme
       section,
       description: values.description?.trim() ?? '',
       image: values.image?.trim() ?? '',
-      invNumber: values.invNumber.trim(),
+      invNumber: (values.invNumber ?? '').trim(),
       serialNumber: values.serialNumber?.trim() ?? '',
       responsible: values.responsible?.trim() ?? '',
       accessories: (values.accessories ?? []).map((a) => a.name).filter(Boolean),
@@ -348,18 +371,27 @@ export function CreateEquipmentDrawer({ open, onClose, onCreated, initialEquipme
         <Form.Item name="image" hidden><Input /></Form.Item>
 
         {/* Инв. номер */}
-        <Form.Item
-          name="invNumber"
-          label="Инвентарный номер"
-          rules={[{ required: true, message: 'Введите инвентарный номер' }]}
-        >
+        <Form.Item name="invNumber" label="Инвентарный номер">
           <Input placeholder="INV-2024-0001" disabled={isEdit} />
         </Form.Item>
 
         {/* Серийный номер — только Техника */}
         {isTech && (
           <Form.Item name="serialNumber" label="Серийный номер">
-            <Input placeholder="SN-..." />
+            <Input
+              placeholder="SN-INT-2025-0001"
+              addonAfter={
+                <Button
+                  type="link"
+                  size="small"
+                  loading={snLoading}
+                  onClick={handleGenerateSN}
+                  style={{ padding: 0, height: 'auto', fontSize: 12 }}
+                >
+                  Сгенерировать
+                </Button>
+              }
+            />
           </Form.Item>
         )}
 

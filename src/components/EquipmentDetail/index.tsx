@@ -381,11 +381,23 @@ export function EquipmentDetail({ equipment, canEdit, onEdit, project, equipment
 
       </Card>
 
+      {/* Предупреждение об отсутствии инв. номера */}
+      {!equipment.invNumber && (
+        <Alert
+          type="warning"
+          showIcon
+          message="Инвентарный номер не указан"
+          action={canEdit ? <Button size="small" onClick={onEdit}>Добавить</Button> : undefined}
+          style={{ marginBottom: 16 }}
+          className="no-print"
+        />
+      )}
+
       {/* Info */}
       <Card title="Информация" size="small" style={{ marginBottom: 16 }} className="no-print">
         <Descriptions column={{ xs: 1, sm: 1, md: 2 }} size="small">
           <Descriptions.Item label="Инвентарный №">
-            <Text code>{equipment.invNumber}</Text>
+            {equipment.invNumber ? <Text code>{equipment.invNumber}</Text> : <Text type="secondary">—</Text>}
           </Descriptions.Item>
           <Descriptions.Item label="Серийный №">
             <Text code>{equipment.serialNumber}</Text>
