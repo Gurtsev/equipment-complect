@@ -19,8 +19,8 @@ function toProject(row: ProjectRow): Project {
     id: row.id,
     name: row.name,
     client: row.client,
-    startDate: new Date(row.start_date),
-    endDate: new Date(row.end_date),
+    startDate: row.start_date ? new Date(row.start_date) : new Date(),
+    endDate: row.end_date ? new Date(row.end_date) : new Date(),
     location: row.location,
     responsible: row.responsible,
     status: row.status as Project['status'],
@@ -77,18 +77,32 @@ export const projectService = {
       .eq('id', project.id);
     if (projErr) throw projErr;
 
-    // Синхронизация project_equipment: удалить всё → вставить заново
-    const { error: delErr } = await supabase
+    // Diff-синхронизация: удалять только убранные, добавлять только новые
+    const { data: current, error: fetchErr } = await supabase
       .from('project_equipment')
-      .delete()
+      .select('equipment_id')
       .eq('project_id', project.id);
-    if (delErr) throw delErr;
+    if (fetchErr) throw fetchErr;
 
-    if (project.equipmentIds.length > 0) {
-      const { error: peErr } = await supabase.from('project_equipment').insert(
-        project.equipmentIds.map((eid) => ({ project_id: project.id, equipment_id: eid })),
+    const currentIds = new Set((current ?? []).map((r) => r.equipment_id as string));
+    const newIds = new Set(project.equipmentIds);
+
+    const toDelete = [...currentIds].filter((id) => !newIds.has(id));
+    if (toDelete.length > 0) {
+      const { error } = await supabase
+        .from('project_equipment')
+        .delete()
+        .eq('project_id', project.id)
+        .in('equipment_id', toDelete);
+      if (error) throw error;
+    }
+
+    const toInsert = [...newIds].filter((id) => !currentIds.has(id));
+    if (toInsert.length > 0) {
+      const { error } = await supabase.from('project_equipment').insert(
+        toInsert.map((eid) => ({ project_id: project.id, equipment_id: eid })),
       );
-      if (peErr) throw peErr;
+      if (error) throw error;
     }
   },
 

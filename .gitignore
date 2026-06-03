@@ -38,3 +38,10 @@ Thumbs.db
 .env
 .env.*
 !.env.example
+
+# Vitest
+coverage/
+
+# Рабочие файлы / экспорты
+*.csv
+*.xlsx

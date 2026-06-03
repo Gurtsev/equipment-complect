@@ -31,8 +31,8 @@ import {
   CheckCircleOutlined,
 } from '@ant-design/icons';
 import * as XLSX from 'xlsx';
-import { Project, ProjectStatus } from '../../models/Project';
-import { Equipment, EquipmentStatus } from '../../models/Equipment';
+import { Project, ProjectData, ProjectStatus } from '../../models/Project';
+import { Equipment, EquipmentLocation, EquipmentStatus } from '../../models/Equipment';
 import { historyService } from '../../services/historyService';
 import { projectService } from '../../services/projectService';
 import { projectHistoryService, ProjectHistoryEntry } from '../../services/projectHistoryService';
@@ -174,17 +174,18 @@ export function ProjectDetail({
       okText: 'Выдать',
       cancelText: 'Отмена',
       onOk: async () => {
-        projectEquipment.forEach((eq) =>
-          eq.addHistoryEntry('В Работе', project.location as import('../../models/Equipment').EquipmentLocation, project.responsible),
-        );
-        project.status = 'Активен';
+        const activated = new Project({ ...project, status: 'Активен' } as ProjectData);
         await Promise.all([
           ...projectEquipment.map((eq) =>
             historyService.addEntry(eq.id, 'В Работе', project.location, project.responsible),
           ),
-          projectService.update(project),
+          projectService.update(activated),
           projectHistoryService.addEntry(project.id, 'activated'),
         ]);
+        projectEquipment.forEach((eq) =>
+          eq.addHistoryEntry('В Работе', project.location as EquipmentLocation, project.responsible),
+        );
+        project.status = 'Активен';
         onUpdate(project);
         onEquipmentChange();
         void reloadHistory();
@@ -202,18 +203,19 @@ export function ProjectDetail({
       okType: 'danger',
       cancelText: 'Отмена',
       onOk: async () => {
+        const finished = new Project({ ...project, status: 'Завершён', equipmentIds: [] } as ProjectData);
+        await Promise.all([
+          ...projectEquipment.map((eq) =>
+            historyService.addEntry(eq.id, 'На Складе', 'Склад', project.responsible),
+          ),
+          projectService.update(finished),
+          projectHistoryService.addEntry(project.id, 'finished'),
+        ]);
         projectEquipment.forEach((eq) =>
           eq.addHistoryEntry('На Складе', 'Склад', project.responsible),
         );
         project.status = 'Завершён';
         project.equipmentIds = [];
-        await Promise.all([
-          ...projectEquipment.map((eq) =>
-            historyService.addEntry(eq.id, 'На Складе', 'Склад', project.responsible),
-          ),
-          projectService.update(project),
-          projectHistoryService.addEntry(project.id, 'finished'),
-        ]);
         onUpdate(project);
         onEquipmentChange();
         void reloadHistory();
@@ -224,18 +226,23 @@ export function ProjectDetail({
 
   // Убрать единицу из проекта
   const handleRemoveEquipment = async (eq: Equipment) => {
-    if (eq.currentStatus === 'Забронировано' || eq.currentStatus === 'В Работе') {
-      eq.addHistoryEntry('На Складе', 'Склад', project.responsible);
+    const needsHistory = eq.currentStatus === 'Забронировано' || eq.currentStatus === 'В Работе';
+    const newEquipmentIds = project.equipmentIds.filter((id) => id !== eq.id);
+    const updated = new Project({ ...project, equipmentIds: newEquipmentIds } as ProjectData);
+    if (needsHistory) {
       await historyService.addEntry(eq.id, 'На Складе', 'Склад', project.responsible);
     }
-    project.equipmentIds = project.equipmentIds.filter((id) => id !== eq.id);
     await Promise.all([
-      projectService.update(project),
+      projectService.update(updated),
       projectHistoryService.addEntry(project.id, 'equipment_removed', {
         equipmentId: eq.id,
         equipmentName: eq.model,
       }),
     ]);
+    if (needsHistory) {
+      eq.addHistoryEntry('На Складе', 'Склад', project.responsible);
+    }
+    project.equipmentIds = newEquipmentIds;
     onUpdate(project);
     onEquipmentChange();
     void reloadHistory();
@@ -255,10 +262,8 @@ export function ProjectDetail({
       .filter(Boolean) as import('../../services/loanService').Loan[];
     const addStatus: EquipmentStatus = project.status === 'Активен' ? 'В Работе' : 'Забронировано';
     const addLocation = project.status === 'Активен' ? project.location : undefined;
-    toAdd.forEach((eq) =>
-      eq.addHistoryEntry(addStatus, (addLocation ?? eq.currentLocation) as import('../../models/Equipment').EquipmentLocation, project.responsible),
-    );
-    project.equipmentIds = [...new Set([...project.equipmentIds, ...pickerSelected])];
+    const newEquipmentIds = [...new Set([...project.equipmentIds, ...pickerSelected])];
+    const updated = new Project({ ...project, equipmentIds: newEquipmentIds } as ProjectData);
     await Promise.all([
       ...loansToClose.map((loan) => loanService.returnLoan(loan.id, loan.equipmentId)),
       ...toAdd.map((eq) =>
@@ -270,8 +275,12 @@ export function ProjectDetail({
           equipmentName: eq.model,
         }),
       ),
-      projectService.update(project),
+      projectService.update(updated),
     ]);
+    toAdd.forEach((eq) =>
+      eq.addHistoryEntry(addStatus, (addLocation ?? eq.currentLocation) as EquipmentLocation, project.responsible),
+    );
+    project.equipmentIds = newEquipmentIds;
     onUpdate(project);
     onEquipmentChange();
     void reloadHistory();

@@ -185,9 +185,9 @@ export function EquipmentDetail({ equipment, canEdit, onEdit, project, equipment
   };
 
   const handleSave = async () => {
+    await onStatusUpdate?.(status, location, changedBy);
     equipment.addHistoryEntry(status, location, changedBy);
     setHistory([...equipment.history]);
-    await onStatusUpdate?.(status, location, changedBy);
     void message.success('Статус обновлён');
   };
 

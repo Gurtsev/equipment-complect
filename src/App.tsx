@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Layout, App as AntApp, Spin, Button, Typography, Grid, Form, Input, Badge } from 'antd';
 import { LogoutOutlined } from '@ant-design/icons';
 import { CatalogSidebar } from './components/CatalogSidebar';
@@ -116,10 +116,18 @@ function AppInner() {
     return () => clearTimeout(timeout);
   }, [loadAll, user, message]);
 
+  const reloadInProgress = useRef(false);
+
   const realtimeReload = useCallback(async () => {
-    const { newItems, newProjects } = await loadAll();
-    setSelectedEquipment(prev => prev ? (newItems.find(e => e.id === prev.id) ?? null) : null);
-    setSelectedProject(prev => prev ? (newProjects.find(p => p.id === prev.id) ?? null) : null);
+    if (reloadInProgress.current) return;
+    reloadInProgress.current = true;
+    try {
+      const { newItems, newProjects } = await loadAll();
+      setSelectedEquipment(prev => prev ? (newItems.find(e => e.id === prev.id) ?? null) : null);
+      setSelectedProject(prev => prev ? (newProjects.find(p => p.id === prev.id) ?? null) : null);
+    } finally {
+      reloadInProgress.current = false;
+    }
   }, [loadAll]);
 
   useEffect(() => {
