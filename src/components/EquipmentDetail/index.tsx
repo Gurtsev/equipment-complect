@@ -397,13 +397,13 @@ export function EquipmentDetail({ equipment, canEdit, onEdit, project, equipment
       <Card title="Информация" size="small" style={{ marginBottom: 16 }} className="no-print">
         <Descriptions column={{ xs: 1, sm: 1, md: 2 }} size="small">
           <Descriptions.Item label="Инвентарный №">
-            {equipment.invNumber ? <Text code>{equipment.invNumber}</Text> : <Text type="secondary">—</Text>}
+            {equipment.invNumber ? <Text code style={{ whiteSpace: 'nowrap' }}>{equipment.invNumber}</Text> : <Text type="secondary">—</Text>}
           </Descriptions.Item>
           <Descriptions.Item label="Серийный №">
-            <Text code>{equipment.serialNumber}</Text>
+            <Text code style={{ whiteSpace: 'nowrap' }}>{equipment.serialNumber}</Text>
           </Descriptions.Item>
           <Descriptions.Item label="ID в базе">
-            <Text code>{equipment.id}</Text>
+            <Text code style={{ whiteSpace: 'nowrap' }}>{equipment.id}</Text>
           </Descriptions.Item>
           <Descriptions.Item label="Ответственный">{equipment.responsible}</Descriptions.Item>
           <Descriptions.Item label="Отдел">{DEPT_LABEL[equipment.department] ?? equipment.department}</Descriptions.Item>
