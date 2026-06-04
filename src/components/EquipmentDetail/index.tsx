@@ -416,7 +416,7 @@ export function EquipmentDetail({ equipment, canEdit, onEdit, project, equipment
             <Descriptions.Item label="Проект" span={2}>
               <Tag
                 color="cyan"
-                style={{ cursor: onProjectClick ? 'pointer' : 'default' }}
+                style={{ cursor: onProjectClick ? 'pointer' : 'default', whiteSpace: 'normal', wordBreak: 'break-word' }}
                 onClick={() => onProjectClick?.(project)}
               >
                 {project.name}
