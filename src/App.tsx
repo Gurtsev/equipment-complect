@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { Layout, App as AntApp, Spin, Button, Typography, Grid, Form, Input, Badge } from 'antd';
 import { LogoutOutlined } from '@ant-design/icons';
 import { CatalogSidebar } from './components/CatalogSidebar';
+import { CatalogGrid } from './components/CatalogGrid';
 import { EquipmentDetail } from './components/EquipmentDetail';
 import { CreateEquipmentDrawer } from './components/CreateEquipmentDrawer';
 import { Dashboard } from './components/Dashboard';
@@ -55,6 +56,7 @@ function AppInner() {
   const [detailKey, setDetailKey] = useState(0);
   const [equipmentDrawerMode, setEquipmentDrawerMode] = useState<'create' | 'edit' | null>(null);
   const [projectDrawerMode, setProjectDrawerMode] = useState<'create' | 'edit' | null>(null);
+  const [catalogViewMode, setCatalogViewMode] = useState<'list' | 'grid'>('list');
 
   const canEdit = role === 'admin' || role === 'operator';
   // canEditEquipment: учитывает ограничение по отделу для операторов
@@ -455,6 +457,7 @@ function AppInner() {
           canEdit={canEdit}
           onSelect={handleEquipmentSelect}
           onAdd={() => setEquipmentDrawerMode('create')}
+          onSwitchToGrid={() => setCatalogViewMode('grid')}
           rooms={rooms}
         />
       </div>
@@ -490,7 +493,7 @@ function AppInner() {
     </>
   );
 
-  const showSider = activeTab === 'catalog' || activeTab === 'projects';
+  const showSider = (activeTab === 'catalog' && catalogViewMode === 'list') || activeTab === 'projects';
 
   // ── Header (desktop + mobile) ──────────────────────────────────────
   const navTabs = (scrollable?: boolean) => (
@@ -605,6 +608,23 @@ function AppInner() {
            activeTab === 'calendar' ? <CalendarView {...calendarProps} /> :
            activeTab === 'consumables' ? <ConsumablesPage consumables={consumables} canEdit={canEdit} onChanged={() => void loadAll()} /> :
            activeTab === 'rooms' ? <RoomsPage rooms={rooms} allEquipment={items} canEdit={canEdit} selectedRoom={selectedRoom} onRoomSelect={setSelectedRoom} onRoomsChanged={handleRoomsChanged} /> :
+           activeTab === 'catalog' && catalogViewMode === 'grid' ? (
+             <CatalogGrid
+               items={items}
+               canEditEquipment={canEditEquipment}
+               canEdit={canEdit}
+               onAdd={() => setEquipmentDrawerMode('create')}
+               onSwitchToList={() => setCatalogViewMode('list')}
+               onEdit={(eq) => { setSelectedEquipment(eq); setEquipmentDrawerMode('edit'); }}
+               rooms={rooms}
+               projects={projects}
+               getEquipmentProject={(id) => getEquipmentProject(id) ?? undefined}
+               getEquipmentProjects={getEquipmentProjects}
+               onProjectClick={handleProjectClick}
+               onEquipmentChange={handleEquipmentChange}
+               detailKey={detailKey}
+             />
+           ) :
            rightPane}
         </Content>
       </Layout>

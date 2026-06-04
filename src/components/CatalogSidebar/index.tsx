@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Input, List, Avatar, Typography, Tag, Flex, Button, Select, Dropdown, TreeSelect, Grid, Badge } from 'antd';
-import { SearchOutlined, PlusOutlined, DownloadOutlined, FilterOutlined } from '@ant-design/icons';
+import { SearchOutlined, PlusOutlined, DownloadOutlined, FilterOutlined, AppstoreOutlined } from '@ant-design/icons';
 import * as XLSX from 'xlsx';
 import {
   Equipment,
@@ -246,10 +246,11 @@ interface Props {
   canEdit: boolean;
   onSelect: (equipment: Equipment) => void;
   onAdd: () => void;
+  onSwitchToGrid: () => void;
   rooms?: Room[];
 }
 
-export function CatalogSidebar({ items, selected, canEdit, onSelect, onAdd, rooms = [] }: Props) {
+export function CatalogSidebar({ items, selected, canEdit, onSelect, onAdd, onSwitchToGrid, rooms = [] }: Props) {
   const screens = Grid.useBreakpoint();
   const isMobile = !screens.md;
 
@@ -339,6 +340,7 @@ export function CatalogSidebar({ items, selected, canEdit, onSelect, onAdd, room
                 />
               </Badge>
             )}
+            <Button size="small" icon={<AppstoreOutlined />} onClick={onSwitchToGrid} title="Сетка" />
             <Dropdown menu={{ items: exportMenuItems }} placement="bottomRight">
               <Button size="small" icon={<DownloadOutlined />} disabled={items.length === 0} />
             </Dropdown>
