@@ -191,10 +191,11 @@ export function CatalogGrid({
         onCancel={() => setModalEquipment(null)}
         footer={null}
         width={820}
-        styles={{ body: { padding: 0, maxHeight: '80vh', overflowY: 'auto' } }}
+        styles={{ body: { padding: 0 } }}
         destroyOnClose
       >
         {modalEquipment && (
+          <div style={{ maxHeight: 'calc(90vh - 108px)', overflowY: 'auto' }}>
           <EquipmentDetail
             key={`modal-${modalEquipment.id}-${modalKey}`}
             equipment={modalEquipment}
@@ -206,6 +207,7 @@ export function CatalogGrid({
             onStatusUpdate={handleModalStatusUpdate}
             rooms={rooms}
           />
+          </div>
         )}
       </Modal>
     </div>
