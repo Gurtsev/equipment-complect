@@ -189,6 +189,7 @@ export function CatalogGrid({
       <Modal
         open={!!modalEquipment}
         onCancel={() => setModalEquipment(null)}
+        title={modalEquipment?.model}
         footer={null}
         width={820}
         styles={{ body: { padding: 0 } }}
