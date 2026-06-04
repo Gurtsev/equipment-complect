@@ -57,6 +57,7 @@ function AppInner() {
   const [equipmentDrawerMode, setEquipmentDrawerMode] = useState<'create' | 'edit' | null>(null);
   const [projectDrawerMode, setProjectDrawerMode] = useState<'create' | 'edit' | null>(null);
   const [catalogViewMode, setCatalogViewMode] = useState<'list' | 'grid'>('list');
+  const [catalogFilteredItems, setCatalogFilteredItems] = useState<Equipment[]>([]);
 
   const canEdit = role === 'admin' || role === 'operator';
   // canEditEquipment: учитывает ограничение по отделу для операторов
@@ -458,6 +459,8 @@ function AppInner() {
           onSelect={handleEquipmentSelect}
           onAdd={() => setEquipmentDrawerMode('create')}
           onSwitchToGrid={() => setCatalogViewMode('grid')}
+          onFilteredItemsChange={setCatalogFilteredItems}
+          viewMode={catalogViewMode}
           rooms={rooms}
         />
       </div>
@@ -493,7 +496,7 @@ function AppInner() {
     </>
   );
 
-  const showSider = (activeTab === 'catalog' && catalogViewMode === 'list') || activeTab === 'projects';
+  const showSider = activeTab === 'catalog' || activeTab === 'projects';
 
   // ── Header (desktop + mobile) ──────────────────────────────────────
   const navTabs = (scrollable?: boolean) => (
@@ -610,7 +613,7 @@ function AppInner() {
            activeTab === 'rooms' ? <RoomsPage rooms={rooms} allEquipment={items} canEdit={canEdit} selectedRoom={selectedRoom} onRoomSelect={setSelectedRoom} onRoomsChanged={handleRoomsChanged} /> :
            activeTab === 'catalog' && catalogViewMode === 'grid' ? (
              <CatalogGrid
-               items={items}
+               items={catalogFilteredItems}
                canEditEquipment={canEditEquipment}
                canEdit={canEdit}
                onAdd={() => setEquipmentDrawerMode('create')}

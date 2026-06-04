@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Input, List, Avatar, Typography, Tag, Flex, Button, Select, Dropdown, TreeSelect, Grid, Badge } from 'antd';
 import { SearchOutlined, PlusOutlined, DownloadOutlined, FilterOutlined, AppstoreOutlined } from '@ant-design/icons';
 import * as XLSX from 'xlsx';
@@ -247,10 +247,12 @@ interface Props {
   onSelect: (equipment: Equipment) => void;
   onAdd: () => void;
   onSwitchToGrid: () => void;
+  onFilteredItemsChange?: (items: Equipment[]) => void;
+  viewMode?: 'list' | 'grid';
   rooms?: Room[];
 }
 
-export function CatalogSidebar({ items, selected, canEdit, onSelect, onAdd, onSwitchToGrid, rooms = [] }: Props) {
+export function CatalogSidebar({ items, selected, canEdit, onSelect, onAdd, onSwitchToGrid, onFilteredItemsChange, viewMode = 'list', rooms = [] }: Props) {
   const screens = Grid.useBreakpoint();
   const isMobile = !screens.md;
 
@@ -271,7 +273,10 @@ export function CatalogSidebar({ items, selected, canEdit, onSelect, onAdd, onSw
 
   const statusVal: EquipmentStatus | 'all' = statusFilter ?? 'all';
   const locationVal: EquipmentLocation | 'all' = locationFilter ?? 'all';
-  const roomIds = roomFilter ? getRoomFilterIds(rooms, roomFilter) : null;
+  const roomIds = useMemo(
+    () => roomFilter ? getRoomFilterIds(rooms, roomFilter) : null,
+    [roomFilter, rooms],
+  );
 
   const currentCategories = CATEGORIES_BY_SECTION[sectionFilter];
   const visibleCategories = currentCategories.filter((c) => {
@@ -285,7 +290,14 @@ export function CatalogSidebar({ items, selected, canEdit, onSelect, onAdd, onSw
     if (count === 0) setCategory('all');
   }, [sectionFilter, roomFilter, items]);
 
-  const filtered = sortItems(filterItems(items, category, query, statusVal, locationVal, sectionFilter, roomIds), sortBy);
+  const filtered = useMemo(
+    () => sortItems(filterItems(items, category, query, statusVal, locationVal, sectionFilter, roomIds), sortBy),
+    [items, category, query, statusVal, locationVal, sectionFilter, roomIds, sortBy],
+  );
+
+  useEffect(() => {
+    onFilteredItemsChange?.(filtered);
+  }, [filtered, onFilteredItemsChange]);
 
   const handleReset = () => {
     setStatusFilter(undefined);
@@ -476,9 +488,9 @@ export function CatalogSidebar({ items, selected, canEdit, onSelect, onAdd, onSw
         })}
       </div>
 
-      {/* List */}
+      {/* List — скрыт в режиме сетки */}
       <List
-        style={{ flex: 1, overflowY: 'auto' }}
+        style={{ flex: 1, overflowY: 'auto', display: viewMode === 'grid' ? 'none' : undefined }}
         dataSource={filtered}
         locale={{ emptyText: items.length === 0 ? 'Каталог пуст' : 'Ничего не найдено' }}
         renderItem={(item) => {
