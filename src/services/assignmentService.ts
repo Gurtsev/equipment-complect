@@ -28,7 +28,7 @@ export const assignmentService = {
   async getCurrentAssignment(equipmentId: string): Promise<Assignment | null> {
     const { data, error } = await supabase
       .from('employee_assignments')
-      .select('*, profiles!profile_id(name, email)')
+      .select('*, profiles!user_id(name, email)')
       .eq('equipment_id', equipmentId)
       .is('returned_at', null)
       .maybeSingle();
@@ -38,7 +38,7 @@ export const assignmentService = {
     return {
       id: data.id,
       equipmentId: data.equipment_id,
-      profileId: data.profile_id,
+      profileId: data.user_id,
       profileName: profile?.name ?? '—',
       profileEmail: profile?.email ?? '—',
       assignedAt: new Date(data.assigned_at),
@@ -51,7 +51,7 @@ export const assignmentService = {
     const { data, error } = await supabase
       .from('employee_assignments')
       .select('*, equipment!equipment_id(id, model, inv_number, image)')
-      .eq('profile_id', profileId)
+      .eq('user_id', profileId)
       .order('assigned_at', { ascending: false });
     if (error) throw error;
     return (data ?? []).map((r) => {
@@ -78,7 +78,7 @@ export const assignmentService = {
   ): Promise<void> {
     const { error } = await supabase.from('employee_assignments').insert({
       equipment_id: equipmentId,
-      profile_id: profileId,
+      user_id: profileId,
       notes: notes ?? null,
     });
     if (error) throw error;
