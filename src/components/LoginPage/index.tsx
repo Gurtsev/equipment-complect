@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Form, Input, Button, Card, Typography, App, Tabs, Alert } from 'antd';
 import { useAuth } from '../../contexts/AuthContext';
+import { supabase } from '../../services/supabase';
 
 const { Title, Text } = Typography;
 
@@ -33,6 +34,12 @@ export function LoginPage() {
 
   const handleRegister = async (values: { name: string; email: string; password: string }) => {
     setRegisterLoading(true);
+    const { data: allowed } = await supabase.rpc('is_email_allowed', { input_email: values.email });
+    if (!allowed) {
+      setRegisterLoading(false);
+      void message.error('Этот email не разрешён для регистрации');
+      return;
+    }
     const error = await signUp(values.email, values.password, values.name);
     setRegisterLoading(false);
     if (error) void message.error(error);
