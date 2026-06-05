@@ -586,6 +586,24 @@ function AppInner() {
           <div style={{ flex: 1, overflow: 'auto', background: '#f5f7fa' }}><ConsumablesPage consumables={consumables} canEdit={canEdit} onChanged={() => void loadAll()} /></div>
         ) : activeTab === 'rooms' ? (
           <div style={{ flex: 1, overflow: 'hidden', background: '#fff' }}><RoomsPage rooms={rooms} allEquipment={items} canEdit={canEdit} selectedRoom={selectedRoom} onRoomSelect={setSelectedRoom} onRoomsChanged={handleRoomsChanged} /></div>
+        ) : activeTab === 'catalog' && catalogViewMode === 'grid' ? (
+          <div style={{ flex: 1, overflow: 'hidden', background: '#f5f7fa' }}>
+            <CatalogGrid
+              items={catalogFilteredItems}
+              canEditEquipment={canEditEquipment}
+              canEdit={canEdit}
+              onAdd={() => setEquipmentDrawerMode('create')}
+              onSwitchToList={() => setCatalogViewMode('list')}
+              onEdit={(eq) => { setSelectedEquipment(eq); setEquipmentDrawerMode('edit'); }}
+              rooms={rooms}
+              projects={projects}
+              getEquipmentProject={(id) => getEquipmentProject(id) ?? undefined}
+              getEquipmentProjects={getEquipmentProjects}
+              onProjectClick={handleProjectClick}
+              onEquipmentChange={handleEquipmentChange}
+              detailKey={detailKey}
+            />
+          </div>
         ) : tabContent}
         {drawers}
       </div>
