@@ -137,7 +137,7 @@ export function CreateProjectDrawer({ open, onClose, onCreated, initialProject, 
             rules={[{ required: true, message: 'Укажите дату' }]}
             style={{ flex: 1 }}
           >
-            <DatePicker style={{ width: '100%' }} format="DD.MM.YYYY" />
+            <DatePicker style={{ width: '100%' }} format="DD.MM.YYYY HH:mm" showTime={{ format: 'HH:mm', minuteStep: 15 }} />
           </Form.Item>
           <Form.Item
             name="endDate"
@@ -145,7 +145,7 @@ export function CreateProjectDrawer({ open, onClose, onCreated, initialProject, 
             rules={[{ required: true, message: 'Укажите дату' }]}
             style={{ flex: 1 }}
           >
-            <DatePicker style={{ width: '100%' }} format="DD.MM.YYYY" />
+            <DatePicker style={{ width: '100%' }} format="DD.MM.YYYY HH:mm" showTime={{ format: 'HH:mm', minuteStep: 15 }} />
           </Form.Item>
         </Space>
 

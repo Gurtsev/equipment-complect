@@ -1,16 +1,8 @@
 import React from 'react';
 import { Tag } from 'antd';
+import { ShoppingCartOutlined } from '@ant-design/icons';
 import type { Equipment } from '../../models/Equipment';
 
-const STATUS_COLOR: Record<string, string> = {
-  'В Работе': '#1677ff',
-  'На Складе': '#52c41a',
-  'В Ремонте': '#fa8c16',
-  'Списано': '#bfbfbf',
-  'В Пути': '#722ed1',
-  'Забронировано': '#faad14',
-  'Выдан': '#13c2c2',
-};
 
 const S = { fill: '#e8e8e8', stroke: '#bfbfbf', strokeWidth: 2.5, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
 const SN = { ...S, fill: 'none' };
@@ -118,11 +110,10 @@ const CATEGORY_LABEL: Record<string, string> = {
 interface Props {
   equipment: Equipment;
   onClick: () => void;
+  onAddToCart?: () => void;
 }
 
-export function EquipmentCard({ equipment, onClick }: Props) {
-  const status = equipment.currentStatus;
-  const statusColor = STATUS_COLOR[status] ?? '#bfbfbf';
+export function EquipmentCard({ equipment, onClick, onAddToCart }: Props) {
 
   return (
     <div
@@ -136,6 +127,7 @@ export function EquipmentCard({ equipment, onClick }: Props) {
         transition: 'box-shadow 0.18s, border-color 0.18s',
         display: 'flex',
         flexDirection: 'column',
+        position: 'relative',
       }}
       onMouseEnter={(e) => {
         e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.12)';
@@ -171,23 +163,10 @@ export function EquipmentCard({ equipment, onClick }: Props) {
             )}
           </div>
         )}
-        {/* Status badge */}
-        <div style={{
-          position: 'absolute', top: 8, right: 8,
-          background: statusColor,
-          color: '#fff',
-          borderRadius: 4,
-          padding: '2px 7px',
-          fontSize: 11,
-          fontWeight: 500,
-          lineHeight: '18px',
-        }}>
-          {status}
-        </div>
       </div>
 
       {/* Info */}
-      <div style={{ padding: '10px 12px', flex: 1, minWidth: 0 }}>
+      <div style={{ padding: '10px 12px 10px', flex: 1, minWidth: 0 }}>
         <div style={{
           fontWeight: 600, fontSize: 13,
           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
@@ -208,6 +187,33 @@ export function EquipmentCard({ equipment, onClick }: Props) {
           {CATEGORY_LABEL[equipment.category] ?? equipment.category}
         </Tag>
       </div>
+
+      {onAddToCart && (
+        <button
+          onClick={(e) => { e.stopPropagation(); onAddToCart(); }}
+          style={{
+            position: 'absolute',
+            bottom: 8,
+            right: 8,
+            width: 28,
+            height: 28,
+            borderRadius: '50%',
+            background: '#52c41a',
+            border: 'none',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#fff',
+            fontSize: 13,
+            boxShadow: '0 2px 6px rgba(82,196,26,0.4)',
+            zIndex: 2,
+          }}
+          title="В корзину"
+        >
+          <ShoppingCartOutlined />
+        </button>
+      )}
     </div>
   );
 }

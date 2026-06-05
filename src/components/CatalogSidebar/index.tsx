@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Input, List, Avatar, Typography, Tag, Flex, Button, Select, Dropdown, TreeSelect, Grid, Badge } from 'antd';
-import { SearchOutlined, PlusOutlined, DownloadOutlined, FilterOutlined, AppstoreOutlined, UnorderedListOutlined } from '@ant-design/icons';
+import { SearchOutlined, PlusOutlined, DownloadOutlined, FilterOutlined, ShoppingCartOutlined } from '@ant-design/icons';
 import * as XLSX from 'xlsx';
 import {
   Equipment,
@@ -246,13 +246,12 @@ interface Props {
   canEdit: boolean;
   onSelect: (equipment: Equipment) => void;
   onAdd: () => void;
-  onSwitchToGrid: () => void;
+  onAddToCart?: (equipmentId: string) => Promise<void>;
   onFilteredItemsChange?: (items: Equipment[]) => void;
-  viewMode?: 'list' | 'grid';
   rooms?: Room[];
 }
 
-export function CatalogSidebar({ items, selected, canEdit, onSelect, onAdd, onSwitchToGrid, onFilteredItemsChange, viewMode = 'list', rooms = [] }: Props) {
+export function CatalogSidebar({ items, selected, canEdit, onSelect, onAdd, onAddToCart, onFilteredItemsChange, rooms = [] }: Props) {
   const screens = Grid.useBreakpoint();
   const isMobile = !screens.md;
 
@@ -337,10 +336,7 @@ export function CatalogSidebar({ items, selected, canEdit, onSelect, onAdd, onSw
     <Flex vertical style={{ height: '100%', overflow: 'hidden' }}>
       {/* Header */}
       <div style={{ padding: '12px 16px', borderBottom: filtersOpen ? 'none' : '1px solid #f0f0f0' }}>
-        <Flex justify="space-between" align="center" style={{ marginBottom: filtersOpen ? 10 : 0 }}>
-          <Text strong style={{ fontSize: 15 }}>
-            Оборудование
-          </Text>
+        <Flex justify="flex-end" align="center" style={{ marginBottom: filtersOpen ? 10 : 0 }}>
           <Flex gap={6}>
             {isMobile && (
               <Badge dot={hasActiveFilters} offset={[-2, 2]}>
@@ -352,8 +348,6 @@ export function CatalogSidebar({ items, selected, canEdit, onSelect, onAdd, onSw
                 />
               </Badge>
             )}
-            <Button size="small" icon={<UnorderedListOutlined />} type="primary" title="Список" />
-            <Button size="small" icon={<AppstoreOutlined />} onClick={onSwitchToGrid} title="Сетка" />
             <Dropdown menu={{ items: exportMenuItems }} placement="bottomRight">
               <Button size="small" icon={<DownloadOutlined />} disabled={items.length === 0} />
             </Dropdown>
@@ -489,8 +483,8 @@ export function CatalogSidebar({ items, selected, canEdit, onSelect, onAdd, onSw
         })}
       </div>
 
-      {/* List — скрыт в режиме сетки */}
-      <div style={{ flex: 1, overflowY: 'auto', minHeight: 0, display: viewMode === 'grid' ? 'none' : undefined }}>
+      {/* List скрыт — каталог всегда в режиме сетки */}
+      <div style={{ display: 'none' }}>
       <List
         dataSource={filtered}
         locale={{ emptyText: items.length === 0 ? 'Каталог пуст' : 'Ничего не найдено' }}
@@ -500,6 +494,16 @@ export function CatalogSidebar({ items, selected, canEdit, onSelect, onAdd, onSw
             <List.Item
               key={item.id}
               onClick={() => onSelect(item)}
+              extra={onAddToCart && (
+                <Button
+                  type="text"
+                  size="small"
+                  icon={<ShoppingCartOutlined />}
+                  title="В корзину"
+                  onClick={(e) => { e.stopPropagation(); void onAddToCart(item.id); }}
+                  style={{ color: '#8c8c8c', marginTop: 2 }}
+                />
+              )}
               style={{
                 cursor: 'pointer',
                 padding: '10px 16px',

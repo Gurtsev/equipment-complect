@@ -47,8 +47,8 @@ function mapLoan(row: Record<string, unknown>, profiles: Record<string, string>)
     projectId: (row.project_id as string) ?? null,
     issuedByName: row.issued_by ? (profiles[row.issued_by as string] ?? null) : null,
     issuedAt: new Date(row.issued_at as string),
-    startDate: row.start_date ? new Date(row.start_date as string + 'T00:00:00') : null,
-    dueDate: row.due_date ? new Date(row.due_date as string + 'T00:00:00') : null,
+    startDate: row.start_date ? new Date(row.start_date as string) : null,
+    dueDate: row.due_date ? new Date(row.due_date as string) : null,
     returnedAt: row.returned_at ? new Date(row.returned_at as string) : null,
     notes: (row.notes as string) ?? null,
   };
@@ -139,10 +139,9 @@ export const loanService = {
     });
     if (error) throw error;
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const startDate = params.startDate ? new Date(params.startDate + 'T00:00:00') : today;
-    if (startDate <= today) {
+    const now = new Date();
+    const startDate = params.startDate ? new Date(params.startDate) : now;
+    if (startDate <= now) {
       const status: EquipmentStatus = params.loanType === 'employee' ? 'Выдан' : 'В Работе';
       await historyService.addEntry(params.equipmentId, status, params.currentLocation, '');
     }
@@ -158,12 +157,12 @@ export const loanService = {
   },
 
   async getAllActiveLoans(): Promise<Record<string, Loan>> {
-    const today = new Date().toISOString().slice(0, 10);
+    const now = new Date().toISOString();
     const { data, error } = await supabase
       .from('equipment_loans')
       .select('*')
       .is('returned_at', null)
-      .or(`start_date.is.null,start_date.lte.${today}`);
+      .or(`start_date.is.null,start_date.lte.${now}`);
     if (error) throw error;
     const rows = (data ?? []) as Record<string, unknown>[];
     const names = await resolveNames(rows);

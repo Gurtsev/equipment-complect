@@ -1,12 +1,15 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
-import { Input, Button, Modal, App, Drawer, Select, Badge } from 'antd';
-import { SearchOutlined, PlusOutlined, UnorderedListOutlined, FilterOutlined, AppstoreOutlined } from '@ant-design/icons';
+import { Input, Button, Modal, App, Drawer, Select, Badge, TreeSelect } from 'antd';
+import { SearchOutlined, PlusOutlined, FilterOutlined } from '@ant-design/icons';
 import { EquipmentCard } from '../EquipmentCard';
 import { EquipmentDetail } from '../EquipmentDetail';
 import { historyService } from '../../services/historyService';
-import type { Equipment, EquipmentStatus, EquipmentLocation, EquipmentSection, EquipmentCategory, EquipmentDepartment } from '../../models/Equipment';
+import { buildRoomTree, OFFICE_LABEL } from '../../services/roomService';
+import type { Equipment, EquipmentStatus, EquipmentLocation, EquipmentSection, EquipmentCategory } from '../../models/Equipment';
 import type { Project } from '../../models/Project';
 import type { Room } from '../../services/roomService';
+
+// ── Constants ────────────────────────────────────────────────────────────────
 
 const SECTION_TABS: Array<{ label: string; value: EquipmentSection | 'all' }> = [
   { label: 'Все', value: 'all' },
@@ -17,7 +20,7 @@ const SECTION_TABS: Array<{ label: string; value: EquipmentSection | 'all' }> = 
 
 const CATEGORIES_BY_SECTION: Record<EquipmentSection | 'all', Array<{ label: string; value: EquipmentCategory | 'all' }>> = {
   all: [
-    { label: 'Все категории', value: 'all' },
+    { label: 'Все', value: 'all' },
     { label: 'Камеры', value: 'camera' },
     { label: 'Микрофоны', value: 'microphone' },
     { label: 'Свет', value: 'light' },
@@ -55,19 +58,77 @@ const STATUS_OPTIONS: Array<{ label: string; value: EquipmentStatus }> = [
   { label: 'Списано', value: 'Списано' },
 ];
 
-const DEPT_OPTIONS: Array<{ label: string; value: EquipmentDepartment }> = [
-  { label: 'Студия', value: 'studio' },
-  { label: 'АХО', value: 'aho' },
-  { label: 'Офис', value: 'office' },
+const LOCATION_OPTIONS: Array<{ label: string; value: EquipmentLocation }> = [
+  { label: 'Склад', value: 'Склад' },
+  { label: 'Ремонт', value: 'Ремонт' },
+  { label: 'В пути', value: 'В пути' },
+  { label: 'На руках', value: 'На руках' },
+  { label: 'Офис', value: 'Офис' },
 ];
+
+const SORT_OPTIONS = [
+  { label: 'По умолчанию', value: 'default' },
+  { label: 'Название А→Я', value: 'name_asc' },
+  { label: 'Название Я→А', value: 'name_desc' },
+  { label: 'По статусу', value: 'status' },
+];
+
+// ── Room filter helpers ───────────────────────────────────────────────────────
+
+function getRoomFilterIds(rooms: Room[], selectedValue: string): Set<string> {
+  if (selectedValue.startsWith('office-')) {
+    const office = selectedValue.replace('office-', '');
+    return new Set(rooms.filter((r) => r.office === office).map((r) => r.id));
+  }
+  const result = new Set<string>();
+  const queue = [selectedValue];
+  while (queue.length > 0) {
+    const id = queue.shift()!;
+    result.add(id);
+    rooms.filter((r) => r.parentId === id).forEach((r) => queue.push(r.id));
+  }
+  return result;
+}
+
+function buildFilterOfficeTree(rooms: Room[]): object[] {
+  const offices = ['A', 'B', 'C'] as const;
+  return offices
+    .filter((o) => rooms.some((r) => r.office === o))
+    .map((o) => {
+      const tree = buildRoomTree(rooms.filter((r) => r.office === o));
+      const toNodes = (nodes: ReturnType<typeof buildRoomTree>): object[] =>
+        nodes.map((n) => ({ title: n.name, value: n.id, key: n.id, children: n.children.length ? toNodes(n.children) : undefined }));
+      return { title: OFFICE_LABEL[o], value: `office-${o}`, key: `office-${o}`, children: toNodes(tree) };
+    });
+}
+
+// ── Chip style ───────────────────────────────────────────────────────────────
+
+const chipStyle = (active: boolean): React.CSSProperties => ({
+  padding: '3px 12px',
+  borderRadius: 14,
+  border: `1px solid ${active ? '#1677ff' : '#d9d9d9'}`,
+  background: active ? '#e6f4ff' : '#fff',
+  color: active ? '#1677ff' : '#595959',
+  fontWeight: active ? 600 : 400,
+  fontSize: 12,
+  cursor: 'pointer',
+  whiteSpace: 'nowrap',
+  flexShrink: 0,
+  transition: 'all 0.15s',
+  userSelect: 'none',
+});
+
+// ── Component ────────────────────────────────────────────────────────────────
 
 interface Props {
   items: Equipment[];
   canEditEquipment: (dept: string) => boolean;
   canEdit: boolean;
   onAdd: () => void;
-  onSwitchToList: () => void;
   onEdit: (eq: Equipment) => void;
+  onAddToCart?: (equipmentId: string) => Promise<void>;
+  showControls?: boolean;
   rooms: Room[];
   projects: Project[];
   getEquipmentProject: (id: string) => Project | undefined;
@@ -82,8 +143,9 @@ export function CatalogGrid({
   canEditEquipment,
   canEdit,
   onAdd,
-  onSwitchToList,
   onEdit,
+  onAddToCart,
+  showControls = true,
   rooms,
   getEquipmentProject,
   getEquipmentProjects,
@@ -92,16 +154,27 @@ export function CatalogGrid({
   detailKey,
 }: Props) {
   const { message } = App.useApp();
+
+  // Modal state
+  const [modalEquipment, setModalEquipment] = useState<Equipment | null>(null);
+  const [modalKey, setModalKey] = useState(0);
+
+  // Mobile filter state (only used when showControls=true)
   const [search, setSearch] = useState('');
   const [section, setSection] = useState<EquipmentSection | 'all'>('all');
   const [category, setCategory] = useState<EquipmentCategory | 'all'>('all');
   const [statusFilter, setStatusFilter] = useState<EquipmentStatus | undefined>(undefined);
-  const [deptFilter, setDeptFilter] = useState<EquipmentDepartment | undefined>(undefined);
+  const [locationFilter, setLocationFilter] = useState<EquipmentLocation | undefined>(undefined);
+  const [roomFilter, setRoomFilter] = useState<string | undefined>(undefined);
+  const [sortBy, setSortBy] = useState('default');
   const [filterOpen, setFilterOpen] = useState(false);
-  const [modalEquipment, setModalEquipment] = useState<Equipment | null>(null);
-  const [modalKey, setModalKey] = useState(0);
 
-  const activeFilterCount = [statusFilter, deptFilter].filter(Boolean).length;
+  const roomIds = useMemo(
+    () => roomFilter ? getRoomFilterIds(rooms, roomFilter) : null,
+    [roomFilter, rooms],
+  );
+
+  const activeFilterCount = [statusFilter, locationFilter, roomFilter, sortBy !== 'default' ? sortBy : undefined].filter(Boolean).length;
 
   const handleSectionChange = (val: EquipmentSection | 'all') => {
     setSection(val);
@@ -114,32 +187,30 @@ export function CatalogGrid({
   });
 
   const filtered = useMemo(() => {
+    if (!showControls) return items;
     const q = search.toLowerCase();
-    return items.filter((eq) => {
+    let result = items.filter((eq) => {
       if (section !== 'all' && eq.section !== section) return false;
       if (category !== 'all' && eq.category !== category) return false;
       if (statusFilter && eq.currentStatus !== statusFilter) return false;
-      if (deptFilter && eq.department !== deptFilter) return false;
+      if (locationFilter && eq.currentLocation !== locationFilter) return false;
+      if (roomIds && (eq.roomId == null || !roomIds.has(eq.roomId))) return false;
       if (q && !eq.model.toLowerCase().includes(q) && !eq.subtitle.toLowerCase().includes(q)) return false;
       return true;
     });
-  }, [items, section, category, statusFilter, deptFilter, search]);
+    if (sortBy === 'name_asc') result = [...result].sort((a, b) => a.model.localeCompare(b.model, 'ru'));
+    if (sortBy === 'name_desc') result = [...result].sort((a, b) => b.model.localeCompare(a.model, 'ru'));
+    if (sortBy === 'status') result = [...result].sort((a, b) => a.currentStatus.localeCompare(b.currentStatus, 'ru'));
+    return result;
+  }, [items, showControls, search, section, category, statusFilter, locationFilter, roomIds, sortBy]);
 
   useEffect(() => {
-    setModalEquipment((prev) => {
-      if (!prev) return null;
-      return items.find((e) => e.id === prev.id) ?? prev;
-    });
+    setModalEquipment((prev) => prev ? (items.find((e) => e.id === prev.id) ?? prev) : null);
   }, [items]);
 
-  useEffect(() => {
-    setModalKey((k) => k + 1);
-  }, [detailKey]);
+  useEffect(() => { setModalKey((k) => k + 1); }, [detailKey]);
 
-  const handleCardClick = (eq: Equipment) => {
-    setModalEquipment(eq);
-    setModalKey((k) => k + 1);
-  };
+  const handleCardClick = (eq: Equipment) => { setModalEquipment(eq); setModalKey((k) => k + 1); };
 
   const handleModalStatusUpdate = useCallback(async (
     status: EquipmentStatus,
@@ -156,85 +227,69 @@ export function CatalogGrid({
   }, [modalEquipment, onEquipmentChange, message]);
 
   const handleModalEdit = () => {
-    if (modalEquipment) {
-      onEdit(modalEquipment);
-      setModalEquipment(null);
-    }
+    if (modalEquipment) { onEdit(modalEquipment); setModalEquipment(null); }
   };
 
-  const chipStyle = (active: boolean): React.CSSProperties => ({
-    padding: '3px 12px',
-    borderRadius: 14,
-    border: `1px solid ${active ? '#1677ff' : '#d9d9d9'}`,
-    background: active ? '#e6f4ff' : '#fff',
-    color: active ? '#1677ff' : '#595959',
-    fontWeight: active ? 600 : 400,
-    fontSize: 12,
-    cursor: 'pointer',
-    whiteSpace: 'nowrap',
-    flexShrink: 0,
-    transition: 'all 0.15s',
-    userSelect: 'none',
-  });
+  const handleResetFilters = () => {
+    setStatusFilter(undefined);
+    setLocationFilter(undefined);
+    setRoomFilter(undefined);
+    setSortBy('default');
+  };
+
+  const roomTreeData = useMemo(() => buildFilterOfficeTree(rooms), [rooms]);
 
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-      {/* Header */}
-      <div style={{
-        padding: '10px 12px',
-        background: '#fff',
-        borderBottom: '1px solid #f0f0f0',
-        flexShrink: 0,
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 8,
-      }}>
-        {/* Top row */}
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <Input
-            prefix={<SearchOutlined style={{ color: '#bfbfbf' }} />}
-            placeholder="Поиск..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            allowClear
-            size="small"
-            style={{ flex: 1 }}
-          />
-          <Badge count={activeFilterCount} size="small" offset={[-4, 4]}>
-            <Button
+
+      {/* Mobile controls */}
+      {showControls && (
+        <div style={{ padding: '10px 12px', background: '#fff', borderBottom: '1px solid #f0f0f0', flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {/* Search row */}
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <Input
+              prefix={<SearchOutlined style={{ color: '#bfbfbf' }} />}
+              placeholder="Поиск..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              allowClear
               size="small"
-              icon={<FilterOutlined />}
-              onClick={() => setFilterOpen(true)}
-              type={activeFilterCount > 0 ? 'primary' : 'default'}
+              style={{ flex: 1 }}
             />
-          </Badge>
-          <Button size="small" icon={<UnorderedListOutlined />} onClick={onSwitchToList} title="Список" />
-          <Button size="small" icon={<AppstoreOutlined />} type="primary" title="Сетка" />
-          {canEdit && (
-            <Button size="small" type="primary" icon={<PlusOutlined />} onClick={onAdd} />
-          )}
-        </div>
+            <Badge count={activeFilterCount} size="small" offset={[-4, 4]}>
+              <Button
+                size="small"
+                icon={<FilterOutlined />}
+                onClick={() => setFilterOpen(true)}
+                type={activeFilterCount > 0 ? 'primary' : 'default'}
+              />
+            </Badge>
+            {canEdit && (
+              <Button size="small" type="primary" icon={<PlusOutlined />} onClick={onAdd} />
+            )}
+          </div>
 
-        {/* Section tabs */}
-        <div className="no-scrollbar" style={{ display: 'flex', gap: 6, overflowX: 'auto' }}>
-          {SECTION_TABS.map((tab) => (
-            <span key={tab.value} style={chipStyle(section === tab.value)} onClick={() => handleSectionChange(tab.value)}>
-              {tab.label}
-            </span>
-          ))}
-        </div>
-
-        {/* Category chips */}
-        {categories.length > 2 && (
+          {/* Section tabs */}
           <div className="no-scrollbar" style={{ display: 'flex', gap: 6, overflowX: 'auto' }}>
-            {categories.map((c) => (
-              <span key={c.value} style={chipStyle(category === c.value)} onClick={() => setCategory(c.value)}>
-                {c.label}
+            {SECTION_TABS.map((tab) => (
+              <span key={tab.value} style={chipStyle(section === tab.value)} onClick={() => handleSectionChange(tab.value)}>
+                {tab.label}
               </span>
             ))}
           </div>
-        )}
-      </div>
+
+          {/* Category chips */}
+          {categories.length > 2 && (
+            <div className="no-scrollbar" style={{ display: 'flex', gap: 6, overflowX: 'auto' }}>
+              {categories.map((c) => (
+                <span key={c.value} style={chipStyle(category === c.value)} onClick={() => setCategory(c.value)}>
+                  {c.label}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Grid */}
       <div style={{ flex: 1, overflowY: 'auto', padding: 12 }}>
@@ -243,62 +298,64 @@ export function CatalogGrid({
             Ничего не найдено
           </div>
         ) : (
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))',
-            gap: 10,
-          }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 10 }}>
             {filtered.map((eq) => (
-              <EquipmentCard key={eq.id} equipment={eq} onClick={() => handleCardClick(eq)} />
+              <EquipmentCard
+                key={eq.id}
+                equipment={eq}
+                onClick={() => handleCardClick(eq)}
+                onAddToCart={onAddToCart ? () => void onAddToCart(eq.id) : undefined}
+              />
             ))}
           </div>
         )}
       </div>
 
-      {/* Filter drawer */}
-      <Drawer
-        title="Фильтры"
-        placement="bottom"
-        height="auto"
-        open={filterOpen}
-        onClose={() => setFilterOpen(false)}
-        extra={
-          activeFilterCount > 0 && (
-            <Button
-              size="small"
-              type="link"
-              onClick={() => { setStatusFilter(undefined); setDeptFilter(undefined); }}
-            >
-              Сбросить
-            </Button>
-          )
-        }
-      >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16, paddingBottom: 8 }}>
-          <div>
-            <div style={{ fontSize: 12, color: '#8c8c8c', marginBottom: 6 }}>Статус</div>
-            <Select
-              value={statusFilter}
-              onChange={setStatusFilter}
-              placeholder="Любой статус"
-              allowClear
-              style={{ width: '100%' }}
-              options={STATUS_OPTIONS}
-            />
+      {/* Mobile filter drawer */}
+      {showControls && (
+        <Drawer
+          title="Фильтры"
+          placement="bottom"
+          height="auto"
+          open={filterOpen}
+          onClose={() => setFilterOpen(false)}
+          extra={
+            activeFilterCount > 0 && (
+              <Button size="small" type="link" onClick={handleResetFilters}>Сбросить</Button>
+            )
+          }
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16, paddingBottom: 8 }}>
+            <div>
+              <div style={{ fontSize: 12, color: '#8c8c8c', marginBottom: 6 }}>Статус</div>
+              <Select value={statusFilter} onChange={setStatusFilter} placeholder="Любой статус" allowClear style={{ width: '100%' }} options={STATUS_OPTIONS} />
+            </div>
+            <div>
+              <div style={{ fontSize: 12, color: '#8c8c8c', marginBottom: 6 }}>Локация</div>
+              <Select value={locationFilter} onChange={setLocationFilter} placeholder="Любая локация" allowClear style={{ width: '100%' }} options={LOCATION_OPTIONS} />
+            </div>
+            {rooms.length > 0 && (
+              <div>
+                <div style={{ fontSize: 12, color: '#8c8c8c', marginBottom: 6 }}>Помещение</div>
+                <TreeSelect
+                  value={roomFilter}
+                  onChange={setRoomFilter}
+                  placeholder="Все помещения"
+                  treeData={roomTreeData}
+                  allowClear
+                  showSearch
+                  treeNodeFilterProp="title"
+                  style={{ width: '100%' }}
+                />
+              </div>
+            )}
+            <div>
+              <div style={{ fontSize: 12, color: '#8c8c8c', marginBottom: 6 }}>Упорядочивание</div>
+              <Select value={sortBy} onChange={setSortBy} style={{ width: '100%' }} options={SORT_OPTIONS} />
+            </div>
           </div>
-          <div>
-            <div style={{ fontSize: 12, color: '#8c8c8c', marginBottom: 6 }}>Отдел</div>
-            <Select
-              value={deptFilter}
-              onChange={setDeptFilter}
-              placeholder="Все отделы"
-              allowClear
-              style={{ width: '100%' }}
-              options={DEPT_OPTIONS}
-            />
-          </div>
-        </div>
-      </Drawer>
+        </Drawer>
+      )}
 
       {/* Detail modal */}
       <Modal

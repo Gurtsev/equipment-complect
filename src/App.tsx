@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Layout, App as AntApp, Spin, Button, Typography, Grid, Form, Input, Badge } from 'antd';
-import { LogoutOutlined } from '@ant-design/icons';
+import { Layout, App as AntApp, Spin, Button, Typography, Grid, Form, Input, Badge, Drawer } from 'antd';
+import { LogoutOutlined, ShoppingCartOutlined } from '@ant-design/icons';
 import { CatalogSidebar } from './components/CatalogSidebar';
 import { CatalogGrid } from './components/CatalogGrid';
 import { EquipmentDetail } from './components/EquipmentDetail';
@@ -14,6 +14,8 @@ import { UsersPage } from './components/UsersPage';
 import { CalendarView } from './components/CalendarView';
 import { ConsumablesPage } from './components/ConsumablesPage';
 import { RoomsPage } from './components/RoomsPage';
+import { CartDrawer } from './components/CartDrawer';
+import { ListsPage } from './components/ListsPage';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import logo from './data/мм.webp';
 import { supabase } from './services/supabase';
@@ -23,6 +25,10 @@ import { projectService } from './services/projectService';
 import { consumablesService } from './services/consumablesService';
 import { roomService } from './services/roomService';
 import type { Room } from './services/roomService';
+import { cartService } from './services/cartService';
+import type { CartItem } from './services/cartService';
+import { listService } from './services/listService';
+import type { EquipmentList } from './services/listService';
 import { Equipment, EquipmentLocation, EquipmentStatus } from './models/Equipment';
 import { Project } from './models/Project';
 import type { Consumable } from './services/consumablesService';
@@ -30,7 +36,7 @@ import type { Consumable } from './services/consumablesService';
 const { Sider, Content } = Layout;
 const { Text } = Typography;
 
-type ActiveTab = 'catalog' | 'projects' | 'users' | 'calendar' | 'consumables' | 'rooms';
+type ActiveTab = 'catalog' | 'projects' | 'users' | 'calendar' | 'consumables' | 'rooms' | 'lists';
 
 const ROLE_LABEL: Record<string, string> = {
   admin: 'Администратор',
@@ -56,8 +62,11 @@ function AppInner() {
   const [detailKey, setDetailKey] = useState(0);
   const [equipmentDrawerMode, setEquipmentDrawerMode] = useState<'create' | 'edit' | null>(null);
   const [projectDrawerMode, setProjectDrawerMode] = useState<'create' | 'edit' | null>(null);
-  const [catalogViewMode, setCatalogViewMode] = useState<'list' | 'grid'>('list');
-  const [catalogFilteredItems, setCatalogFilteredItems] = useState<Equipment[]>([]);
+  const [catalogFilteredItems, setCatalogFilteredItems] = useState<Equipment[] | null>(null);
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [dashboardOpen, setDashboardOpen] = useState(false);
+  const [lists, setLists] = useState<EquipmentList[]>([]);
+  const [cartOpen, setCartOpen] = useState(false);
 
   const canEdit = role === 'admin' || role === 'operator';
   // canEditEquipment: учитывает ограничение по отделу для операторов
@@ -77,6 +86,13 @@ function AppInner() {
     setProjects(newProjects);
     setConsumables(newConsumables);
     setRooms(newRooms);
+    // Корзина и списки загружаются отдельно — их ошибка не блокирует основной UI
+    void Promise.all([cartService.getItems(), listService.getAll()])
+      .then(([newCartItems, newLists]) => {
+        setCartItems(newCartItems);
+        setLists(newLists);
+      })
+      .catch(() => { /* cart/lists недоступны — UI работает без них */ });
     return { newItems, newProjects, newRooms };
   }, []);
 
@@ -150,6 +166,9 @@ function AppInner() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'consumables' }, reload)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'consumable_transactions' }, reload)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'equipment_loans' }, reload)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'cart_items' }, reload)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'equipment_lists' }, reload)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'equipment_list_items' }, reload)
       .subscribe();
     return () => {
       clearTimeout(timer);
@@ -158,11 +177,6 @@ function AppInner() {
   }, [user, realtimeReload]);
 
   // --- Equipment handlers ---
-
-  const handleEquipmentSelect = (equipment: Equipment) => {
-    setSelectedEquipment(equipment);
-    setSelectedProject(null);
-  };
 
   const handleEquipmentCreated = async (equipment: Equipment) => {
     try {
@@ -256,6 +270,28 @@ function AppInner() {
     setSelectedProject(project);
     setSelectedEquipment(null);
     setActiveTab('projects');
+  };
+
+  const handleAddToCart = async (equipmentId: string) => {
+    try {
+      await cartService.addItem(equipmentId);
+      const newCartItems = await cartService.getItems();
+      setCartItems(newCartItems);
+      void message.success('Добавлено в корзину');
+    } catch (e) {
+      console.error('cart add error', e);
+      void message.error('Ошибка при добавлении в корзину');
+    }
+  };
+
+  const handleCartChanged = async () => {
+    const newCartItems = await cartService.getItems();
+    setCartItems(newCartItems);
+  };
+
+  const handleListsChanged = async () => {
+    const newLists = await listService.getAll();
+    setLists(newLists);
   };
 
   const handleRoomsChanged = async () => {
@@ -436,6 +472,7 @@ function AppInner() {
         </Badge>
       ),
     }] : []),
+    ...(canEdit ? [{ key: 'lists' as ActiveTab, tabKey: 'lists' as ActiveTab, label: 'Списки' }] : []),
     ...(role === 'admin' ? [{ key: 'users' as ActiveTab, tabKey: 'users' as ActiveTab, label: 'Пользователи' }] : []),
   ];
 
@@ -451,16 +488,15 @@ function AppInner() {
 
   const tabContent = (
     <div style={{ height: '100%', overflow: 'hidden', position: 'relative' }}>
-      <div style={{ height: '100%', display: activeTab === 'catalog' ? 'block' : 'none' }}>
+      <div style={{ height: '100%', display: activeTab === 'catalog' ? 'flex' : 'none', flexDirection: 'column' }}>
         <CatalogSidebar
           items={items}
-          selected={selectedEquipment}
+          selected={null}
           canEdit={canEdit}
-          onSelect={handleEquipmentSelect}
+          onSelect={() => {}}
           onAdd={() => setEquipmentDrawerMode('create')}
-          onSwitchToGrid={() => setCatalogViewMode('grid')}
+          onAddToCart={canEdit ? handleAddToCart : undefined}
           onFilteredItemsChange={setCatalogFilteredItems}
-          viewMode={catalogViewMode}
           rooms={rooms}
         />
       </div>
@@ -493,6 +529,24 @@ function AppInner() {
         initialProject={projectDrawerMode === 'edit' ? (selectedProject ?? undefined) : undefined}
         onUpdated={handleProjectUpdated}
       />
+      <CartDrawer
+        open={cartOpen}
+        onClose={() => setCartOpen(false)}
+        cartItems={cartItems}
+        allEquipment={items}
+        lists={lists}
+        onCartChanged={handleCartChanged}
+        onListsChanged={handleListsChanged}
+      />
+      <Drawer
+        title="Обзор инвентаря"
+        open={dashboardOpen}
+        onClose={() => setDashboardOpen(false)}
+        width={480}
+        styles={{ body: { padding: 0 } }}
+      >
+        <Dashboard items={items} />
+      </Drawer>
     </>
   );
 
@@ -544,13 +598,18 @@ function AppInner() {
       flexShrink: 0,
       overflow: 'hidden',
     }}>
-      <div style={{ display: 'flex', alignItems: 'center', padding: '0 12px', borderRight: '1px solid #f0f0f0', flexShrink: 0 }}>
+      <div style={{ display: 'flex', alignItems: 'center', padding: '0 12px', borderRight: '1px solid #f0f0f0', flexShrink: 0, cursor: 'pointer' }} onClick={() => setDashboardOpen(true)}>
         <img src={logo} alt="Логотип" style={{ height: 32, width: 'auto', display: 'block' }} />
       </div>
       <div style={{ flex: 1, overflowX: 'auto', display: 'flex', scrollbarWidth: 'none' }}>
         {navTabs()}
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 12px', flexShrink: 0, borderLeft: '1px solid #f0f0f0' }}>
+        {canEdit && (
+          <Badge count={cartItems.length} size="small">
+            <Button size="small" icon={<ShoppingCartOutlined />} onClick={() => setCartOpen(true)} title="Корзина" />
+          </Badge>
+        )}
         <div style={{ minWidth: 0, textAlign: 'right' }}>
           <Text strong style={{ fontSize: 12, display: 'block' }} ellipsis>{userName}</Text>
           <Text type="secondary" style={{ fontSize: 11 }}>{ROLE_LABEL[role ?? ''] ?? role}</Text>
@@ -567,8 +626,13 @@ function AppInner() {
       <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', background: '#fff' }}>
         {/* Compact header on mobile */}
         <div style={{ height: 48, background: '#fff', borderBottom: '1px solid #f0f0f0', display: 'flex', alignItems: 'center', padding: '0 16px', flexShrink: 0, gap: 8 }}>
-          <div style={{ flex: 1 }}><img src={logo} alt="Логотип" style={{ height: 28, width: 'auto', display: 'block' }} /></div>
+          <div style={{ flex: 1, cursor: 'pointer' }} onClick={() => setDashboardOpen(true)}><img src={logo} alt="Логотип" style={{ height: 28, width: 'auto', display: 'block' }} /></div>
           <Text type="secondary" style={{ fontSize: 11 }}>{ROLE_LABEL[role ?? ''] ?? role}</Text>
+          {canEdit && (
+            <Badge count={cartItems.length} size="small">
+              <Button size="small" icon={<ShoppingCartOutlined />} onClick={() => setCartOpen(true)} />
+            </Badge>
+          )}
           <Button size="small" icon={<LogoutOutlined />} onClick={() => void signOut()} />
         </div>
         {!showDetail && (
@@ -586,15 +650,17 @@ function AppInner() {
           <div style={{ flex: 1, overflow: 'auto', background: '#f5f7fa' }}><ConsumablesPage consumables={consumables} canEdit={canEdit} onChanged={() => void loadAll()} /></div>
         ) : activeTab === 'rooms' ? (
           <div style={{ flex: 1, overflow: 'hidden', background: '#fff' }}><RoomsPage rooms={rooms} allEquipment={items} canEdit={canEdit} selectedRoom={selectedRoom} onRoomSelect={setSelectedRoom} onRoomsChanged={handleRoomsChanged} /></div>
-        ) : activeTab === 'catalog' && catalogViewMode === 'grid' ? (
+        ) : activeTab === 'lists' ? (
+          <div style={{ flex: 1, overflow: 'auto', background: '#f5f7fa' }}><ListsPage lists={lists} allEquipment={items} projects={projects} canEdit={canEdit} onListsChanged={handleListsChanged} /></div>
+        ) : activeTab === 'catalog' ? (
           <div style={{ flex: 1, overflow: 'hidden', background: '#f5f7fa' }}>
             <CatalogGrid
-              items={catalogFilteredItems}
+              items={catalogFilteredItems ?? items}
               canEditEquipment={canEditEquipment}
               canEdit={canEdit}
               onAdd={() => setEquipmentDrawerMode('create')}
-              onSwitchToList={() => setCatalogViewMode('list')}
               onEdit={(eq) => { setSelectedEquipment(eq); setEquipmentDrawerMode('edit'); }}
+              onAddToCart={canEdit ? handleAddToCart : undefined}
               rooms={rooms}
               projects={projects}
               getEquipmentProject={(id) => getEquipmentProject(id) ?? undefined}
@@ -629,14 +695,16 @@ function AppInner() {
            activeTab === 'calendar' ? <CalendarView {...calendarProps} /> :
            activeTab === 'consumables' ? <ConsumablesPage consumables={consumables} canEdit={canEdit} onChanged={() => void loadAll()} /> :
            activeTab === 'rooms' ? <RoomsPage rooms={rooms} allEquipment={items} canEdit={canEdit} selectedRoom={selectedRoom} onRoomSelect={setSelectedRoom} onRoomsChanged={handleRoomsChanged} /> :
-           activeTab === 'catalog' && catalogViewMode === 'grid' ? (
+           activeTab === 'lists' ? <ListsPage lists={lists} allEquipment={items} projects={projects} canEdit={canEdit} onListsChanged={handleListsChanged} /> :
+           activeTab === 'catalog' ? (
              <CatalogGrid
-               items={catalogFilteredItems}
+               items={catalogFilteredItems ?? items}
                canEditEquipment={canEditEquipment}
                canEdit={canEdit}
+               showControls={false}
                onAdd={() => setEquipmentDrawerMode('create')}
-               onSwitchToList={() => setCatalogViewMode('list')}
                onEdit={(eq) => { setSelectedEquipment(eq); setEquipmentDrawerMode('edit'); }}
+               onAddToCart={canEdit ? handleAddToCart : undefined}
                rooms={rooms}
                projects={projects}
                getEquipmentProject={(id) => getEquipmentProject(id) ?? undefined}
