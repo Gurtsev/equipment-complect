@@ -52,6 +52,8 @@ src/
     RoomsPage/                # Полноширинная вкладка: дерево помещений + QR
     EmployeeCard/             # Drawer из UsersPage: выданное оборудование сотрудника
     UsersPage/                # Вкладка «Пользователи» (только admin)
+    CatalogGrid/              # Полноширинная сетка карточек (режим grid вместо списка)
+    EquipmentCard/            # Карточка для сетки: SVG-заглушка по категории, статус-бейдж
   App.tsx                     # Root: весь стейт, async загрузка, роутинг правой панели
   main.tsx                    # React entry point
   print.css                   # @media print стили

@@ -91,7 +91,6 @@
 | Проблема | Статус |
 |----------|--------|
 | GitHub Pages не работает с self-hosted Supabase — нет SSL | Нужен HTTPS (Caddy/nginx + Let's Encrypt) |
-| Фильтры сайдбара не применяются к сетке карточек | В работе |
 
 ---
 
@@ -109,12 +108,7 @@ db.megapolis.media         → Supabase Studio (порт 3000)
 
 ---
 
-### Приоритет 2 — Фильтры сайдбара в режиме сетки
-Сайдбар с фильтрами должен оставаться видимым в grid-режиме и передавать отфильтрованные элементы в сетку карточек.
-
----
-
-### Приоритет 3 — Безопасность (4.11)
+### Приоритет 2 — Безопасность (4.11)
 
 | # | Задача | Риск |
 |---|--------|------|
@@ -128,7 +122,7 @@ db.megapolis.media         → Supabase Studio (порт 3000)
 
 ---
 
-### Приоритет 4 — Составные объекты (4.12)
+### Приоритет 3 — Составные объекты (4.12, нужен для 1С)
 Иерархия «родитель — компоненты» для ПК и других комплектов.
 
 **Что нужно в БД:**
@@ -148,7 +142,7 @@ CREATE TABLE pending_1c_items (
 
 ---
 
-### Приоритет 5 — Интеграция с 1С (Этап 5)
+### Приоритет 4 — Интеграция с 1С (Этап 5)
 
 **Условие запуска:** схема данных заморожена + весь инвентарь занесён в систему + QR-коды наклеены физически.
 
@@ -168,7 +162,7 @@ CREATE TABLE pending_1c_items (
 
 ---
 
-### Приоритет 6 — Интеграция с Nexus (КСУ)
+### Приоритет 5 — Интеграция с Nexus (КСУ)
 
 **Текущий статус:** Инвентаризация работает автономно. Nexus в разработке.  
 **Документ соглашений:** `docs/integration-nexus.md`
@@ -205,6 +199,6 @@ CREATE TABLE pending_1c_items (
 | 012 | start_date в equipment_loans |
 | 013 | rooms (иерархия помещений) |
 | 014 | responsible в rooms |
-| 015_section_attributes | section, attributes, quantity в equipment |
 | 015_integration_prep | profile_id→user_id, is_active в profiles |
-| — | **016** (план): pending_1c_items, parent_id, synced_with_1c |
+| 016_section_attributes | section, attributes, quantity в equipment |
+| — | **017** (план): pending_1c_items, parent_id, synced_with_1c |
