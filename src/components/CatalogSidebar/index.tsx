@@ -334,7 +334,7 @@ export function CatalogSidebar({ items, selected, canEdit, onSelect, onAdd, onSw
   ];
 
   return (
-    <Flex vertical style={{ height: '100%' }}>
+    <Flex vertical style={{ height: '100%', overflow: 'hidden' }}>
       {/* Header */}
       <div style={{ padding: '12px 16px', borderBottom: filtersOpen ? 'none' : '1px solid #f0f0f0' }}>
         <Flex justify="space-between" align="center" style={{ marginBottom: filtersOpen ? 10 : 0 }}>
@@ -490,7 +490,7 @@ export function CatalogSidebar({ items, selected, canEdit, onSelect, onAdd, onSw
 
       {/* List — скрыт в режиме сетки */}
       <List
-        style={{ flex: 1, overflowY: 'auto', display: viewMode === 'grid' ? 'none' : undefined }}
+        style={{ flex: 1, overflowY: 'auto', minHeight: 0, display: viewMode === 'grid' ? 'none' : undefined }}
         dataSource={filtered}
         locale={{ emptyText: items.length === 0 ? 'Каталог пуст' : 'Ничего не найдено' }}
         renderItem={(item) => {
