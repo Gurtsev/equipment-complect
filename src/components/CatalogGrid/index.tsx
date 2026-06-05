@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { Input, Button, Modal, App, Drawer, Select, Badge } from 'antd';
-import { SearchOutlined, PlusOutlined, UnorderedListOutlined, FilterOutlined } from '@ant-design/icons';
+import { SearchOutlined, PlusOutlined, UnorderedListOutlined, FilterOutlined, AppstoreOutlined } from '@ant-design/icons';
 import { EquipmentCard } from '../EquipmentCard';
 import { EquipmentDetail } from '../EquipmentDetail';
 import { historyService } from '../../services/historyService';
@@ -209,6 +209,7 @@ export function CatalogGrid({
             />
           </Badge>
           <Button size="small" icon={<UnorderedListOutlined />} onClick={onSwitchToList} title="Список" />
+          <Button size="small" icon={<AppstoreOutlined />} type="primary" title="Сетка" />
           {canEdit && (
             <Button size="small" type="primary" icon={<PlusOutlined />} onClick={onAdd} />
           )}
