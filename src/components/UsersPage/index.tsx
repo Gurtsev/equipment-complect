@@ -142,6 +142,8 @@ export function UsersPage({ canEdit, allEquipment, onEquipmentChanged }: Props) 
       title: 'Имя',
       dataIndex: 'name',
       key: 'name',
+      fixed: 'left' as const,
+      width: 160,
       render: (name: string, record: Profile) => (
         <div>
           <div>{name}</div>
@@ -273,6 +275,7 @@ export function UsersPage({ canEdit, allEquipment, onEquipmentChanged }: Props) 
                 loading={loading}
                 size="small"
                 pagination={false}
+                scroll={{ x: 500 }}
                 locale={{ emptyText: 'Нет пользователей' }}
               />
             ),
