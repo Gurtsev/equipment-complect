@@ -572,7 +572,7 @@ function AppInner() {
           <Button size="small" icon={<LogoutOutlined />} onClick={() => void signOut()} />
         </div>
         {!showDetail && (
-          <div style={{ borderBottom: '1px solid #f0f0f0', overflowX: 'auto', flexShrink: 0 }}>
+          <div className="no-scrollbar" style={{ borderBottom: '1px solid #f0f0f0', overflowX: 'auto', flexShrink: 0 }}>
             {navTabs(true)}
           </div>
         )}

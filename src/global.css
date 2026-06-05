@@ -1,3 +1,12 @@
+/* Скрытый скроллбар с сохранением прокрутки */
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 /* Перенос текста по словам везде — запрет посимвольного разбиения */
 *,
 *::before,
