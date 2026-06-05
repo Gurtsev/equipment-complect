@@ -450,7 +450,7 @@ function AppInner() {
   };
 
   const tabContent = (
-    <div style={{ flex: 1, overflow: 'hidden', position: 'relative' }}>
+    <div style={{ height: '100%', overflow: 'hidden', position: 'relative' }}>
       <div style={{ height: '100%', display: activeTab === 'catalog' ? 'block' : 'none' }}>
         <CatalogSidebar
           items={items}
