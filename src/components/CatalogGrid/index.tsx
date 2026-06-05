@@ -1,10 +1,10 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
-import { Input, Button, Modal, App } from 'antd';
-import { SearchOutlined, PlusOutlined, UnorderedListOutlined } from '@ant-design/icons';
+import { Input, Button, Modal, App, Drawer, Select, Badge } from 'antd';
+import { SearchOutlined, PlusOutlined, UnorderedListOutlined, FilterOutlined } from '@ant-design/icons';
 import { EquipmentCard } from '../EquipmentCard';
 import { EquipmentDetail } from '../EquipmentDetail';
 import { historyService } from '../../services/historyService';
-import type { Equipment, EquipmentStatus, EquipmentLocation, EquipmentSection, EquipmentCategory } from '../../models/Equipment';
+import type { Equipment, EquipmentStatus, EquipmentLocation, EquipmentSection, EquipmentCategory, EquipmentDepartment } from '../../models/Equipment';
 import type { Project } from '../../models/Project';
 import type { Room } from '../../services/roomService';
 
@@ -46,6 +46,21 @@ const CATEGORIES_BY_SECTION: Record<EquipmentSection | 'all', Array<{ label: str
   prop: [{ label: 'Все', value: 'all' }, { label: 'Реквизит', value: 'prop' }, { label: 'Аксессуары', value: 'accessory' }],
 };
 
+const STATUS_OPTIONS: Array<{ label: string; value: EquipmentStatus }> = [
+  { label: 'В Работе', value: 'В Работе' },
+  { label: 'На Складе', value: 'На Складе' },
+  { label: 'В Ремонте', value: 'В Ремонте' },
+  { label: 'Выдан', value: 'Выдан' },
+  { label: 'В Пути', value: 'В Пути' },
+  { label: 'Списано', value: 'Списано' },
+];
+
+const DEPT_OPTIONS: Array<{ label: string; value: EquipmentDepartment }> = [
+  { label: 'Студия', value: 'studio' },
+  { label: 'АХО', value: 'aho' },
+  { label: 'Офис', value: 'office' },
+];
+
 interface Props {
   items: Equipment[];
   canEditEquipment: (dept: string) => boolean;
@@ -80,10 +95,14 @@ export function CatalogGrid({
   const [search, setSearch] = useState('');
   const [section, setSection] = useState<EquipmentSection | 'all'>('all');
   const [category, setCategory] = useState<EquipmentCategory | 'all'>('all');
+  const [statusFilter, setStatusFilter] = useState<EquipmentStatus | undefined>(undefined);
+  const [deptFilter, setDeptFilter] = useState<EquipmentDepartment | undefined>(undefined);
+  const [filterOpen, setFilterOpen] = useState(false);
   const [modalEquipment, setModalEquipment] = useState<Equipment | null>(null);
   const [modalKey, setModalKey] = useState(0);
 
-  // Сбрасываем категорию при смене секции
+  const activeFilterCount = [statusFilter, deptFilter].filter(Boolean).length;
+
   const handleSectionChange = (val: EquipmentSection | 'all') => {
     setSection(val);
     setCategory('all');
@@ -99,10 +118,12 @@ export function CatalogGrid({
     return items.filter((eq) => {
       if (section !== 'all' && eq.section !== section) return false;
       if (category !== 'all' && eq.category !== category) return false;
+      if (statusFilter && eq.currentStatus !== statusFilter) return false;
+      if (deptFilter && eq.department !== deptFilter) return false;
       if (q && !eq.model.toLowerCase().includes(q) && !eq.subtitle.toLowerCase().includes(q)) return false;
       return true;
     });
-  }, [items, section, category, search]);
+  }, [items, section, category, statusFilter, deptFilter, search]);
 
   useEffect(() => {
     setModalEquipment((prev) => {
@@ -168,7 +189,7 @@ export function CatalogGrid({
         flexDirection: 'column',
         gap: 8,
       }}>
-        {/* Top row: search + buttons */}
+        {/* Top row */}
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <Input
             prefix={<SearchOutlined style={{ color: '#bfbfbf' }} />}
@@ -179,6 +200,14 @@ export function CatalogGrid({
             size="small"
             style={{ flex: 1 }}
           />
+          <Badge count={activeFilterCount} size="small" offset={[-4, 4]}>
+            <Button
+              size="small"
+              icon={<FilterOutlined />}
+              onClick={() => setFilterOpen(true)}
+              type={activeFilterCount > 0 ? 'primary' : 'default'}
+            />
+          </Badge>
           <Button size="small" icon={<UnorderedListOutlined />} onClick={onSwitchToList} title="Список" />
           {canEdit && (
             <Button size="small" type="primary" icon={<PlusOutlined />} onClick={onAdd} />
@@ -186,7 +215,7 @@ export function CatalogGrid({
         </div>
 
         {/* Section tabs */}
-        <div style={{ display: 'flex', gap: 6, overflowX: 'auto', scrollbarWidth: 'none' }}>
+        <div className="no-scrollbar" style={{ display: 'flex', gap: 6, overflowX: 'auto' }}>
           {SECTION_TABS.map((tab) => (
             <span key={tab.value} style={chipStyle(section === tab.value)} onClick={() => handleSectionChange(tab.value)}>
               {tab.label}
@@ -194,9 +223,9 @@ export function CatalogGrid({
           ))}
         </div>
 
-        {/* Category chips — только если категорий больше 1 */}
+        {/* Category chips */}
         {categories.length > 2 && (
-          <div style={{ display: 'flex', gap: 6, overflowX: 'auto', scrollbarWidth: 'none' }}>
+          <div className="no-scrollbar" style={{ display: 'flex', gap: 6, overflowX: 'auto' }}>
             {categories.map((c) => (
               <span key={c.value} style={chipStyle(category === c.value)} onClick={() => setCategory(c.value)}>
                 {c.label}
@@ -224,6 +253,51 @@ export function CatalogGrid({
           </div>
         )}
       </div>
+
+      {/* Filter drawer */}
+      <Drawer
+        title="Фильтры"
+        placement="bottom"
+        height="auto"
+        open={filterOpen}
+        onClose={() => setFilterOpen(false)}
+        extra={
+          activeFilterCount > 0 && (
+            <Button
+              size="small"
+              type="link"
+              onClick={() => { setStatusFilter(undefined); setDeptFilter(undefined); }}
+            >
+              Сбросить
+            </Button>
+          )
+        }
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16, paddingBottom: 8 }}>
+          <div>
+            <div style={{ fontSize: 12, color: '#8c8c8c', marginBottom: 6 }}>Статус</div>
+            <Select
+              value={statusFilter}
+              onChange={setStatusFilter}
+              placeholder="Любой статус"
+              allowClear
+              style={{ width: '100%' }}
+              options={STATUS_OPTIONS}
+            />
+          </div>
+          <div>
+            <div style={{ fontSize: 12, color: '#8c8c8c', marginBottom: 6 }}>Отдел</div>
+            <Select
+              value={deptFilter}
+              onChange={setDeptFilter}
+              placeholder="Все отделы"
+              allowClear
+              style={{ width: '100%' }}
+              options={DEPT_OPTIONS}
+            />
+          </div>
+        </div>
+      </Drawer>
 
       {/* Detail modal */}
       <Modal
