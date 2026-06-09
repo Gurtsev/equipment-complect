@@ -35,6 +35,20 @@ jobs:
           username: root
           key: ${{ secrets.VDS_SSH_KEY }}
           script: |
+            mkdir -p ~/inventory
+            cat << 'EOF' > ~/inventory/docker-compose.yml
+            services:
+              inventory:
+                image: ghcr.io/gurtsev/equipment-complect:latest
+                container_name: inventory-web
+                restart: unless-stopped
+                networks:
+                  - web_proxy
+
+            networks:
+              web_proxy:
+                external: true
+            EOF
             cd ~/inventory
             echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             docker compose pull
