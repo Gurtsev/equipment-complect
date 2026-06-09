@@ -4,6 +4,26 @@
 
 ---
 
+## 📊 Статус на 2026-06-09 (обновлено после деплоя Nexus)
+
+**Nexus развёрнут на проде и работает end-to-end.** Что сделано сегодня:
+
+- ✅ **Миграция `sso_multischema` применена на проде.** Была в состоянии failed (роль `postgres` в Supabase не суперюзер → не могла создать схему). Починили: выдали `postgres` через `supabase_admin` права `CREATE ON DATABASE` + членство в `nexus_role`, перезапустили api — миграция прошла. Все 23 таблицы приложения переехали в схему `nexus`, `public.users` создана.
+- ✅ **Авторизация на Supabase Auth** работает: вход → JWT → Nexus резолвит юзера по `auth_id`, права по `nexus.users.isAdmin`.
+- ✅ **TLS для `auth.knzteam.ru` настроен в NPM** (его не хватало: Proxy Host → `supabase-kong:8000`, Let's Encrypt). Без него логин был невозможен.
+- ✅ **Контейнеры `nexus-api` / `nexus-web` — Up**, вход админом проверен в браузере.
+- ✅ **Админ Nexus заведён правильно**: `auth.users` + `public.users` (id = auth.uid) + `nexus.users` (isAdmin) — все три связаны.
+
+**Что подтвердилось про контракт:**
+- Inventory логинится через общий `auth.users` (Supabase Auth) и ведёт свою `inventory.profiles` — **`public.users` сейчас НЕ использует**. Единственное общее на данный момент — `auth.users` (единый вход).
+- `public.users` уже существует (целевая модель), но как **общий справочник** заработает только когда Inventory сделает свою часть Этапа 2 (profiles → VIEW над `public.users`).
+
+**⚠️ Отклонение от плана:** на проде `DATABASE_URL` у Nexus = роль `postgres` (а не `nexus_role`, как в плане). Причина: `nexus_role` не имеет `CREATE ON DATABASE`, не может прогонять миграции со схемами. Для чистой изоляции на уровне БД нужно либо выдать `nexus_role` право создавать схемы, либо разделить миграционную и рантайм-роли. На изоляцию **прикладных** ролей не влияет.
+
+**⚠️ К объединению (для Inventory):** сейчас триггер `handle_new_user` создаёт `inventory.profiles` на **каждый** новый `auth.users` → Nexus-only юзеры протекают в список inventory. На Этапе 2 заменяется на VIEW над `public.users` (только сотрудники компании).
+
+---
+
 ## 🚀 Текущая задача — деплой на прод VDS
 
 **Сервер:** `147.45.97.124` / `knzteam.ru` (домен временный, потом сменим на `megapolis.media`)
@@ -14,11 +34,12 @@
 
 ### Nexus — что делаем мы
 
-- [ ] **1. Добавить GitHub Secrets** (github.com → репо → Settings → Secrets → Actions):
+- [x] **1. Добавить GitHub Secrets** (github.com → репо → Settings → Secrets → Actions):
   - `VDS_SSH_KEY` — приватный SSH-ключ для `root@147.45.97.124`
   - `SUPABASE_ANON_KEY` — значение из `PROD_SUPABASE_ANON_KEY` в `.env`
+  _(деплой прошёл → секреты заданы)_
 
-- [ ] **2. Подготовить VDS** (один раз, по SSH: `ssh root@147.45.97.124`):
+- [x] **2. Подготовить VDS** (один раз, по SSH: `ssh root@147.45.97.124`):
   ```bash
   # Docker-сеть для NPM
   docker network create web_proxy
@@ -27,7 +48,7 @@
   git clone https://github.com/knyazzer/PlanOtchetGlot.git ~/nexus
   ```
 
-- [ ] **3. Создать `~/nexus/.env` на VDS:**
+- [x] **3. Создать `~/nexus/.env` на VDS:** _(создан; `DATABASE_URL` сейчас на роли `postgres` — см. отклонение в статусе вверху)_
   ```env
   DATABASE_URL=postgresql://nexus_role:fbw4629@localhost:5432/postgres
   JWT_SECRET=HXX6BGmSnFtGP3fULHvtZsEBe6upwTIipobMQNUsB2Y=
@@ -38,26 +59,13 @@
   SUPABASE_SERVICE_ROLE_KEY=<из PROD_SUPABASE_SERVICE_ROLE_KEY>
   ```
 
-- [ ] **4. Обновить NPM прокси** `nexus.knzteam.ru`:
-  - Forward Hostname: `nexus-web`
-  - Forward Port: `80`
-  _(было: `127.0.0.1:4000` — поменять на контейнер)_
+- [x] **4. Обновить NPM прокси** `nexus.knzteam.ru` → `nexus-web:80` _(Online)_. Также добавлен `auth.knzteam.ru` → `supabase-kong:8000` (его не хватало для логина).
 
-- [ ] **5. Запустить деплой** — просто `git push origin master`, CD сделает всё сам:
-  - соберёт образы `nexus-api` и `nexus-web` в GHCR
-  - SSH на VDS → `docker compose pull` → `docker compose up -d`
+- [x] **5. Запустить деплой** — `git push origin master`, CD собрал образы и развернул на VDS.
 
-- [ ] **6. Проверить** — `https://nexus.knzteam.ru` открывается, логин работает.
+- [x] **6. Проверить** — `https://nexus.knzteam.ru` открывается, вход админом работает.
 
-- [ ] **7. После деплоя — заполнить `public.users`** (один раз, через Studio или psql):
-  ```sql
-  INSERT INTO public.users (id, email, name, position, department, is_active, created_at)
-  SELECT gen_random_uuid(), email, name, position, department, "isActive", "createdAt"
-  FROM nexus.users
-  WHERE email IS NOT NULL
-  ON CONFLICT (email) DO NOTHING;
-  ```
-  > ⚠️ `id` будет временным UUID (не Supabase auth.uid). Исправится при онбординге пользователей.
+- [x] **7. ~~Заполнить `public.users` массово~~ — не нужно.** Онбординг (`POST /auth/onboard`) пишет `public.users` с правильным `id = auth.uid`. Массовый INSERT с `gen_random_uuid()` (как было задумано) дал бы неверные id — **не использовать**. Пользователи заводятся через онбординг.
 
 ---
 
@@ -407,12 +415,11 @@ WHERE ea.user_id = $1
 - [ ] Пересоздать ручные объекты: `inventory.is_email_allowed`, `protect_master_admin`, bucket `equipment-images`
 - [ ] Завести тестовые данные
 
-### Nexus (Этап 1)
+### Nexus (Этап 1) — ✅ ЗАВЕРШЁН (2026-06-09)
 - [x] `fullName → name`, `dept → department` в Prisma-схеме и коде
-- [ ] Применить миграцию: `docker compose up -d` → `pnpm db:migrate` → `pnpm db:migrate:test`
-- [ ] Мигрировать авторизацию с `@fastify/jwt` на Supabase Auth
-      (предусловие для Этапа 2 — без этого объединение невозможно)
-- [ ] Деплой на VDS для тестирования
+- [x] Применить миграцию — применена на проде (см. статус вверху)
+- [x] Мигрировать авторизацию с `@fastify/jwt` на Supabase Auth — сделано, вход проверен
+- [x] Деплой на VDS — развёрнут, логин админом работает
 
 ### При объединении (Этап 2)
 - [ ] Создать схемы `nexus` и `inventory` в общем Supabase, настроить PostgREST
