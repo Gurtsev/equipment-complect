@@ -19,7 +19,7 @@ export const supabase = createClient(url, key, {
   db: { schema: 'inventory' },
   global: { fetch: fetchWithTimeout },
   auth: {
-    detectSessionInUrl: false,
-    persistSession: false,
+    detectSessionInUrl: true,
+    persistSession: true,
   },
 });
