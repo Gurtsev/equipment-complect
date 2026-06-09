@@ -25,7 +25,7 @@ jobs:
           tags: ghcr.io/gurtsev/equipment-complect:latest
           build-args: |
             VITE_SUPABASE_URL=https://auth.knzteam.ru
-            VITE_SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}
+            VITE_SUPABASE_ANON_KEY=eyJhbGciOiAiSFMyNTYiLCAidHlwIjogIkpXVCJ9.eyJyb2xlIjogImFub24iLCAiaXNzIjogInN1cGFiYXNlIiwgImlhdCI6IDE3MDAwMDAwMDAsICJleHAiOiAxOTAwMDAwMDAwfQ.YKDUlCDKjwblY5ZA9YqmzMvr76zTfXRvRoG2KorbWOM
 
   deploy:
     runs-on: ubuntu-latest
