@@ -7,7 +7,6 @@ export interface Assignment {
   equipmentId: string;
   profileId: string;
   profileName: string;
-  profileEmail: string;
   assignedAt: Date;
   returnedAt: Date | null;
   notes?: string;
@@ -28,19 +27,18 @@ export const assignmentService = {
   async getCurrentAssignment(equipmentId: string): Promise<Assignment | null> {
     const { data, error } = await supabase
       .from('employee_assignments')
-      .select('*, profiles!user_id(name, email)')
+      .select('*')
       .eq('equipment_id', equipmentId)
       .is('returned_at', null)
       .maybeSingle();
     if (error) throw error;
     if (!data) return null;
-    const profile = data.profiles as { name: string; email: string } | null;
+    const { data: profiles } = await supabase.rpc('get_profile_names', { ids: [data.user_id] });
     return {
       id: data.id,
       equipmentId: data.equipment_id,
       profileId: data.user_id,
-      profileName: profile?.name ?? '—',
-      profileEmail: profile?.email ?? '—',
+      profileName: profiles?.[0]?.name ?? '—',
       assignedAt: new Date(data.assigned_at),
       returnedAt: data.returned_at ? new Date(data.returned_at) : null,
       notes: data.notes ?? undefined,

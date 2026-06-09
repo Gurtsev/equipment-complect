@@ -1,9 +1,9 @@
 -- user_id в истории оборудования
-alter table public.equipment_history
+alter table inventory.equipment_history
   add column if not exists user_id uuid references auth.users(id) on delete set null;
 
 -- Триггер: автоматически заполняем user_id из сессии при INSERT
-create or replace function public.set_history_user_id()
+create or replace function inventory.set_history_user_id()
 returns trigger
 language plpgsql
 as $$
@@ -15,12 +15,12 @@ begin
 end;
 $$;
 
-drop trigger if exists set_history_user_id on public.equipment_history;
+drop trigger if exists set_history_user_id on inventory.equipment_history;
 create trigger set_history_user_id
-  before insert on public.equipment_history
-  for each row execute function public.set_history_user_id();
+  before insert on inventory.equipment_history
+  for each row execute function inventory.set_history_user_id();
 
 -- Все аутентифицированные видят все профили (нужно для отображения имён в истории)
-drop policy if exists "profiles_select" on public.profiles;
-create policy "profiles_select" on public.profiles
+drop policy if exists "profiles_select" on inventory.profiles;
+create policy "profiles_select" on inventory.profiles
   for select to authenticated using (true);

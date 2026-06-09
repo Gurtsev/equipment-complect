@@ -1,6 +1,6 @@
 # Состояние проекта — Инвентаризация студии
 
-Актуально на: 2026-06-05
+Актуально на: 2026-06-08
 
 ---
 
@@ -23,7 +23,7 @@
 ## ✅ Реализовано
 
 ### Ядро системы
-- Каталог оборудования: список и сетка карточек с переключателем
+- Каталог оборудования: сетка карточек (только grid-режим, список убран), фильтрация через боковую панель / drawer на мобайле
 - Фильтры: по разделу (Техника / Мебель / Реквизит), категории, статусу, локации, помещению, отделу
 - История перемещений с указанием пользователя, который внёс изменение
 - Экспорт в CSV и Excel
@@ -63,6 +63,15 @@
 - GitHub Actions CI/CD: push в master → сборка → деплой на GitHub Pages
 - Vitest тесты: diff-синхронизация project_equipment (5 тестов)
 
+### Корзина и Списки (бронирование)
+- Архитектура: Корзина → Список → Проект/Займ с проверкой конфликтов дат
+- DB: `carts`, `cart_items`, `equipment_lists`, `equipment_list_items`, `loan_conflict_events` (миграция 018)
+- DB: `date → timestamptz` для `projects` и `equipment_loans`, DateTimePicker с шагом 15 мин (миграция 017)
+- Сервисы `cartService`, `listService`; компоненты `CartDrawer`, `ListsPage` (вкладка «Списки», только canEdit)
+- Кнопка «В корзину» на карточках оборудования и в списке каталога
+- Иконка корзины с бейджем в хедере
+- Не реализовано: привязка списка к проекту/займу с проверкой конфликтов, UI уведомлений о конфликтах займов
+
 ### Подготовка к интеграции с Nexus
 - Переименование `profile_id → user_id` в `employee_assignments` (миграция 015)
 - Добавлено поле `is_active` в `profiles` (миграция 015)
@@ -75,8 +84,8 @@
 Миграции написаны, но могут быть ещё не применены на self-hosted:
 
 ```
-015_integration_prep.sql   — profile_id→user_id, is_active в profiles
-015_section_attributes.sql — поля section, attributes, quantity в equipment
+017_datetime_precision.sql — date→timestamptz для projects и equipment_loans
+018_cart_and_lists.sql     — таблицы корзины и списков
 ```
 
 Также создать вручную в Studio:
@@ -201,4 +210,6 @@ CREATE TABLE pending_1c_items (
 | 014 | responsible в rooms |
 | 015_integration_prep | profile_id→user_id, is_active в profiles |
 | 016_section_attributes | section, attributes, quantity в equipment |
-| — | **017** (план): pending_1c_items, parent_id, synced_with_1c |
+| 017_datetime_precision | date→timestamptz для projects и equipment_loans |
+| 018_cart_and_lists | carts, cart_items, equipment_lists, equipment_list_items, loan_conflict_events |
+| — | **019** (план): pending_1c_items, parent_id, synced_with_1c |

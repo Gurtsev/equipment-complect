@@ -1,0 +1,11 @@
+services:
+  inventory:
+    image: ghcr.io/gurtsev/equipment-complect:latest
+    container_name: inventory-web
+    restart: unless-stopped
+    networks:
+      - web_proxy
+
+networks:
+  web_proxy:
+    external: true

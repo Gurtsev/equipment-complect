@@ -187,6 +187,7 @@ WHERE ea.user_id = $1
 - [ ] Создать схемы `nexus` и `shared`, настроить PostgREST
 - [ ] Создать `shared.users`, мигрировать данные Nexus
 - [ ] Создать `VIEW public.profiles → shared.users`
+  - ⚠️ От `public.profiles` зависит `VIEW public.profile_names` (миграция 019, безопасное чтение `id, name` без email/role). `DROP TABLE profiles` потребует `CASCADE` и снесёт `profile_names` — порядок действий: `DROP VIEW profile_names` → пересоздать `public.profiles` как view над `shared.users` → пересоздать `profile_names` поверх неё
 - [ ] Обновить `current_user_role()` для маппинга `producer → operator`
 - [ ] Перенести регистрацию в Nexus, убрать форму из Инвентаризации
 - [ ] Настроить субдомены `hq.megapolis.media` и `db.megapolis.media`

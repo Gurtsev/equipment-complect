@@ -102,11 +102,8 @@ export const consumablesService = {
     const userIds = [...new Set(rows.filter((r) => r.user_id).map((r) => r.user_id as string))];
     let nameMap: Record<string, string> = {};
     if (userIds.length > 0) {
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('id, name')
-        .in('id', userIds);
-      nameMap = Object.fromEntries((profiles ?? []).map((p) => [p.id as string, p.name as string]));
+      const { data: profiles } = await supabase.rpc('get_profile_names', { ids: userIds });
+      nameMap = Object.fromEntries((profiles ?? []).map((p: { id: string; name: string }) => [p.id, p.name]));
     }
 
     return rows.map((row) => ({

@@ -46,10 +46,7 @@ export const projectHistoryService = {
     const userIds = [...new Set((data ?? []).map((r) => r.user_id).filter(Boolean))] as string[];
     const nameById = new Map<string, string>();
     if (userIds.length > 0) {
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('id, name')
-        .in('id', userIds);
+      const { data: profiles } = await supabase.rpc('get_profile_names', { ids: userIds });
       for (const p of profiles ?? []) nameById.set(p.id, p.name);
     }
 

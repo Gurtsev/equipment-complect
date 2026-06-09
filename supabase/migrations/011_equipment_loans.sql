@@ -1,12 +1,12 @@
 -- Временные займы оборудования (сотруднику или в отдел)
-create table public.equipment_loans (
+create table inventory.equipment_loans (
   id uuid primary key default gen_random_uuid(),
-  equipment_id text not null references public.equipment(id) on delete cascade,
+  equipment_id text not null references inventory.equipment(id) on delete cascade,
   loan_type text not null check (loan_type in ('employee', 'department')),
-  to_profile_id uuid references public.profiles(id),
+  to_profile_id uuid references inventory.profiles(id),
   to_department text check (to_department in ('studio', 'aho', 'office')),
   from_department text not null check (from_department in ('studio', 'aho', 'office')),
-  project_id text references public.projects(id),
+  project_id text references inventory.projects(id),
   issued_by uuid references auth.users(id),
   issued_at timestamptz not null default now(),
   due_date date,
@@ -19,8 +19,8 @@ create table public.equipment_loans (
 );
 
 -- BEFORE INSERT: заполнить issued_by
-create or replace function public.set_loan_issued_by()
-returns trigger language plpgsql security definer set search_path = public as $$
+create or replace function inventory.set_loan_issued_by()
+returns trigger language plpgsql security definer set search_path = inventory, public as $$
 begin
   new.issued_by := auth.uid();
   return new;
@@ -28,22 +28,22 @@ end;
 $$;
 
 create trigger loan_issued_by_trigger
-before insert on public.equipment_loans
-for each row execute function public.set_loan_issued_by();
+before insert on inventory.equipment_loans
+for each row execute function inventory.set_loan_issued_by();
 
 -- RLS
-alter table public.equipment_loans enable row level security;
+alter table inventory.equipment_loans enable row level security;
 
-create policy "loans_select" on public.equipment_loans
+create policy "loans_select" on inventory.equipment_loans
   for select to authenticated using (true);
 
-create policy "loans_insert" on public.equipment_loans
+create policy "loans_insert" on inventory.equipment_loans
   for insert to authenticated
-  with check (public.current_user_role() in ('admin', 'operator'));
+  with check (inventory.current_user_role() in ('admin', 'operator'));
 
-create policy "loans_update" on public.equipment_loans
+create policy "loans_update" on inventory.equipment_loans
   for update to authenticated
-  using (public.current_user_role() in ('admin', 'operator'));
+  using (inventory.current_user_role() in ('admin', 'operator'));
 
 -- Realtime
-alter publication supabase_realtime add table public.equipment_loans;
+alter publication supabase_realtime add table inventory.equipment_loans;

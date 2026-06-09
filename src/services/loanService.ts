@@ -61,8 +61,8 @@ async function resolveNames(rows: Record<string, unknown>[]): Promise<Record<str
     if (r.issued_by) ids.add(r.issued_by as string);
   });
   if (ids.size === 0) return {};
-  const { data } = await supabase.from('profiles').select('id, name').in('id', [...ids]);
-  return Object.fromEntries((data ?? []).map((p) => [p.id as string, p.name as string]));
+  const { data } = await supabase.rpc('get_profile_names', { ids: [...ids] });
+  return Object.fromEntries((data ?? []).map((p: { id: string; name: string }) => [p.id, p.name]));
 }
 
 export const loanService = {

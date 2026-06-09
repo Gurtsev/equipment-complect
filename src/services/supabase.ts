@@ -16,6 +16,7 @@ function fetchWithTimeout(input: RequestInfo | URL, init?: RequestInit): Promise
 }
 
 export const supabase = createClient(url, key, {
+  db: { schema: 'inventory' },
   global: { fetch: fetchWithTimeout },
   auth: {
     detectSessionInUrl: false,

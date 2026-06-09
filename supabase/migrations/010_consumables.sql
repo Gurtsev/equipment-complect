@@ -1,5 +1,5 @@
 -- Расходные материалы
-create table public.consumables (
+create table inventory.consumables (
   id uuid primary key default gen_random_uuid(),
   name text not null,
   category text not null check (category in ('hygiene', 'drinks', 'stationery', 'cleaning', 'other')),
@@ -12,9 +12,9 @@ create table public.consumables (
 );
 
 -- Движения по расходным материалам
-create table public.consumable_transactions (
+create table inventory.consumable_transactions (
   id uuid primary key default gen_random_uuid(),
-  consumable_id uuid not null references public.consumables(id) on delete cascade,
+  consumable_id uuid not null references inventory.consumables(id) on delete cascade,
   type text not null check (type in ('in', 'out', 'writeoff')),
   delta integer not null check (delta > 0),
   user_id uuid references auth.users(id),
@@ -23,48 +23,48 @@ create table public.consumable_transactions (
 );
 
 -- Триггер: обновлять quantity после добавления транзакции
-create or replace function public.apply_consumable_transaction()
-returns trigger language plpgsql security definer set search_path = public as $$
+create or replace function inventory.apply_consumable_transaction()
+returns trigger language plpgsql security definer set search_path = inventory, public as $$
 begin
   if new.type = 'in' then
-    update public.consumables set quantity = quantity + new.delta where id = new.consumable_id;
+    update inventory.consumables set quantity = quantity + new.delta where id = new.consumable_id;
   else
-    update public.consumables set quantity = greatest(0, quantity - new.delta) where id = new.consumable_id;
+    update inventory.consumables set quantity = greatest(0, quantity - new.delta) where id = new.consumable_id;
   end if;
   return new;
 end;
 $$;
 
 create trigger consumable_transaction_after_insert
-after insert on public.consumable_transactions
-for each row execute function public.apply_consumable_transaction();
+after insert on inventory.consumable_transactions
+for each row execute function inventory.apply_consumable_transaction();
 
 -- RLS
-alter table public.consumables enable row level security;
-alter table public.consumable_transactions enable row level security;
+alter table inventory.consumables enable row level security;
+alter table inventory.consumable_transactions enable row level security;
 
-create policy "consumables_select" on public.consumables
+create policy "consumables_select" on inventory.consumables
   for select to authenticated using (true);
 
-create policy "consumables_insert" on public.consumables
+create policy "consumables_insert" on inventory.consumables
   for insert to authenticated
-  with check (public.current_user_role() in ('admin', 'operator'));
+  with check (inventory.current_user_role() in ('admin', 'operator'));
 
-create policy "consumables_update" on public.consumables
+create policy "consumables_update" on inventory.consumables
   for update to authenticated
-  using (public.current_user_role() in ('admin', 'operator'));
+  using (inventory.current_user_role() in ('admin', 'operator'));
 
-create policy "consumables_delete" on public.consumables
+create policy "consumables_delete" on inventory.consumables
   for delete to authenticated
-  using (public.current_user_role() = 'admin');
+  using (inventory.current_user_role() = 'admin');
 
-create policy "ctrans_select" on public.consumable_transactions
+create policy "ctrans_select" on inventory.consumable_transactions
   for select to authenticated using (true);
 
-create policy "ctrans_insert" on public.consumable_transactions
+create policy "ctrans_insert" on inventory.consumable_transactions
   for insert to authenticated
-  with check (public.current_user_role() in ('admin', 'operator'));
+  with check (inventory.current_user_role() in ('admin', 'operator'));
 
 -- Realtime
-alter publication supabase_realtime add table public.consumables;
-alter publication supabase_realtime add table public.consumable_transactions;
+alter publication supabase_realtime add table inventory.consumables;
+alter publication supabase_realtime add table inventory.consumable_transactions;
