@@ -152,10 +152,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signOut = async () => {
-    await supabase.auth.signOut();
-    // Single logout: гасим и сессию Nexus, иначе портал тут же
-    // переавторизует пользователя обратно при редиректе на /login.
+    // Сразу уходим на логаут Nexus, не дожидаясь signOut(): иначе onAuthStateChange
+    // успевает обновить user=null до навигации, App.tsx видит !user и редиректит
+    // на /login раньше, чем мы — на /?logout=1 (а сессия Nexus в этот момент ещё жива,
+    // /login тут же переавторизует обратно — выход не происходит).
+    const pending = supabase.auth.signOut();
     window.location.href = 'https://nexus.knzteam.ru/?logout=1';
+    await pending;
   };
 
   const updatePassword = async (password: string): Promise<string | null> => {
