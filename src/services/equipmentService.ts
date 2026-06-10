@@ -66,7 +66,8 @@ export const equipmentService = {
       .from('equipment_history')
       .select('equipment_id, status, location, responsible, recorded_at, user_id')
       .in('equipment_id', rows.map((r) => r.id))
-      .order('recorded_at', { ascending: false });
+      .order('recorded_at', { ascending: false })
+      .order('id', { ascending: false });
     if (hErr) throw hErr;
 
     const byEquipment = new Map<string, HistoryRow[]>();
