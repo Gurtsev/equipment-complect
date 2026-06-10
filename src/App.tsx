@@ -329,7 +329,11 @@ function AppInner() {
   }
 
   if (!user && !isRecovery && !recoveryError) {
-    const redirect = encodeURIComponent(window.location.href);
+    // Без хеша: в нём могут быть access_token/refresh_token от Nexus SSO,
+    // и при подстановке в query param redirect URL превышает лимит nginx (414).
+    const redirect = encodeURIComponent(
+      window.location.origin + window.location.pathname + window.location.search,
+    );
     window.location.replace(`${NEXUS_LOGIN_URL}?redirect=${redirect}`);
     return (
       <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
