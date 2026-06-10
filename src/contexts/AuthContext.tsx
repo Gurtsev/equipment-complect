@@ -123,15 +123,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     });
 
-    // Восстановить сессию при старте (persistSession: true хранит её в localStorage,
-    // detectSessionInUrl: true подхватывает SSO-токены из URL-фрагмента).
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    // Восстановить сессию при старте.
+    (async () => {
+      // detectSessionInUrl требует access_token+expires_in+refresh_token+token_type
+      // в хеше и молча проваливается, если Nexus передаёт только access_token+refresh_token.
+      // Поэтому разбираем хеш сами и поднимаем сессию через setSession().
+      const hashParams = new URLSearchParams(window.location.hash.slice(1));
+      const at = hashParams.get('access_token');
+      const rt = hashParams.get('refresh_token');
+      if (at && rt) {
+        window.history.replaceState(null, '', window.location.pathname + window.location.search);
+        await supabase.auth.setSession({ access_token: at, refresh_token: rt });
+      }
+
+      // persistSession: true хранит сессию в localStorage — подхватываем при обычной загрузке.
+      const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
         setUser(session.user);
       }
       clearTimeout(timer);
       setLoading(false);
-    });
+    })();
 
     return () => {
       clearTimeout(timer);
