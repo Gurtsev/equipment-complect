@@ -21,7 +21,6 @@ jobs:
         with:
           context: .
           push: true
-          no-cache: true
           tags: ghcr.io/gurtsev/equipment-complect:latest
           build-args: |
             VITE_SUPABASE_URL=https://auth.knzteam.ru
