@@ -9,7 +9,7 @@ interface EquipmentRow {
   section: string;
   description: string;
   image: string;
-  inv_number: string;
+  inv_number: string | null;
   serial_number: string;
   responsible: string;
   accessories: string[];
@@ -36,7 +36,7 @@ function toEquipment(row: EquipmentRow, history: HistoryRow[], nameById: Map<str
     section: (row.section ?? 'tech') as EquipmentSection,
     description: row.description,
     image: row.image,
-    invNumber: row.inv_number,
+    invNumber: row.inv_number ?? '',
     serialNumber: row.serial_number,
     responsible: row.responsible,
     accessories: row.accessories ?? [],
@@ -95,7 +95,7 @@ export const equipmentService = {
       section: equipment.section,
       description: equipment.description,
       image: equipment.image,
-      inv_number: equipment.invNumber,
+      inv_number: equipment.invNumber || null,
       serial_number: equipment.serialNumber,
       responsible: equipment.responsible,
       accessories: equipment.accessories,

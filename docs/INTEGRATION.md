@@ -27,7 +27,7 @@
 ### Статус Инвентаризации (обновлено 2026-06-10)
 
 **Этап 1 завершён, приложение в проде.**
-- ✅ Чистый передеплой в схему `inventory` (миграции 001–020, `combined_001_021.sql`)
+- ✅ Чистый передеплой в схему `inventory` (миграции 001–020, `combined_001_022.sql`)
 - ✅ PostgREST `db-schemas = inventory, public` настроен и проверен (curl)
 - ✅ Ручные объекты пересозданы: `inventory.is_email_allowed`, `protect_master_admin`, bucket `equipment-images`
 - ✅ Деплой: `https://inventory.knzteam.ru` (Docker + nginx + GitHub Actions CD на том же VDS)
@@ -106,7 +106,7 @@
 
 - [x] **2. `.env` настроен** _(адаптировано под SPA: `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY` вместо `DATABASE_URL`, см. п.1)_
 
-- [x] **3. Переехали все таблицы из `public` → схему `inventory`** — чистый передеплой выполнен, миграции 001–020 прогнаны (`combined_001_021.sql`)
+- [x] **3. Переехали все таблицы из `public` → схему `inventory`** — чистый передеплой выполнен, миграции 001–020 прогнаны (`combined_001_022.sql`)
 
 - [x] **4. PostgREST настроен**:
   ```toml
@@ -420,7 +420,7 @@ WHERE ea.user_id = $1
 - [x] Фронтенд: `db: { schema: 'inventory' }` в `supabase.ts`
 - [x] Realtime: все 10 таблиц квалифицированы как `inventory.*`
 - [x] PostgREST: `db-schemas = inventory, public` — настроено, контейнер перезапущен, проверено curl
-- [x] Чистый передеплой: БД очищена, миграции 001–020 прогнаны (`combined_001_021.sql`)
+- [x] Чистый передеплой: БД очищена, миграции 001–020 прогнаны (`combined_001_022.sql`)
 - [x] Пересоздать ручные объекты: `inventory.is_email_allowed`, `protect_master_admin`, bucket `equipment-images`
 - [x] Завести тестовые данные: первый admin-аккаунт создан, вход проверен
 - [x] Задеплоено: `https://inventory.knzteam.ru` (Docker + nginx + GitHub Actions CD)
