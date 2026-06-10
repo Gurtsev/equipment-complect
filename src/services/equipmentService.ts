@@ -1,12 +1,11 @@
 import { supabase } from './supabase';
-import { Equipment, EquipmentCategory, EquipmentDepartment, EquipmentLocation, EquipmentSection, EquipmentStatus } from '../models/Equipment';
+import { Equipment, EquipmentCategory, EquipmentLocation, EquipmentSection, EquipmentStatus } from '../models/Equipment';
 
 interface EquipmentRow {
   id: string;
   model: string;
   subtitle: string;
   category: string;
-  department: string;
   section: string;
   description: string;
   image: string;
@@ -34,7 +33,6 @@ function toEquipment(row: EquipmentRow, history: HistoryRow[], nameById: Map<str
     model: row.model,
     subtitle: row.subtitle,
     category: row.category as EquipmentCategory,
-    department: (row.department ?? 'studio') as EquipmentDepartment,
     section: (row.section ?? 'tech') as EquipmentSection,
     description: row.description,
     image: row.image,
@@ -94,7 +92,6 @@ export const equipmentService = {
       model: equipment.model,
       subtitle: equipment.subtitle,
       category: equipment.category,
-      department: equipment.department,
       section: equipment.section,
       description: equipment.description,
       image: equipment.image,
@@ -128,7 +125,6 @@ export const equipmentService = {
         model: equipment.model,
         subtitle: equipment.subtitle,
         category: equipment.category,
-        department: equipment.department,
         section: equipment.section,
         description: equipment.description,
         image: equipment.image,

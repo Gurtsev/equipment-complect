@@ -14,7 +14,6 @@ import {
   App,
   Grid,
   Avatar,
-  Radio,
   Alert,
 } from 'antd';
 import { QrcodeOutlined, EditOutlined, PrinterOutlined, ArrowLeftOutlined, UserOutlined, SwapOutlined } from '@ant-design/icons';
@@ -23,12 +22,11 @@ import {
   Equipment,
   EquipmentStatus,
   EquipmentLocation,
-  EquipmentDepartment,
   HistoryEntry,
 } from '../../models/Equipment';
 import { Project } from '../../models/Project';
 import { assignmentService, Assignment } from '../../services/assignmentService';
-import { loanService, Loan, LoanType } from '../../services/loanService';
+import { loanService, Loan } from '../../services/loanService';
 import { getRoomPath } from '../../services/roomService';
 import { usersService, Profile } from '../../services/usersService';
 
@@ -37,12 +35,6 @@ const { Title, Text } = Typography;
 // 'Забронировано' не включён — статус проставляется только через проекты
 const STATUSES: EquipmentStatus[] = ['В Работе', 'На Складе', 'В Ремонте', 'Списано', 'В Пути'];
 const LOCATIONS: EquipmentLocation[] = ['Склад', 'Ремонт', 'В пути', 'На руках', 'Офис'];
-
-const DEPT_LABEL: Record<string, string> = {
-  studio: 'Студия',
-  aho: 'АХО',
-  office: 'Офис',
-};
 
 const STATUS_COLOR: Record<EquipmentStatus, string> = {
   'В Работе': 'success',
@@ -148,9 +140,7 @@ export function EquipmentDetail({ equipment, canEdit, onEdit, project, equipment
 
   const [openLoans, setOpenLoans] = useState<Loan[]>([]);
   const [loanOpen, setLoanOpen] = useState(false);
-  const [loanType, setLoanType] = useState<LoanType>('employee');
   const [loanProfileId, setLoanProfileId] = useState<string | undefined>();
-  const [loanDepartment, setLoanDepartment] = useState<EquipmentDepartment | undefined>();
   const [loanStartDate, setLoanStartDate] = useState('');
   const [loanDueDate, setLoanDueDate] = useState('');
   const [loanNotes, setLoanNotes] = useState('');
@@ -274,9 +264,7 @@ export function EquipmentDetail({ equipment, canEdit, onEdit, project, equipment
               onClick={async () => {
                 const p = await usersService.getProfiles();
                 setProfiles(p);
-                setLoanType('employee');
                 setLoanProfileId(undefined);
-                setLoanDepartment(undefined);
                 setLoanStartDate('');
                 setLoanDueDate('');
                 setLoanNotes('');
@@ -323,9 +311,7 @@ export function EquipmentDetail({ equipment, canEdit, onEdit, project, equipment
             <SwapOutlined style={{ color: '#1677ff', fontSize: 18, flexShrink: 0 }} />
             <div style={{ flex: 1 }}>
               <Text strong style={{ fontSize: 13 }}>
-                {activeLoan.loanType === 'employee'
-                  ? `Займ: ${activeLoan.toProfileName ?? '—'}`
-                  : `Займ → ${DEPT_LABEL[activeLoan.toDepartment!]}`}
+                Займ: {activeLoan.toProfileName ?? '—'}
               </Text>
               <Text type="secondary" style={{ fontSize: 11, display: 'block' }}>
                 {(activeLoan.startDate ?? activeLoan.issuedAt).toLocaleDateString('ru-RU')}
@@ -356,9 +342,7 @@ export function EquipmentDetail({ equipment, canEdit, onEdit, project, equipment
                 <SwapOutlined style={{ color: '#597ef7', flexShrink: 0, fontSize: 14 }} />
                 <div style={{ flex: 1 }}>
                   <Text style={{ fontSize: 12 }}>
-                    Запланирован: {loan.loanType === 'employee'
-                      ? (loan.toProfileName ?? '—')
-                      : `отдел ${DEPT_LABEL[loan.toDepartment!]}`}
+                    Запланирован: {loan.toProfileName ?? '—'}
                   </Text>
                   <Text type="secondary" style={{ fontSize: 11, display: 'block' }}>
                     {loan.startDate!.toLocaleDateString('ru-RU')}
@@ -406,7 +390,6 @@ export function EquipmentDetail({ equipment, canEdit, onEdit, project, equipment
             <Text code style={{ whiteSpace: 'nowrap' }}>{equipment.id}</Text>
           </Descriptions.Item>
           <Descriptions.Item label="Ответственный">{equipment.responsible}</Descriptions.Item>
-          <Descriptions.Item label="Отдел">{DEPT_LABEL[equipment.department] ?? equipment.department}</Descriptions.Item>
           {equipment.roomId && rooms.length > 0 && (
             <Descriptions.Item label="Помещение" span={2}>
               {getRoomPath(rooms, equipment.roomId)}
@@ -620,22 +603,16 @@ export function EquipmentDetail({ equipment, canEdit, onEdit, project, equipment
         confirmLoading={loanLoading}
         okButtonProps={{ disabled: hasConflict }}
         onOk={async () => {
-          if (loanType === 'employee' && !loanProfileId) {
+          if (!loanProfileId) {
             void message.error('Выберите сотрудника');
-            return;
-          }
-          if (loanType === 'department' && !loanDepartment) {
-            void message.error('Выберите отдел');
             return;
           }
           setLoanLoading(true);
           try {
             await loanService.create({
               equipmentId: equipment.id,
-              loanType,
-              toProfileId: loanType === 'employee' ? loanProfileId : undefined,
-              toDepartment: loanType === 'department' ? loanDepartment : undefined,
-              fromDepartment: equipment.department,
+              loanType: 'employee',
+              toProfileId: loanProfileId,
               currentLocation: equipment.currentLocation,
               startDate: loanStartDate || undefined,
               dueDate: loanDueDate || undefined,
@@ -652,33 +629,15 @@ export function EquipmentDetail({ equipment, canEdit, onEdit, project, equipment
         }}
       >
         <Flex vertical gap={12} style={{ marginTop: 8 }}>
-          <Radio.Group value={loanType} onChange={(e) => setLoanType(e.target.value as LoanType)}>
-            <Radio value="employee">Сотруднику</Radio>
-            <Radio value="department">В отдел</Radio>
-          </Radio.Group>
-          {loanType === 'employee' ? (
-            <Select
-              placeholder="Выберите сотрудника"
-              value={loanProfileId}
-              onChange={setLoanProfileId}
-              style={{ width: '100%' }}
-              options={profiles.map((p) => ({ value: p.id, label: `${p.name} (${p.email ?? p.role})` }))}
-              showSearch
-              filterOption={(input, opt) => (opt?.label as string ?? '').toLowerCase().includes(input.toLowerCase())}
-            />
-          ) : (
-            <Select
-              placeholder="Выберите отдел"
-              value={loanDepartment}
-              onChange={(v) => setLoanDepartment(v as EquipmentDepartment)}
-              style={{ width: '100%' }}
-              options={[
-                { value: 'studio', label: 'Студия' },
-                { value: 'aho', label: 'АХО' },
-                { value: 'office', label: 'Офис' },
-              ]}
-            />
-          )}
+          <Select
+            placeholder="Выберите сотрудника"
+            value={loanProfileId}
+            onChange={setLoanProfileId}
+            style={{ width: '100%' }}
+            options={profiles.map((p) => ({ value: p.id, label: `${p.name} (${p.email ?? p.role})` }))}
+            showSearch
+            filterOption={(input, opt) => (opt?.label as string ?? '').toLowerCase().includes(input.toLowerCase())}
+          />
           <Input
             type="date"
             placeholder="Дата начала (по умолчанию сегодня)"

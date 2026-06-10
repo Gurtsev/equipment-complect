@@ -27,7 +27,7 @@
 ### Статус Инвентаризации (обновлено 2026-06-10)
 
 **Этап 1 завершён, приложение в проде.**
-- ✅ Чистый передеплой в схему `inventory` (миграции 001–020, `combined_001_020.sql`)
+- ✅ Чистый передеплой в схему `inventory` (миграции 001–020, `combined_001_021.sql`)
 - ✅ PostgREST `db-schemas = inventory, public` настроен и проверен (curl)
 - ✅ Ручные объекты пересозданы: `inventory.is_email_allowed`, `protect_master_admin`, bucket `equipment-images`
 - ✅ Деплой: `https://inventory.knzteam.ru` (Docker + nginx + GitHub Actions CD на том же VDS)
@@ -106,7 +106,7 @@
 
 - [x] **2. `.env` настроен** _(адаптировано под SPA: `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY` вместо `DATABASE_URL`, см. п.1)_
 
-- [x] **3. Переехали все таблицы из `public` → схему `inventory`** — чистый передеплой выполнен, миграции 001–020 прогнаны (`combined_001_020.sql`)
+- [x] **3. Переехали все таблицы из `public` → схему `inventory`** — чистый передеплой выполнен, миграции 001–020 прогнаны (`combined_001_021.sql`)
 
 - [x] **4. PostgREST настроен**:
   ```toml
@@ -420,7 +420,7 @@ WHERE ea.user_id = $1
 - [x] Фронтенд: `db: { schema: 'inventory' }` в `supabase.ts`
 - [x] Realtime: все 10 таблиц квалифицированы как `inventory.*`
 - [x] PostgREST: `db-schemas = inventory, public` — настроено, контейнер перезапущен, проверено curl
-- [x] Чистый передеплой: БД очищена, миграции 001–020 прогнаны (`combined_001_020.sql`)
+- [x] Чистый передеплой: БД очищена, миграции 001–020 прогнаны (`combined_001_021.sql`)
 - [x] Пересоздать ручные объекты: `inventory.is_email_allowed`, `protect_master_admin`, bucket `equipment-images`
 - [x] Завести тестовые данные: первый admin-аккаунт создан, вход проверен
 - [x] Задеплоено: `https://inventory.knzteam.ru` (Docker + nginx + GitHub Actions CD)
@@ -524,6 +524,8 @@ if (at && rt) {
 - при отсутствии сессии — `redirect` на `https://nexus.knzteam.ru/login?redirect=<свой_url>` вместо своей формы;
 - **убрать свою форму логина/регистрации** (вкладка «Зарегистрироваться» уходит — регистрация только в Nexus).
 
+> ⚠️ **Петля редиректа / `414 Request-URI Too Large`** возникает, если приложение редиректит на портал, **не приняв токены** (Шаг 1), и/или кладёт в `redirect` полный `href` с накопленным хешем. Порядок строгий: сначала принять токены из хеша (Шаг 1) → потом проверка сессии → редирект только при её отсутствии, с **чистым origin** (без хеша/query). У Inventory это обеспечивается тем, что редирект на портал ([App.tsx](../src/App.tsx)) выполняется только после завершения `loading` в `AuthContext`, а `loading` не сбрасывается, пока не отработает разбор хеша + `setSession`/`getSession` ([AuthContext.tsx](../src/contexts/AuthContext.tsx)) — то есть к моменту проверки `!user` токены уже обработаны, гонки нет. `redirect` строится из `origin + pathname + search`, без хеша. (Nexus со своей стороны тоже отрезает хеш/query у redirect, чтобы URL не рос.)
+
 ### На стороне Nexus — ✅ СДЕЛАНО и задеплоено (2026-06-09)
 - ✅ `/login?redirect=…`: после входа отдаёт сессию на `redirect` через URL-хеш (`#access_token=…&refresh_token=…`). Проверено: переход на `inventory.knzteam.ru` с токенами работает.
 - ✅ Whitelist доменов для redirect: `*.knzteam.ru` и `*.megapolis.media` (защита от open-redirect) — `apps/web/src/lib/sso.ts`.
@@ -545,16 +547,25 @@ if (at && rt) {
 
 **Проблема:** `signOut()` в Inventory чистит только локальную (на `inventory.knzteam.ru`) сессию Supabase. Сессия Nexus (на `nexus.knzteam.ru`, отдельный origin/localStorage) остаётся активной. После signOut приложение редиректит на `https://nexus.knzteam.ru/login?redirect=...`, а Nexus, видя свою активную сессию, тут же отдаёт новые токены и редиректит обратно — пользователь мгновенно залогинен снова.
 
-**Решение:** Nexus предоставляет endpoint единого логаута:
+**Решение из двух частей:**
+
+1. **Отзыв сессии на сервере** — `signOut({ scope: 'global' })` отзывает refresh-токены в Supabase, поэтому сессия пользователя умирает во **всех** приложениях (на следующем refresh/протухании access-токена), а не только на своём origin. Nexus так и делает во всех своих логаутах (✅).
+   > Примечание: `scope: 'global'` — это значение по умолчанию в `supabase-js` (`signOut(options = { scope: 'global' })`), но мы указываем его явно для наглядности.
+
+2. **Nexus logout-URL** — гасит **локальную** сессию Nexus сразу:
 ```
 https://nexus.knzteam.ru/?logout=1
 ```
-Гасит Supabase-сессию Nexus + чистит cookies, оставляет пользователя на форме входа.
+(делает `signOut({ scope: 'global' })` + чистит cookies + оставляет на форме входа).
 
 Кнопка «Выйти» в Inventory (`AuthContext.signOut`):
 ```js
-await supabase.auth.signOut();                                // локальный выход inventory
-window.location.href = 'https://nexus.knzteam.ru/?logout=1';  // гасим и сессию Nexus
+await supabase.auth.signOut({ scope: 'global' });             // отзыв на сервере → выйдут все сервисы
+window.location.href = 'https://nexus.knzteam.ru/?logout=1';  // + сразу погасить локальную сессию Nexus
 ```
+
+> ⚠️ **КРИТИЧНО:** «Выйти» ведёт на **`/?logout=1`**, а **НЕ на портал** (`/login?redirect=…`). Если вести на портал — Nexus, будучи ещё залогиненным, отдаст токены обратно → петля логаута. Logout-эндпоинт назад в inventory не редиректит — цикла нет.
+
+- ✅ Реализовано на стороне Инвентаризации.
 
 - ✅ Реализовано на стороне Инвентаризации.

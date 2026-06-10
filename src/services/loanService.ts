@@ -1,8 +1,8 @@
 import { supabase } from './supabase';
 import { historyService } from './historyService';
-import type { EquipmentDepartment, EquipmentStatus, EquipmentLocation } from '../models/Equipment';
+import type { EquipmentStatus, EquipmentLocation } from '../models/Equipment';
 
-export type LoanType = 'employee' | 'department';
+export type LoanType = 'employee';
 
 export interface Loan {
   id: string;
@@ -10,8 +10,6 @@ export interface Loan {
   loanType: LoanType;
   toProfileId: string | null;
   toProfileName: string | null;
-  toDepartment: EquipmentDepartment | null;
-  fromDepartment: EquipmentDepartment;
   projectId: string | null;
   issuedByName: string | null;
   issuedAt: Date;
@@ -28,8 +26,6 @@ export interface EquipmentLoanSummary {
   equipmentInvNumber: string;
   equipmentImage: string | null;
   loanType: LoanType;
-  toDepartment: EquipmentDepartment | null;
-  fromDepartment: EquipmentDepartment;
   issuedAt: Date;
   dueDate: Date | null;
   notes: string | null;
@@ -42,8 +38,6 @@ function mapLoan(row: Record<string, unknown>, profiles: Record<string, string>)
     loanType: row.loan_type as LoanType,
     toProfileId: (row.to_profile_id as string) ?? null,
     toProfileName: row.to_profile_id ? (profiles[row.to_profile_id as string] ?? null) : null,
-    toDepartment: (row.to_department as EquipmentDepartment) ?? null,
-    fromDepartment: row.from_department as EquipmentDepartment,
     projectId: (row.project_id as string) ?? null,
     issuedByName: row.issued_by ? (profiles[row.issued_by as string] ?? null) : null,
     issuedAt: new Date(row.issued_at as string),
@@ -106,8 +100,6 @@ export const loanService = {
       equipmentInvNumber: (row.equipment as Record<string, unknown>)?.inv_number as string ?? '',
       equipmentImage: (row.equipment as Record<string, unknown>)?.image as string ?? null,
       loanType: row.loan_type as LoanType,
-      toDepartment: null,
-      fromDepartment: row.from_department as EquipmentDepartment,
       issuedAt: new Date(row.issued_at as string),
       dueDate: row.due_date ? new Date(row.due_date as string) : null,
       notes: (row.notes as string) ?? null,
@@ -118,8 +110,6 @@ export const loanService = {
     equipmentId: string;
     loanType: LoanType;
     toProfileId?: string;
-    toDepartment?: EquipmentDepartment;
-    fromDepartment: EquipmentDepartment;
     currentLocation: EquipmentLocation;
     startDate?: string;
     projectId?: string;
@@ -130,8 +120,6 @@ export const loanService = {
       equipment_id: params.equipmentId,
       loan_type: params.loanType,
       to_profile_id: params.toProfileId ?? null,
-      to_department: params.toDepartment ?? null,
-      from_department: params.fromDepartment,
       start_date: params.startDate ?? null,
       project_id: params.projectId ?? null,
       due_date: params.dueDate ?? null,
@@ -142,7 +130,7 @@ export const loanService = {
     const now = new Date();
     const startDate = params.startDate ? new Date(params.startDate) : now;
     if (startDate <= now) {
-      const status: EquipmentStatus = params.loanType === 'employee' ? 'Выдан' : 'В Работе';
+      const status: EquipmentStatus = 'Выдан';
       await historyService.addEntry(params.equipmentId, status, params.currentLocation, '');
     }
   },

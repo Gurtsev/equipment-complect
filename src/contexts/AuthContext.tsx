@@ -1,7 +1,6 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import type { User } from '@supabase/supabase-js';
 import { supabase } from '../services/supabase';
-import type { EquipmentDepartment } from '../models/Equipment';
 
 export type UserRole = 'admin' | 'operator' | 'viewer';
 
@@ -9,7 +8,6 @@ interface AuthState {
   user: User | null;
   role: UserRole | null;
   userName: string;
-  userDepartment: EquipmentDepartment | null;
   loading: boolean;
   isRecovery: boolean;
   recoveryError: string | null;
@@ -21,10 +19,10 @@ const AuthContext = createContext<AuthState | null>(null);
 
 async function fetchOrCreateProfile(
   user: User,
-): Promise<{ name: string; role: UserRole; department: EquipmentDepartment | null } | null> {
+): Promise<{ name: string; role: UserRole } | null> {
   const { data } = await supabase
     .from('profiles')
-    .select('name, role, department')
+    .select('name, role')
     .eq('id', user.id)
     .single();
 
@@ -40,7 +38,7 @@ async function fetchOrCreateProfile(
   const { data: created } = await supabase
     .from('profiles')
     .insert({ id: user.id, name, role: 'viewer', email: user.email })
-    .select('name, role, department')
+    .select('name, role')
     .single();
 
   return created ?? null;
@@ -50,17 +48,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [role, setRole] = useState<UserRole | null>(null);
   const [userName, setUserName] = useState('');
-  const [userDepartment, setUserDepartment] = useState<EquipmentDepartment | null>(null);
   const [loading, setLoading] = useState(true);
   const [isRecovery, setIsRecovery] = useState(false);
   const [recoveryError, setRecoveryError] = useState<string | null>(null);
 
-  function applyProfile(
-    profile: { name: string; role: UserRole; department: EquipmentDepartment | null } | null,
-  ) {
+  function applyProfile(profile: { name: string; role: UserRole } | null) {
     setRole(profile?.role ?? null);
     setUserName(profile?.name ?? '');
-    setUserDepartment(profile?.department ?? null);
   }
 
   // Обрабатываем error-фрагменты (просроченные ссылки восстановления пароля).
@@ -156,7 +150,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // успевает обновить user=null до навигации, App.tsx видит !user и редиректит
     // на /login раньше, чем мы — на /?logout=1 (а сессия Nexus в этот момент ещё жива,
     // /login тут же переавторизует обратно — выход не происходит).
-    const pending = supabase.auth.signOut();
+    // scope: 'global' — отзывает refresh-токен на сервере, чтобы сессия протухла
+    // во всех приложениях (Nexus тоже), а не только в текущей вкладке.
+    const pending = supabase.auth.signOut({ scope: 'global' });
     window.location.href = 'https://nexus.knzteam.ru/?logout=1';
     await pending;
   };
@@ -173,7 +169,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user,
         role,
         userName,
-        userDepartment,
         loading,
         isRecovery,
         recoveryError,

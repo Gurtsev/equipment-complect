@@ -19,7 +19,6 @@ export type EquipmentCategory =
   | 'furniture'
   | 'prop'
   | 'tool';
-export type EquipmentDepartment = 'studio' | 'aho' | 'office';
 
 export interface HistoryEntry {
   date: Date;
@@ -34,7 +33,6 @@ export interface EquipmentData {
   model: string;
   subtitle: string;
   category: EquipmentCategory;
-  department: EquipmentDepartment;
   section: EquipmentSection;
   description: string;
   image: string;
@@ -53,7 +51,6 @@ export class Equipment {
   readonly model: string;
   readonly subtitle: string;
   readonly category: EquipmentCategory;
-  readonly department: EquipmentDepartment;
   readonly section: EquipmentSection;
   readonly description: string;
   readonly image: string;
@@ -71,7 +68,6 @@ export class Equipment {
     this.model = data.model;
     this.subtitle = data.subtitle;
     this.category = data.category;
-    this.department = data.department;
     this.section = data.section;
     this.description = data.description;
     this.image = data.image;

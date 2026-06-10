@@ -123,7 +123,6 @@ const chipStyle = (active: boolean): React.CSSProperties => ({
 
 interface Props {
   items: Equipment[];
-  canEditEquipment: (dept: string) => boolean;
   canEdit: boolean;
   onAdd: () => void;
   onEdit: (eq: Equipment) => void;
@@ -140,7 +139,6 @@ interface Props {
 
 export function CatalogGrid({
   items,
-  canEditEquipment,
   canEdit,
   onAdd,
   onEdit,
@@ -372,7 +370,7 @@ export function CatalogGrid({
             <EquipmentDetail
               key={`modal-${modalEquipment.id}-${modalKey}`}
               equipment={modalEquipment}
-              canEdit={canEditEquipment(modalEquipment.department)}
+              canEdit={canEdit}
               onEdit={handleModalEdit}
               project={getEquipmentProject(modalEquipment.id) ?? null}
               equipmentProjects={getEquipmentProjects(modalEquipment.id)}

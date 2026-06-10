@@ -6,7 +6,7 @@ import {
 import type { UploadFile, UploadProps } from 'antd';
 import { PlusOutlined, MinusCircleOutlined, UploadOutlined } from '@ant-design/icons';
 import {
-  Equipment, EquipmentCategory, EquipmentDepartment,
+  Equipment, EquipmentCategory,
   EquipmentLocation, EquipmentSection, EquipmentStatus,
 } from '../../models/Equipment';
 import { supabase } from '../../services/supabase';
@@ -30,12 +30,6 @@ const TECH_CATEGORIES: Array<{ label: string; value: EquipmentCategory }> = [
 const PROP_CATEGORIES: Array<{ label: string; value: EquipmentCategory }> = [
   { label: 'Реквизит', value: 'prop' },
   { label: 'Аксессуар', value: 'accessory' },
-];
-
-const DEPARTMENTS: Array<{ label: string; value: EquipmentDepartment }> = [
-  { label: 'Студия', value: 'studio' },
-  { label: 'АХО', value: 'aho' },
-  { label: 'Офис', value: 'office' },
 ];
 
 const SECTION_OPTIONS = [
@@ -86,7 +80,6 @@ interface FormValues {
   model: string;
   subtitle?: string;
   category?: EquipmentCategory;
-  department: EquipmentDepartment;
   description?: string;
   image?: string;
   invNumber: string;
@@ -131,7 +124,6 @@ export function CreateEquipmentDrawer({ open, onClose, onCreated, initialEquipme
         model: initialEquipment.model,
         subtitle: initialEquipment.subtitle,
         category: initialEquipment.category,
-        department: initialEquipment.department,
         description: initialEquipment.description,
         image: initialEquipment.image,
         invNumber: initialEquipment.invNumber,
@@ -226,7 +218,6 @@ export function CreateEquipmentDrawer({ open, onClose, onCreated, initialEquipme
         model: values.model.trim(),
         subtitle: values.subtitle?.trim() ?? '',
         category,
-        department: values.department ?? initialEquipment.department,
         section,
         description: values.description?.trim() ?? '',
         image: values.image?.trim() ?? '',
@@ -250,7 +241,6 @@ export function CreateEquipmentDrawer({ open, onClose, onCreated, initialEquipme
       model: values.model.trim(),
       subtitle: values.subtitle?.trim() ?? '',
       category,
-      department: values.department ?? 'studio',
       section,
       description: values.description?.trim() ?? '',
       image: values.image?.trim() ?? '',
@@ -337,16 +327,6 @@ export function CreateEquipmentDrawer({ open, onClose, onCreated, initialEquipme
             />
           </Form.Item>
         )}
-
-        {/* Отдел */}
-        <Form.Item
-          name="department"
-          label="Отдел"
-          rules={[{ required: true, message: 'Выберите отдел' }]}
-          initialValue="studio"
-        >
-          <Select options={DEPARTMENTS} />
-        </Form.Item>
 
         {/* Помещение */}
         {rooms.length > 0 && (

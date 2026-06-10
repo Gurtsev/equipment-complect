@@ -89,7 +89,6 @@ function formatDateRange(start: Date, end: Date): string {
 
 function exportCompletion(project: Project, equipment: Equipment[]) {
   const rows = equipment.map((e) => ({
-    'Раздел': e.department === 'studio' ? 'Студия' : 'АХО',
     'Инв. номер': e.invNumber,
     'Модель': e.model,
     'Серийный номер': e.serialNumber,
@@ -97,7 +96,7 @@ function exportCompletion(project: Project, equipment: Equipment[]) {
     'Ответственный': e.responsible,
   }));
   const ws = XLSX.utils.json_to_sheet(rows);
-  ws['!cols'] = [{ wch: 10 }, { wch: 16 }, { wch: 28 }, { wch: 18 }, { wch: 16 }, { wch: 18 }];
+  ws['!cols'] = [{ wch: 16 }, { wch: 28 }, { wch: 18 }, { wch: 16 }, { wch: 18 }];
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Комплект');
   const endDate = project.endDate.toLocaleDateString('ru-RU');
@@ -130,7 +129,6 @@ export function ProjectDetail({
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pickerSearch, setPickerSearch] = useState('');
   const [pickerSelected, setPickerSelected] = useState<string[]>([]);
-  const [pickerDept, setPickerDept] = useState<'studio' | 'aho'>('studio');
   const [activeLoans, setActiveLoans] = useState<Record<string, Loan>>({});
   const [projectHistory, setProjectHistory] = useState<ProjectHistoryEntry[]>([]);
   const [historyLoading, setHistoryLoading] = useState(true);
@@ -152,13 +150,9 @@ export function ProjectDetail({
     .map((id) => allEquipment.find((e) => e.id === id))
     .filter((e): e is Equipment => !!e);
 
-  const studioEquipment = projectEquipment.filter((e) => e.department === 'studio');
-  const ahoEquipment = projectEquipment.filter((e) => e.department === 'aho' || e.department === 'office');
-
-  const openPicker = async (dept: 'studio' | 'aho') => {
+  const openPicker = async () => {
     setPickerSelected([]);
     setPickerSearch('');
-    setPickerDept(dept);
     try {
       const loans = await loanService.getAllActiveLoans();
       setActiveLoans(loans);
@@ -291,11 +285,8 @@ export function ProjectDetail({
   };
 
   const pickerFiltered = allEquipment.filter((e) => {
-    const deptMatch = pickerDept === 'studio'
-      ? e.department === 'studio'
-      : (e.department === 'aho' || e.department === 'office');
     const q = pickerSearch.toLowerCase().trim();
-    return deptMatch && (!q || e.model.toLowerCase().includes(q) || e.invNumber.toLowerCase().includes(q));
+    return !q || e.model.toLowerCase().includes(q) || e.invNumber.toLowerCase().includes(q);
   });
 
   const equipmentColumns = [
@@ -410,9 +401,9 @@ export function ProjectDetail({
         </div>
       </Card>
 
-      {/* Студийное оборудование */}
+      {/* Оборудование проекта */}
       <Card
-        title={`Комплект оборудования (${studioEquipment.length} ед.)`}
+        title={`Комплект оборудования (${projectEquipment.length} ед.)`}
         size="small"
         style={{ marginBottom: 12 }}
         extra={
@@ -421,7 +412,7 @@ export function ProjectDetail({
               size="small"
               type="dashed"
               icon={<PlusOutlined />}
-              onClick={() => void openPicker('studio')}
+              onClick={() => void openPicker()}
             >
               Добавить
             </Button>
@@ -429,7 +420,7 @@ export function ProjectDetail({
         }
       >
         <Table<Equipment>
-          dataSource={studioEquipment}
+          dataSource={projectEquipment}
           rowKey="id"
           columns={equipmentColumns}
           size="small"
@@ -438,36 +429,9 @@ export function ProjectDetail({
         />
       </Card>
 
-      {/* АХО */}
-      <Card
-        title={`АХО (${ahoEquipment.length} ед.)`}
-        size="small"
-        extra={
-          canEdit && project.status !== 'Завершён' && (
-            <Button
-              size="small"
-              type="dashed"
-              icon={<PlusOutlined />}
-              onClick={() => void openPicker('aho')}
-            >
-              Добавить
-            </Button>
-          )
-        }
-      >
-        <Table<Equipment>
-          dataSource={ahoEquipment}
-          rowKey="id"
-          columns={equipmentColumns}
-          size="small"
-          pagination={false}
-          locale={{ emptyText: 'Нет реквизита — добавьте из каталога' }}
-        />
-      </Card>
-
       {/* Equipment picker modal */}
       <Modal
-        title={pickerDept === 'studio' ? 'Добавить оборудование в комплект' : 'Добавить в АХО'}
+        title="Добавить оборудование в проект"
         open={pickerOpen}
         onCancel={() => setPickerOpen(false)}
         onOk={() => void handlePickerConfirm()}

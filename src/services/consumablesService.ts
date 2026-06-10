@@ -1,5 +1,4 @@
 import { supabase } from './supabase';
-import type { EquipmentDepartment } from '../models/Equipment';
 
 export type ConsumableCategory = 'hygiene' | 'drinks' | 'stationery' | 'cleaning' | 'other';
 
@@ -10,7 +9,6 @@ export interface Consumable {
   unit: string;
   quantity: number;
   minThreshold: number;
-  department: EquipmentDepartment | null;
   notes: string | null;
   createdAt: Date;
 }
@@ -39,7 +37,6 @@ export const consumablesService = {
       unit: row.unit,
       quantity: row.quantity,
       minThreshold: row.min_threshold,
-      department: (row.department ?? null) as EquipmentDepartment | null,
       notes: row.notes ?? null,
       createdAt: new Date(row.created_at),
     }));
@@ -52,7 +49,6 @@ export const consumablesService = {
       unit: data.unit,
       quantity: data.quantity,
       min_threshold: data.minThreshold,
-      department: data.department ?? null,
       notes: data.notes ?? null,
     });
     if (error) throw error;
@@ -64,7 +60,6 @@ export const consumablesService = {
     if (data.category !== undefined) fields.category = data.category;
     if (data.unit !== undefined) fields.unit = data.unit;
     if (data.minThreshold !== undefined) fields.min_threshold = data.minThreshold;
-    if ('department' in data) fields.department = data.department ?? null;
     if ('notes' in data) fields.notes = data.notes ?? null;
     const { error } = await supabase.from('consumables').update(fields).eq('id', id);
     if (error) throw error;

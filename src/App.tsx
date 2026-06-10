@@ -48,7 +48,7 @@ const ROLE_LABEL: Record<string, string> = {
 
 function AppInner() {
   const { message } = AntApp.useApp();
-  const { user, role, userName, userDepartment, loading: authLoading, isRecovery, recoveryError, updatePassword, signOut } = useAuth();
+  const { user, role, userName, loading: authLoading, isRecovery, recoveryError, updatePassword, signOut } = useAuth();
 
   const [items, setItems] = useState<Equipment[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -70,9 +70,6 @@ function AppInner() {
   const [cartOpen, setCartOpen] = useState(false);
 
   const canEdit = role === 'admin' || role === 'operator';
-  // canEditEquipment: учитывает ограничение по отделу для операторов
-  const canEditEquipment = (dept: string) =>
-    canEdit && (userDepartment === null || userDepartment === dept);
   const screens = Grid.useBreakpoint();
   const isMobile = !screens.md;
 
@@ -466,7 +463,7 @@ function AppInner() {
     <EquipmentDetail
       key={`${selectedEquipment.id}-${detailKey}`}
       equipment={selectedEquipment}
-      canEdit={canEditEquipment(selectedEquipment.department)}
+      canEdit={canEdit}
       onEdit={() => setEquipmentDrawerMode('edit')}
       project={getEquipmentProject(selectedEquipment.id) ?? null}
       equipmentProjects={getEquipmentProjects(selectedEquipment.id)}
@@ -681,7 +678,6 @@ function AppInner() {
           <div style={{ flex: 1, overflow: 'hidden', background: '#f5f7fa' }}>
             <CatalogGrid
               items={catalogFilteredItems ?? items}
-              canEditEquipment={canEditEquipment}
               canEdit={canEdit}
               onAdd={() => setEquipmentDrawerMode('create')}
               onEdit={(eq) => { setSelectedEquipment(eq); setEquipmentDrawerMode('edit'); }}
@@ -724,7 +720,6 @@ function AppInner() {
            activeTab === 'catalog' ? (
              <CatalogGrid
                items={catalogFilteredItems ?? items}
-               canEditEquipment={canEditEquipment}
                canEdit={canEdit}
                showControls={false}
                onAdd={() => setEquipmentDrawerMode('create')}

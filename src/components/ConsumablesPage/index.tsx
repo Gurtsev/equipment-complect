@@ -10,7 +10,6 @@ import {
 import {
   consumablesService, Consumable, ConsumableCategory, ConsumableTransaction,
 } from '../../services/consumablesService';
-import type { EquipmentDepartment } from '../../models/Equipment';
 
 const { Text } = Typography;
 
@@ -34,19 +33,6 @@ const CATEGORY_OPTIONS = (Object.keys(CATEGORY_LABEL) as ConsumableCategory[]).m
   value: v, label: CATEGORY_LABEL[v],
 }));
 
-const DEPT_LABEL: Record<EquipmentDepartment, string> = { studio: 'Студия', aho: 'АХО', office: 'Офис' };
-const DEPT_OPTIONS: Array<{ value: EquipmentDepartment | 'all'; label: string }> = [
-  { value: 'all', label: 'Все' },
-  { value: 'studio', label: 'Студия' },
-  { value: 'aho', label: 'АХО' },
-  { value: 'office', label: 'Офис' },
-];
-const DEPT_SELECT_OPTIONS: Array<{ value: EquipmentDepartment; label: string }> = [
-  { value: 'studio', label: 'Студия' },
-  { value: 'aho', label: 'АХО' },
-  { value: 'office', label: 'Офис' },
-];
-
 const UNIT_OPTIONS = ['шт', 'рул', 'л', 'кг', 'упак', 'пач', 'бут'].map((u) => ({ value: u, label: u }));
 
 const TX_LABEL: Record<string, string> = { in: 'Приход', out: 'Расход', writeoff: 'Списание' };
@@ -61,25 +47,12 @@ function stockLevel(qty: number, min: number): 'ok' | 'low' | 'critical' {
 
 const STOCK_COLOR = { ok: '#52c41a', low: '#faad14', critical: '#ff4d4f' };
 
-const deptChipStyle = (active: boolean): React.CSSProperties => ({
-  padding: '2px 10px',
-  borderRadius: 12,
-  fontSize: 12,
-  cursor: 'pointer',
-  userSelect: 'none',
-  background: active ? '#1677ff' : '#f0f0f0',
-  color: active ? '#fff' : '#595959',
-  transition: 'all 0.15s',
-  flexShrink: 0,
-});
-
 interface ItemFormValues {
   name: string;
   category: ConsumableCategory;
   unit: string;
   quantity: number;
   minThreshold: number;
-  department?: EquipmentDepartment;
   notes?: string;
 }
 
@@ -91,7 +64,6 @@ interface Props {
 
 export function ConsumablesPage({ consumables, canEdit, onChanged }: Props) {
   const { message, modal } = App.useApp();
-  const [deptFilter, setDeptFilter] = useState<EquipmentDepartment | 'all'>('all');
   const [catFilter, setCatFilter] = useState<ConsumableCategory | 'all'>('all');
 
   const [selected, setSelected] = useState<Consumable | null>(null);
@@ -159,7 +131,6 @@ export function ConsumablesPage({ consumables, canEdit, onChanged }: Props) {
       category: item.category,
       unit: item.unit,
       minThreshold: item.minThreshold,
-      department: item.department ?? undefined,
       notes: item.notes ?? undefined,
     });
     setItemFormOpen(true);
@@ -174,7 +145,6 @@ export function ConsumablesPage({ consumables, canEdit, onChanged }: Props) {
           category: values.category,
           unit: values.unit,
           minThreshold: values.minThreshold,
-          department: values.department ?? null,
           notes: values.notes?.trim() || null,
         });
       } else {
@@ -184,7 +154,6 @@ export function ConsumablesPage({ consumables, canEdit, onChanged }: Props) {
           unit: values.unit,
           quantity: values.quantity,
           minThreshold: values.minThreshold,
-          department: values.department ?? null,
           notes: values.notes?.trim() || null,
         });
       }
@@ -218,10 +187,7 @@ export function ConsumablesPage({ consumables, canEdit, onChanged }: Props) {
     });
   };
 
-  const filtered = consumables.filter((c) =>
-    (deptFilter === 'all' || c.department === deptFilter) &&
-    (catFilter === 'all' || c.category === catFilter),
-  );
+  const filtered = consumables.filter((c) => catFilter === 'all' || c.category === catFilter);
 
   const columns = [
     {
@@ -249,14 +215,6 @@ export function ConsumablesPage({ consumables, canEdit, onChanged }: Props) {
       render: (cat: ConsumableCategory) => (
         <Tag color={CATEGORY_COLOR[cat]}>{CATEGORY_LABEL[cat]}</Tag>
       ),
-    },
-    {
-      title: 'Отдел',
-      dataIndex: 'department',
-      key: 'department',
-      width: 100,
-      render: (dept: EquipmentDepartment | null) =>
-        dept ? <Tag>{DEPT_LABEL[dept]}</Tag> : <Text type="secondary" style={{ fontSize: 12 }}>Все</Text>,
     },
     {
       title: 'Остаток',
@@ -352,11 +310,6 @@ export function ConsumablesPage({ consumables, canEdit, onChanged }: Props) {
       </Typography.Title>
 
       <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap', alignItems: 'center' }}>
-        {DEPT_OPTIONS.map((d) => (
-          <span key={d.value} style={deptChipStyle(deptFilter === d.value)} onClick={() => setDeptFilter(d.value)}>
-            {d.label}
-          </span>
-        ))}
         <Select
           size="small"
           style={{ width: 140 }}
@@ -388,7 +341,6 @@ export function ConsumablesPage({ consumables, canEdit, onChanged }: Props) {
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span>{selected?.name}</span>
             {selected && <Tag color={CATEGORY_COLOR[selected.category]}>{CATEGORY_LABEL[selected.category]}</Tag>}
-            {selected?.department && <Tag>{DEPT_LABEL[selected.department]}</Tag>}
           </div>
         }
         open={!!selected}
@@ -523,9 +475,6 @@ export function ConsumablesPage({ consumables, canEdit, onChanged }: Props) {
               <InputNumber min={0} style={{ width: '100%' }} />
             </Form.Item>
           </div>
-          <Form.Item name="department" label="Отдел">
-            <Select options={DEPT_SELECT_OPTIONS} allowClear placeholder="Все отделы" />
-          </Form.Item>
           <Form.Item name="notes" label="Комментарий">
             <Input placeholder="Необязательно" />
           </Form.Item>
