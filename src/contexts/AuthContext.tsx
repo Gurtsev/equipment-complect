@@ -99,6 +99,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
+      // INITIAL_SESSION срабатывает синхронно при подписке, часто с session: null —
+      // detectSessionInUrl ещё не успел разобрать токены SSO из хеша. Если довериться
+      // этому событию, App.tsx увидит !user и сразу редиректнёт на Nexus, не дождавшись
+      // реальной сессии — бесконечный цикл редиректов. Дожидаемся getSession() ниже.
+      if (event === 'INITIAL_SESSION') return;
       if (event === 'PASSWORD_RECOVERY') {
         clearTimeout(timer);
         setIsRecovery(true);
