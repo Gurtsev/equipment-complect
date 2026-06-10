@@ -38,7 +38,7 @@
 
 **Не сделано / ждём:**
 - ⏳ SSO Шаг 2: редирект на портал Nexus при отсутствии сессии + удаление формы логина/регистрации
-- ⏳ Этап 2: `profiles` → VIEW над `public.users` + `user_roles` (учесть несовпадение значений `department`)
+- ⏳ Этап 2: `profiles` → VIEW над `public.users` + `user_roles`
 
 ---
 
@@ -115,7 +115,6 @@
   Контейнер `supabase-rest` перезапущен (`docker compose up -d rest`), проверено через curl.
 
 - [x] **5. Проверить доступ к `public.users`** — проверено 2026-06-10 через PostgREST (`Accept-Profile: public`, anon key): вернулись все 3 записи (`v.gerwald`, `m.gurtsev`, `o.belozerov`). Доступ работает.
-  > ⚠️ Замечено для Этапа 2: значения `department` в `public.users` не везде из набора `studio|aho|office` (у Белозерова — `"Бренд медиа департамент"`). Учесть при миграции `current_user_department()`.
 
 - [x] **6. Приложение задеплоено**: `https://inventory.knzteam.ru` (временный домен, переедет на `inventory.megapolis.media`). CD: GitHub Actions → GHCR → SSH на тот же VDS, Docker + nginx.
 
@@ -372,9 +371,9 @@ Nexus создаёт фрилансера:
 
 ---
 
-### 4. Department — конфликт типов
+### 4. Department — больше не используется в Inventory
 
-Значения `studio | aho | office` не меняются. В `public.users` поле `department` — `text`, валидация на уровне приложения. RLS-функции `current_user_department()` продолжают работать с теми же строками.
+Inventory убрал концепцию отдела целиком (миграция `021_remove_departments`): колонки `department` и функция `current_user_department()` удалены, операторы получили полный доступ без department-ограничений. `department` остаётся **только в Nexus** (`public.users` его хранит и обслуживает), Inventory это поле не читает и не использует — в VIEW `inventory.profiles` (Этап 2) оно не попадает.
 
 ---
 
@@ -382,7 +381,7 @@ Nexus создаёт фрилансера:
 
 > ⚠️ **Уточнено 2026-06-09 (см. актуальный handoff внизу).** Простой `VIEW … FROM public.users` **НЕ подходит** — в `public.users` нет колонки `role`, и `admin/operator/viewer` потеряются. Роли надо вынести в отдельную таблицу `inventory.user_roles`, а VIEW собрать как `public.users` JOIN `user_roles`. Точная миграция — в разделе «🔧 Этап 2 — актуальный handoff» в конце файла.
 
-При объединении `inventory.profiles` становится VIEW над `public.users` (+ JOIN ролей). Колонки 1:1 с прежней таблицей, поэтому `current_user_role()`, `current_user_department()`, `usersService`, `assignmentService` и остальные **не меняются**.
+При объединении `inventory.profiles` становится VIEW над `public.users` (+ JOIN ролей), без `department`. Колонки 1:1 с прежней (уже без `department`) таблицей, поэтому `current_user_role()`, `usersService`, `assignmentService` и остальные **не меняются**.
 
 ---
 
@@ -446,7 +445,7 @@ WHERE ea.user_id = $1
 ## 🔧 Этап 2 — актуальный handoff для Инвентаризации (2026-06-09)
 
 Сверено с живой БД на проде. Реальная структура `inventory.profiles`:
-`id (uuid), name, role, email, department, is_active`.
+`id (uuid), name, role, email, is_active` (`department` удалён миграцией `021_remove_departments`).
 
 ### Что уже сделано на стороне Nexus (предусловия)
 - ✅ `public.users` создана (целевая модель: `id, email, name, position, department, is_active, created_at`).
@@ -467,18 +466,20 @@ INSERT INTO inventory.user_roles (user_id, role)
 SELECT id, role FROM inventory.profiles
 ON CONFLICT (user_id) DO NOTHING;
 
--- 2. profiles → VIEW над public.users (колонки 1:1 с прежней таблицей, код не меняется)
+-- 2. profiles → VIEW над public.users, БЕЗ department (inventory убрал его в миграции 021)
 DROP VIEW IF EXISTS inventory.profile_names;        -- зависит от profiles (миграция 019)
 ALTER TABLE inventory.profiles RENAME TO profiles_old;  -- бэкап старой таблицы
 CREATE VIEW inventory.profiles AS
-  SELECT pu.id, pu.name, ur.role, pu.email, pu.department, pu.is_active
+  SELECT pu.id, pu.name, ur.role, pu.email, pu.is_active
   FROM public.users pu
   JOIN inventory.user_roles ur ON ur.user_id = pu.id;
 CREATE VIEW inventory.profile_names AS SELECT id, name FROM inventory.profiles;
 ```
 
+> ℹ️ **`department` НЕ тащим в VIEW.** `public.users` его хранит (управляет Nexus), но Inventory этим полем не пользуется.
+
 ### Следствия (важно для кода Инвентаризации)
-- **VIEW не записываемый.** Код, писавший в `profiles` (регистрация, апдейт `is_active`/`name`), надо перенаправить: идентичность (`name/email/department/is_active`) — в `public.users` (управляет Nexus), `role` — в `inventory.user_roles`. Либо `INSTEAD OF`-триггеры на VIEW.
+- **VIEW не записываемый.** Код, писавший в `profiles` (регистрация, апдейт `is_active`/`name`), надо перенаправить: идентичность (`name/email/is_active`) — в `public.users` (управляет Nexus), `role` — в `inventory.user_roles`. Либо `INSTEAD OF`-триггеры на VIEW.
 - **Доступ становится явным.** Человек виден в Инвентаризации, только если есть строка в `user_roles`. Это **убирает текущую протечку** «любой `@megapolis.media` → авто-профиль с ролью admin».
 - **Убрать триггер `handle_new_user`** (авто-создание профиля на каждый `auth.users`) и **форму регистрации + `allowed_emails`** — регистрация переходит в Nexus.
 - `current_user_role()` и пр. продолжают работать, т.к. VIEW отдаёт те же колонки (включая `role`).
