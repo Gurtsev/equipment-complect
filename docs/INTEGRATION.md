@@ -535,5 +535,26 @@ if (at && rt) {
 
 ### На стороне Инвентаризации — статус (2026-06-10)
 - ✅ Шаг 1 проверен на проде: переход из Nexus в Inventory с токенами в хеше подхватывает сессию без повторного входа.
+  - ⚠️ Уточнение: `detectSessionInUrl` требует в хеше `access_token+expires_in+refresh_token+token_type`, а Nexus передаёт только `access_token`+`refresh_token`. Поэтому хеш разбирается вручную и сессия поднимается через `supabase.auth.setSession({ access_token, refresh_token })`.
 - ✅ Шаг 2 реализован: своя форма логина/регистрации удалена (`LoginPage` удалён), при отсутствии сессии — редирект на `https://nexus.knzteam.ru/login?redirect=<url>`. `signIn`/`signUp`/`forgotPassword` убраны из `AuthContext`. SSO теперь полностью бесшовный.
 - ⏳ Не убраны из БД: `allowed_emails`, триггер `handle_new_user` — остаются как часть Этапа 2 (профили → VIEW над `public.users`).
+
+---
+
+### 🚪 Единый логаут (2026-06-10)
+
+**Проблема:** `signOut()` в Inventory чистит только локальную (на `inventory.knzteam.ru`) сессию Supabase. Сессия Nexus (на `nexus.knzteam.ru`, отдельный origin/localStorage) остаётся активной. После signOut приложение редиректит на `https://nexus.knzteam.ru/login?redirect=...`, а Nexus, видя свою активную сессию, тут же отдаёт новые токены и редиректит обратно — пользователь мгновенно залогинен снова.
+
+**Решение:** Nexus предоставляет endpoint единого логаута:
+```
+https://nexus.knzteam.ru/?logout=1
+```
+Гасит Supabase-сессию Nexus + чистит cookies, оставляет пользователя на форме входа.
+
+Кнопка «Выйти» в Inventory (`AuthContext.signOut`):
+```js
+await supabase.auth.signOut();                                // локальный выход inventory
+window.location.href = 'https://nexus.knzteam.ru/?logout=1';  // гасим и сессию Nexus
+```
+
+- ✅ Реализовано на стороне Инвентаризации.
