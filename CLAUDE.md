@@ -39,7 +39,6 @@ src/
     Equipment.ts              # Equipment class + TypeScript types
     Project.ts                # Project class + ProjectStatus type
   components/
-    LoginPage/                # Форма входа + регистрации + сброс пароля
     CatalogSidebar/           # Вкладка «Каталог»: поиск, фильтры, список, экспорт
     ProjectsSidebar/          # Вкладка «Проекты»: список проектов со статусами
     EquipmentDetail/          # Правая панель: карточка оборудования
@@ -77,17 +76,16 @@ supabase/
 
 ## Auth Flow
 
-`AuthProvider` оборачивает всё приложение в `App.tsx`. При монтировании проверяет сессию через `supabase.auth.getSession()`. Подписывается на `onAuthStateChange` для login/logout/recovery.
+**SSO через Nexus (с 2026-06-10):** своей формы логина/регистрации нет. `AuthProvider` оборачивает всё приложение в `App.tsx`, поднимает сессию через `onAuthStateChange` + `supabase.auth.getSession()`. `detectSessionInUrl: true` подхватывает токены из URL-хеша (`#access_token=…&refresh_token=…`), которые передаёт портал Nexus после логина. Если сессии нет — `App.tsx` редиректит на `https://nexus.knzteam.ru/login?redirect=<текущий_url>`.
 
 - `loading` в AuthProvider = проверка сессии при старте
 - `dataLoading` в AppInner = загрузка данных из БД после авторизации
 - `isRecovery` = пользователь пришёл по ссылке сброса пароля; показывается форма смены пароля вместо основного UI
+- `recoveryError` = ссылка сброса пароля устарела/недействительна — показывается сообщение со ссылкой на портал Nexus
 
-`useAuth()` возвращает: `user`, `role`, `userName`, `userDepartment`, `loading`, `isRecovery`, `signIn()`, `signUp()`, `signOut()`, `updatePassword()`.
+`useAuth()` возвращает: `user`, `role`, `userName`, `userDepartment`, `loading`, `isRecovery`, `recoveryError`, `signOut()`, `updatePassword()`.
 
-**Создание пользователей — два способа:**
-- **Авторазрешённая регистрация:** добавить email или домен в `allowed_emails`. Триггер `handle_new_user` создаёт `profiles` запись с ролью и `department` из `allowed_emails`.
-- **Ручной способ:** создать в Supabase Dashboard → Authentication → Users, затем: `insert into public.profiles (id, name, role, email) values ('<uuid>', 'Имя', 'admin', 'email@example.com')`
+**Создание пользователей:** через Nexus-онбординг (`public.users` + `auth.users`) — `fetchOrCreateProfile` в `AuthContext` авто-создаёт `inventory.profiles` с ролью `viewer` при первом входе SSO-пользователя; админ Inventory затем повышает роль вручную. `allowed_emails`/триггер `handle_new_user` пока остаются в БД (используются только серверной логикой), но форма саморегистрации удалена.
 
 **Доступ запрещён** (`user && !role`): пользователь прошёл auth, но профиля нет — заглушка с кнопкой выхода.
 

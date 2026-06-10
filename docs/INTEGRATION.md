@@ -24,7 +24,35 @@
 
 ---
 
-## 🚀 Текущая задача — деплой на прод VDS
+### Статус Инвентаризации (обновлено 2026-06-10)
+
+**Этап 1 завершён, приложение в проде.**
+- ✅ Чистый передеплой в схему `inventory` (миграции 001–020, `combined_001_020.sql`)
+- ✅ PostgREST `db-schemas = inventory, public` настроен и проверен (curl)
+- ✅ Ручные объекты пересозданы: `inventory.is_email_allowed`, `protect_master_admin`, bucket `equipment-images`
+- ✅ Деплой: `https://inventory.knzteam.ru` (Docker + nginx + GitHub Actions CD на том же VDS)
+- ✅ Тестовый admin-аккаунт создан, вход проверен
+- ✅ SSO Шаг 1 готов: `detectSessionInUrl`/`persistSession` в `supabase.ts` подхватывают токены из URL-хеша, `fetchOrCreateProfile` авто-создаёт профиль `viewer` для SSO-юзеров
+
+- ✅ Чтение `public.users` проверено (PostgREST + anon key, `Accept-Profile: public`) — 3 записи доступны
+
+**Не сделано / ждём:**
+- ⏳ SSO Шаг 2: редирект на портал Nexus при отсутствии сессии + удаление формы логина/регистрации
+- ⏳ Этап 2: `profiles` → VIEW над `public.users` + `user_roles` (учесть несовпадение значений `department`)
+
+---
+
+### Как Nexus заводит пользователей (онбординг)
+1. Импорт из Google Sheets (страница «База данных») создаёт профили в `nexus.users` (читает A:E листа `MAIN 2`; email **не** тянется — генерится плейсхолдер, потом обнуляется).
+2. Реальную рабочую почту админ вписывает **вручную** в карточке сотрудника (поле Email → Сохранить).
+3. Кнопка **«Выдать доступ в систему»** (`POST /auth/onboard/:id`) создаёт `auth.users` с **временным паролем** (возвращается админу один раз) + строку в `public.users` (`id = auth.uid`) + связывает `auth_id`. Пароль админ передаёт сотруднику лично (SMTP не нужен).
+4. Пока email пустой — кнопка «Выдать доступ» заблокирована (нельзя онбордить без реальной почты).
+
+Саморегистрации в Nexus нет — только админ-онбординг. Это и есть «единая точка регистрации».
+
+---
+
+## ✅ Деплой на прод VDS — ВЫПОЛНЕНО (2026-06-09)
 
 **Сервер:** `147.45.97.124` / `knzteam.ru` (домен временный, потом сменим на `megapolis.media`)
 **Supabase:** уже запущен, Kong доступен через `auth.knzteam.ru`
@@ -50,8 +78,9 @@
 
 - [x] **3. Создать `~/nexus/.env` на VDS:** _(создан; `DATABASE_URL` сейчас на роли `postgres` — см. отклонение в статусе вверху)_
   ```env
-  DATABASE_URL=postgresql://nexus_role:fbw4629@localhost:5432/postgres
-  JWT_SECRET=HXX6BGmSnFtGP3fULHvtZsEBe6upwTIipobMQNUsB2Y=
+  # Реальные значения — в docs/CREDENTIALS.md (gitignored). Здесь только плейсхолдеры.
+  DATABASE_URL=postgresql://postgres:<POSTGRES_PASSWORD>@supabase-db:5432/postgres
+  JWT_SECRET=<JWT_SECRET — общий с Supabase>
   NODE_ENV=production
   PORT=4000
   WEB_URL=https://nexus.knzteam.ru
@@ -71,30 +100,24 @@
 
 ### Инвентаризация — что делает коллега
 
-- [ ] **1. Получить от нас:**
-  - `PROD_COLLEAGUE_STUDIO_USER` / `PROD_COLLEAGUE_STUDIO_PASSWORD` — для доступа к Studio
-  - `PROD_INVENTORY_DATABASE_URL` — строка подключения для приложения
+- [x] **1. Получить от вас:**
+  - `PROD_COLLEAGUE_STUDIO_USER` / `PROD_COLLEAGUE_STUDIO_PASSWORD` — получено, доступ к Studio есть
+  - Отдельный `PROD_INVENTORY_DATABASE_URL` не понадобился — фронтенд SPA подключается через `VITE_SUPABASE_URL=https://auth.knzteam.ru` + `VITE_SUPABASE_ANON_KEY` (PostgREST/Auth API), без прямого `DATABASE_URL`
 
-- [ ] **2. Настроить `DATABASE_URL` в своём `.env`:**
-  ```env
-  DATABASE_URL=<значение PROD_INVENTORY_DATABASE_URL>
-  ```
+- [x] **2. `.env` настроен** _(адаптировано под SPA: `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY` вместо `DATABASE_URL`, см. п.1)_
 
-- [ ] **3. Переехать все таблицы из `public` → схему `inventory`** (чистый передеплой, данные тестовые — см. чеклист Инвентаризации ниже).
+- [x] **3. Переехали все таблицы из `public` → схему `inventory`** — чистый передеплой выполнен, миграции 001–020 прогнаны (`combined_001_020.sql`)
 
-- [ ] **4. Настроить PostgREST** в Supabase на VDS:
+- [x] **4. PostgREST настроен**:
   ```toml
-  # supabase/config.toml или через admin API
   db-schemas = "inventory, public"
   ```
-  После изменения — перезапустить контейнер `supabase-rest`.
+  Контейнер `supabase-rest` перезапущен (`docker compose up -d rest`), проверено через curl.
 
-- [ ] **5. Проверить доступ к `public.users`** — таблица читается через `inventory_role`:
-  ```sql
-  SELECT * FROM public.users LIMIT 5;
-  ```
+- [x] **5. Проверить доступ к `public.users`** — проверено 2026-06-10 через PostgREST (`Accept-Profile: public`, anon key): вернулись все 3 записи (`v.gerwald`, `m.gurtsev`, `o.belozerov`). Доступ работает.
+  > ⚠️ Замечено для Этапа 2: значения `department` в `public.users` не везде из набора `studio|aho|office` (у Белозерова — `"Бренд медиа департамент"`). Учесть при миграции `current_user_department()`.
 
-- [ ] **6. Задеплоить приложение** на сервер (субдомен согласовать с нами).
+- [x] **6. Приложение задеплоено**: `https://inventory.knzteam.ru` (временный домен, переедет на `inventory.megapolis.media`). CD: GitHub Actions → GHCR → SSH на тот же VDS, Docker + nginx.
 
 ---
 
@@ -278,7 +301,7 @@ Inventory:  DATABASE_URL = postgresql://inventory_role:pass@server/db
 2. Настроить PostgREST: db-schemas = public, inventory + рестарт
 3. Создать public.users (целевая модель, см. ниже)
 4. Nexus мигрирует свои users → public.users
-5. Инвентаризация создаёт VIEW inventory.profiles → public.users (код не меняется)
+5. Инвентаризация создаёт VIEW inventory.profiles = public.users JOIN inventory.user_roles (роли — отдельно, см. handoff внизу; код не меняется)
 6. Supabase Auth становится единым для обоих
 7. Регистрация переходит в Nexus, форма в Инвентаризации убирается
 8. allowed_emails переезжает в Nexus или удаляется
@@ -357,23 +380,9 @@ Nexus создаёт фрилансера:
 
 ### 5. Миграция profiles → public.users без переписывания кода
 
-При объединении создаётся VIEW, который делает `inventory.profiles` псевдонимом `public.users`. Весь код Инвентаризации — сервисы, RLS-функции — продолжает работать без изменений:
+> ⚠️ **Уточнено 2026-06-09 (см. актуальный handoff внизу).** Простой `VIEW … FROM public.users` **НЕ подходит** — в `public.users` нет колонки `role`, и `admin/operator/viewer` потеряются. Роли надо вынести в отдельную таблицу `inventory.user_roles`, а VIEW собрать как `public.users` JOIN `user_roles`. Точная миграция — в разделе «🔧 Этап 2 — актуальный handoff» в конце файла.
 
-```sql
-CREATE VIEW inventory.profiles AS
-SELECT
-  id,
-  email,
-  name,
-  position,
-  department,
-  is_active,
-  created_at
-FROM public.users
-WHERE /* опционально: фильтр только по пользователям Инвентаризации */;
-```
-
-`current_user_role()`, `current_user_department()`, `usersService`, `assignmentService` и остальные — не меняются.
+При объединении `inventory.profiles` становится VIEW над `public.users` (+ JOIN ролей). Колонки 1:1 с прежней таблицей, поэтому `current_user_role()`, `current_user_department()`, `usersService`, `assignmentService` и остальные **не меняются**.
 
 ---
 
@@ -403,17 +412,19 @@ WHERE ea.user_id = $1
 
 ## Итоговый чеклист
 
-### Инвентаризация (Этап 1)
+### Инвентаризация (Этап 1) — ✅ ЗАВЕРШЁН (2026-06-10)
 - [x] `ALTER TABLE employee_assignments RENAME COLUMN profile_id TO user_id` — миграция 015
 - [x] Добавить `is_active` в `profiles` — миграция 015
 - [x] Переписать миграции: все 27 объектов `public.xxx` → `inventory.xxx` (20 файлов)
 - [x] Обновить функции: `set search_path = inventory, public` в 5 функциях
 - [x] Фронтенд: `db: { schema: 'inventory' }` в `supabase.ts`
 - [x] Realtime: все 10 таблиц квалифицированы как `inventory.*`
-- [ ] PostgREST: `db-schemas = inventory, public` — настроить и перезапустить контейнер
-- [ ] Чистый передеплой: очистить БД → прогнать миграции 001–020
-- [ ] Пересоздать ручные объекты: `inventory.is_email_allowed`, `protect_master_admin`, bucket `equipment-images`
-- [ ] Завести тестовые данные
+- [x] PostgREST: `db-schemas = inventory, public` — настроено, контейнер перезапущен, проверено curl
+- [x] Чистый передеплой: БД очищена, миграции 001–020 прогнаны (`combined_001_020.sql`)
+- [x] Пересоздать ручные объекты: `inventory.is_email_allowed`, `protect_master_admin`, bucket `equipment-images`
+- [x] Завести тестовые данные: первый admin-аккаунт создан, вход проверен
+- [x] Задеплоено: `https://inventory.knzteam.ru` (Docker + nginx + GitHub Actions CD)
+- [x] SSO Шаг 1: `detectSessionInUrl`/`persistSession` + авто-создание профиля для SSO-юзеров
 
 ### Nexus (Этап 1) — ✅ ЗАВЕРШЁН (2026-06-09)
 - [x] `fullName → name`, `dept → department` в Prisma-схеме и коде
@@ -429,3 +440,100 @@ WHERE ea.user_id = $1
 - [ ] Настроить роли PostgreSQL: `nexus_role`, `inventory_role`
 - [ ] Перенести регистрацию в Nexus, убрать форму из Инвентаризации
 - [ ] Настроить субдомены `nexus.megapolis.media` и `db.megapolis.media`
+
+---
+
+## 🔧 Этап 2 — актуальный handoff для Инвентаризации (2026-06-09)
+
+Сверено с живой БД на проде. Реальная структура `inventory.profiles`:
+`id (uuid), name, role, email, department, is_active`.
+
+### Что уже сделано на стороне Nexus (предусловия)
+- ✅ `public.users` создана (целевая модель: `id, email, name, position, department, is_active, created_at`).
+- ✅ В `public.users` заведены сотрудники с `id = auth.uid` (`v.gerwald`, `m.gurtsev`).
+- ✅ `inventory_role` получил `USAGE` на схему `public` и `SELECT` на `public.users`.
+
+### ⚠️ Главный нюанс: роли не помещаются в `public.users`
+`public.users` хранит только идентичность (имя/должность/отдел) — **поля `role` там нет**. Поэтому простой `VIEW profiles AS SELECT ... FROM public.users` **потеряет** `admin/operator/viewer`. Роли надо вынести в отдельную таблицу Инвентаризации.
+
+### Рекомендуемая миграция (на стороне Инвентаризации)
+```sql
+-- 1. Роли — в отдельную таблицу (их нет в public.users)
+CREATE TABLE inventory.user_roles (
+  user_id uuid PRIMARY KEY,
+  role    text NOT NULL DEFAULT 'viewer'  -- admin | operator | viewer
+);
+INSERT INTO inventory.user_roles (user_id, role)
+SELECT id, role FROM inventory.profiles
+ON CONFLICT (user_id) DO NOTHING;
+
+-- 2. profiles → VIEW над public.users (колонки 1:1 с прежней таблицей, код не меняется)
+DROP VIEW IF EXISTS inventory.profile_names;        -- зависит от profiles (миграция 019)
+ALTER TABLE inventory.profiles RENAME TO profiles_old;  -- бэкап старой таблицы
+CREATE VIEW inventory.profiles AS
+  SELECT pu.id, pu.name, ur.role, pu.email, pu.department, pu.is_active
+  FROM public.users pu
+  JOIN inventory.user_roles ur ON ur.user_id = pu.id;
+CREATE VIEW inventory.profile_names AS SELECT id, name FROM inventory.profiles;
+```
+
+### Следствия (важно для кода Инвентаризации)
+- **VIEW не записываемый.** Код, писавший в `profiles` (регистрация, апдейт `is_active`/`name`), надо перенаправить: идентичность (`name/email/department/is_active`) — в `public.users` (управляет Nexus), `role` — в `inventory.user_roles`. Либо `INSTEAD OF`-триггеры на VIEW.
+- **Доступ становится явным.** Человек виден в Инвентаризации, только если есть строка в `user_roles`. Это **убирает текущую протечку** «любой `@megapolis.media` → авто-профиль с ролью admin».
+- **Убрать триггер `handle_new_user`** (авто-создание профиля на каждый `auth.users`) и **форму регистрации + `allowed_emails`** — регистрация переходит в Nexus.
+- `current_user_role()` и пр. продолжают работать, т.к. VIEW отдаёт те же колонки (включая `role`).
+
+### Что Инвентаризация получает от Nexus
+- Право `SELECT` на `public.users` (уже выдано).
+- Гарантию, что все нужные сотрудники есть в `public.users` с `id = auth.uid`.
+- Новых сотрудников Nexus заводит сам (auth.users + public.users) — Инвентаризация только назначает им роль в `inventory.user_roles`.
+
+---
+
+## 🔐 Единый вход (SSO) — решение 2026-06-09
+
+**Цель:** единая точка входа = **Nexus как портал авторизации**. Регистрация и логин — только в Nexus. Inventory свою форму логина/регистрации убирает.
+
+### Поток
+```
+Пользователь открывает inventory.knzteam.ru
+   → сессии нет → redirect на портал Nexus:
+       https://nexus.knzteam.ru/login?redirect=https://inventory.knzteam.ru
+   → вход в Nexus (общий auth.users)
+   → Nexus проверяет: пользователь зарегистрирован? (есть в auth.users/public.users)
+       да  → redirect обратно на inventory с токенами в хеше (#access_token=…&refresh_token=…)
+   → inventory поднимает сессию из хеша и пускает
+```
+
+**Принцип:** портал проверяет только **факт регистрации** (можно ли вообще войти). А **права внутри** каждого приложения раздаёт само приложение: Nexus — по `nexus.users` (isAdmin/role), Inventory — по `inventory.user_roles` (admin/operator/viewer). Портал в права приложений не вмешивается.
+
+### Что нужно сделать Инвентаризации
+
+**Шаг 1 (минимум, бесшовный переход из Nexus уже сейчас):** принимать токены из URL-хеша при загрузке —
+```js
+const h = new URLSearchParams(window.location.hash.slice(1))
+const at = h.get('access_token'), rt = h.get('refresh_token')
+if (at && rt) {
+  await supabase.auth.setSession({ access_token: at, refresh_token: rt })
+  history.replaceState(null, '', window.location.pathname)  // очистить хеш
+}
+```
+Тогда кнопка «Перейти в Инвентаризацию» из Nexus → вход без повторной формы.
+
+**Шаг 2 (полный портал):**
+- при отсутствии сессии — `redirect` на `https://nexus.knzteam.ru/login?redirect=<свой_url>` вместо своей формы;
+- **убрать свою форму логина/регистрации** (вкладка «Зарегистрироваться» уходит — регистрация только в Nexus).
+
+### На стороне Nexus — ✅ СДЕЛАНО и задеплоено (2026-06-09)
+- ✅ `/login?redirect=…`: после входа отдаёт сессию на `redirect` через URL-хеш (`#access_token=…&refresh_token=…`). Проверено: переход на `inventory.knzteam.ru` с токенами работает.
+- ✅ Whitelist доменов для redirect: `*.knzteam.ru` и `*.megapolis.media` (защита от open-redirect) — `apps/web/src/lib/sso.ts`.
+- ✅ Уже залогиненного пользователя с `?redirect=` сразу перенаправляет (без повторного входа).
+- `auth.knzteam.ru` остаётся **API** (Kong/GoTrue) — это не страница входа; страница входа = Nexus.
+- Ограничение домена на форме входа **не делаем**: в Nexus нет саморегистрации (только админ-онбординг), форма лишь логинит уже заведённых.
+
+> **Осталось только на стороне Инвентаризации** — Шаги 1-2 выше (принять токены из хеша + редирект на портал + убрать форму). После этого SSO полностью бесшовный.
+
+### На стороне Инвентаризации — статус (2026-06-10)
+- ✅ Шаг 1 проверен на проде: переход из Nexus в Inventory с токенами в хеше подхватывает сессию без повторного входа.
+- ✅ Шаг 2 реализован: своя форма логина/регистрации удалена (`LoginPage` удалён), при отсутствии сессии — редирект на `https://nexus.knzteam.ru/login?redirect=<url>`. `signIn`/`signUp`/`forgotPassword` убраны из `AuthContext`. SSO теперь полностью бесшовный.
+- ⏳ Не убраны из БД: `allowed_emails`, триггер `handle_new_user` — остаются как часть Этапа 2 (профили → VIEW над `public.users`).

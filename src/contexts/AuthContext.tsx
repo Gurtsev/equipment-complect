@@ -13,10 +13,7 @@ interface AuthState {
   loading: boolean;
   isRecovery: boolean;
   recoveryError: string | null;
-  signIn: (email: string, password: string) => Promise<string | null>;
-  signUp: (email: string, password: string, name: string) => Promise<string | null>;
   signOut: () => Promise<void>;
-  forgotPassword: (email: string) => Promise<string | null>;
   updatePassword: (password: string) => Promise<string | null>;
 }
 
@@ -137,28 +134,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const signIn = async (email: string, password: string): Promise<string | null> => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    return error?.message ?? null;
-  };
-
-  const signUp = async (email: string, password: string, name: string): Promise<string | null> => {
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: { data: { name } },
-    });
-    return error?.message ?? null;
-  };
-
   const signOut = async () => {
     await supabase.auth.signOut();
-  };
-
-  const forgotPassword = async (email: string): Promise<string | null> => {
-    const redirectTo = `${window.location.origin}${window.location.pathname}`;
-    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
-    return error?.message ?? null;
   };
 
   const updatePassword = async (password: string): Promise<string | null> => {
@@ -177,10 +154,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         loading,
         isRecovery,
         recoveryError,
-        signIn,
-        signUp,
         signOut,
-        forgotPassword,
         updatePassword,
       }}
     >

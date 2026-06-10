@@ -9,7 +9,6 @@ import { Dashboard } from './components/Dashboard';
 import { ProjectsSidebar } from './components/ProjectsSidebar';
 import { ProjectDetail } from './components/ProjectDetail';
 import { CreateProjectDrawer } from './components/CreateProjectDrawer';
-import { LoginPage } from './components/LoginPage';
 import { UsersPage } from './components/UsersPage';
 import { CalendarView } from './components/CalendarView';
 import { ConsumablesPage } from './components/ConsumablesPage';
@@ -38,6 +37,8 @@ const { Text } = Typography;
 
 type ActiveTab = 'catalog' | 'projects' | 'users' | 'calendar' | 'consumables' | 'rooms' | 'lists';
 
+const NEXUS_LOGIN_URL = 'https://nexus.knzteam.ru/login';
+
 const ROLE_LABEL: Record<string, string> = {
   admin: 'Администратор',
   operator: 'Оператор',
@@ -47,7 +48,7 @@ const ROLE_LABEL: Record<string, string> = {
 
 function AppInner() {
   const { message } = AntApp.useApp();
-  const { user, role, userName, userDepartment, loading: authLoading, isRecovery, updatePassword, signOut } = useAuth();
+  const { user, role, userName, userDepartment, loading: authLoading, isRecovery, recoveryError, updatePassword, signOut } = useAuth();
 
   const [items, setItems] = useState<Equipment[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -327,7 +328,27 @@ function AppInner() {
     );
   }
 
-  if (!user) return <LoginPage />;
+  if (!user && !isRecovery && !recoveryError) {
+    const redirect = encodeURIComponent(window.location.href);
+    window.location.replace(`${NEXUS_LOGIN_URL}?redirect=${redirect}`);
+    return (
+      <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
+        <Spin size="large" />
+        <Typography.Text type="secondary">Перенаправление на вход...</Typography.Text>
+      </div>
+    );
+  }
+
+  if (!user && recoveryError) {
+    return (
+      <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16 }}>
+        <Typography.Text type="warning">{recoveryError}</Typography.Text>
+        <Button type="primary" href={NEXUS_LOGIN_URL}>
+          Перейти на страницу входа
+        </Button>
+      </div>
+    );
+  }
 
   if (isRecovery) {
     return (
