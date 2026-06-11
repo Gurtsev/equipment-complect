@@ -128,8 +128,11 @@ const chipStyle = (active: boolean): React.CSSProperties => ({
 interface Props {
   items: Equipment[];
   canEdit: boolean;
+  isAdmin?: boolean;
   onAdd: () => void;
   onEdit: (eq: Equipment) => void;
+  onDelete?: (eq: Equipment) => Promise<void>;
+  onDuplicate?: (eq: Equipment) => void;
   onAddToCart?: (equipmentId: string) => Promise<void>;
   showControls?: boolean;
   rooms: Room[];
@@ -144,8 +147,11 @@ interface Props {
 export function CatalogGrid({
   items,
   canEdit,
+  isAdmin,
   onAdd,
   onEdit,
+  onDelete,
+  onDuplicate,
   onAddToCart,
   showControls = true,
   rooms,
@@ -375,7 +381,10 @@ export function CatalogGrid({
               key={`modal-${modalEquipment.id}-${modalKey}`}
               equipment={modalEquipment}
               canEdit={canEdit}
+              isAdmin={isAdmin}
               onEdit={handleModalEdit}
+              onDelete={onDelete ? async () => { await onDelete(modalEquipment); setModalEquipment(null); } : undefined}
+              onDuplicate={onDuplicate ? () => { onDuplicate(modalEquipment); setModalEquipment(null); } : undefined}
               project={getEquipmentProject(modalEquipment.id) ?? null}
               equipmentProjects={getEquipmentProjects(modalEquipment.id)}
               onProjectClick={(p) => { setModalEquipment(null); onProjectClick(p); }}

@@ -228,16 +228,18 @@ function AppInner() {
     }
   };
 
-  const handleEquipmentDelete = async () => {
-    if (!selectedEquipment) return;
-    await equipmentService.remove(selectedEquipment.id);
+  const handleEquipmentDelete = async (eq?: Equipment) => {
+    const target = eq ?? selectedEquipment;
+    if (!target) return;
+    await equipmentService.remove(target.id);
     await loadAll();
-    setSelectedEquipment(null);
+    if (!eq || selectedEquipment?.id === target.id) setSelectedEquipment(null);
   };
 
-  const handleEquipmentDuplicate = () => {
-    if (!selectedEquipment) return;
-    setDuplicateSource(selectedEquipment);
+  const handleEquipmentDuplicate = (eq?: Equipment) => {
+    const target = eq ?? selectedEquipment;
+    if (!target) return;
+    setDuplicateSource(target);
     setEquipmentDrawerMode('create');
   };
 
@@ -700,6 +702,9 @@ function AppInner() {
               onAdd={() => setEquipmentDrawerMode('create')}
               onEdit={(eq) => { setSelectedEquipment(eq); setEquipmentDrawerMode('edit'); }}
               onAddToCart={canEdit ? handleAddToCart : undefined}
+              isAdmin={role === 'admin'}
+              onDelete={handleEquipmentDelete}
+              onDuplicate={handleEquipmentDuplicate}
               rooms={rooms}
               projects={projects}
               getEquipmentProject={(id) => getEquipmentProject(id) ?? undefined}
