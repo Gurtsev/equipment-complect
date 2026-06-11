@@ -748,6 +748,9 @@ function AppInner() {
                onAdd={() => setEquipmentDrawerMode('create')}
                onEdit={(eq) => { setSelectedEquipment(eq); setEquipmentDrawerMode('edit'); }}
                onAddToCart={canEdit ? handleAddToCart : undefined}
+               isAdmin={role === 'admin'}
+               onDelete={handleEquipmentDelete}
+               onDuplicate={handleEquipmentDuplicate}
                rooms={rooms}
                projects={projects}
                getEquipmentProject={(id) => getEquipmentProject(id) ?? undefined}
