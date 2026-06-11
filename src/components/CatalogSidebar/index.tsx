@@ -171,7 +171,10 @@ function filterItems(
   return items.filter((item) => {
     const matchesCategory = category === 'all' || item.category === category;
     const matchesSearch =
-      !q || item.model.toLowerCase().includes(q) || item.invNumber.toLowerCase().includes(q);
+      !q ||
+      item.model.toLowerCase().includes(q) ||
+      item.invNumber.toLowerCase().includes(q) ||
+      item.serialNumber.toLowerCase().includes(q);
     const matchesStatus = statusFilter === 'all' || item.currentStatus === statusFilter;
     const matchesLocation = locationFilter === 'all' || item.currentLocation === locationFilter;
     const matchesSection = sectionFilter === 'all' || item.section === sectionFilter;
@@ -376,7 +379,7 @@ export function CatalogSidebar({ items, selected, canEdit, onSelect, onAdd, onAd
             </Flex>
             <Input
               prefix={<SearchOutlined style={{ color: '#bfbfbf' }} />}
-              placeholder="Модель или INV-номер..."
+              placeholder="Модель, INV- или серийный номер..."
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               allowClear
@@ -442,7 +445,7 @@ export function CatalogSidebar({ items, selected, canEdit, onSelect, onAdd, onAd
         {!filtersOpen && (
           <Input
             prefix={<SearchOutlined style={{ color: '#bfbfbf' }} />}
-            placeholder="Модель или INV-номер..."
+            placeholder="Модель, INV- или серийный номер..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             allowClear
