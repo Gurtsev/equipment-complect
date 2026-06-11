@@ -17,7 +17,7 @@ import {
   Alert,
   Popconfirm,
 } from 'antd';
-import { QrcodeOutlined, EditOutlined, PrinterOutlined, ArrowLeftOutlined, UserOutlined, SwapOutlined, DeleteOutlined } from '@ant-design/icons';
+import { QrcodeOutlined, EditOutlined, PrinterOutlined, ArrowLeftOutlined, UserOutlined, SwapOutlined, DeleteOutlined, CopyOutlined } from '@ant-design/icons';
 import { QRCodeSVG } from 'qrcode.react';
 import {
   Equipment,
@@ -120,6 +120,7 @@ interface Props {
   isAdmin?: boolean;
   onEdit: () => void;
   onDelete?: () => Promise<void>;
+  onDuplicate?: () => void;
   project?: Project | null;
   equipmentProjects?: Project[];
   onProjectClick?: (project: Project) => void;
@@ -128,7 +129,7 @@ interface Props {
   rooms?: import('../../services/roomService').Room[];
 }
 
-export function EquipmentDetail({ equipment, canEdit, isAdmin, onEdit, onDelete, project, equipmentProjects, onProjectClick, onStatusUpdate, onBack, rooms = [] }: Props) {
+export function EquipmentDetail({ equipment, canEdit, isAdmin, onEdit, onDelete, onDuplicate, project, equipmentProjects, onProjectClick, onStatusUpdate, onBack, rooms = [] }: Props) {
   const { message } = App.useApp();
   const equipmentUrl = `${window.location.origin}${window.location.pathname}?eq=${equipment.id}`;
   const screens = Grid.useBreakpoint();
@@ -258,6 +259,11 @@ export function EquipmentDetail({ equipment, canEdit, isAdmin, onEdit, onDelete,
           {canEdit && (
             <Button icon={<EditOutlined />} onClick={onEdit}>
               Изменить
+            </Button>
+          )}
+          {canEdit && onDuplicate && (
+            <Button icon={<CopyOutlined />} onClick={onDuplicate}>
+              Дублировать
             </Button>
           )}
           <Button icon={<PrinterOutlined />} onClick={() => window.print()}>

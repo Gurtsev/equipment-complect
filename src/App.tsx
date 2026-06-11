@@ -62,6 +62,7 @@ function AppInner() {
   const [activeTab, setActiveTab] = useState<ActiveTab>('catalog');
   const [detailKey, setDetailKey] = useState(0);
   const [equipmentDrawerMode, setEquipmentDrawerMode] = useState<'create' | 'edit' | null>(null);
+  const [duplicateSource, setDuplicateSource] = useState<Equipment | null>(null);
   const [projectDrawerMode, setProjectDrawerMode] = useState<'create' | 'edit' | null>(null);
   const [catalogFilteredItems, setCatalogFilteredItems] = useState<Equipment[] | null>(null);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
@@ -232,6 +233,12 @@ function AppInner() {
     await equipmentService.remove(selectedEquipment.id);
     await loadAll();
     setSelectedEquipment(null);
+  };
+
+  const handleEquipmentDuplicate = () => {
+    if (!selectedEquipment) return;
+    setDuplicateSource(selectedEquipment);
+    setEquipmentDrawerMode('create');
   };
 
   // --- Project handlers ---
@@ -474,6 +481,7 @@ function AppInner() {
       isAdmin={role === 'admin'}
       onEdit={() => setEquipmentDrawerMode('edit')}
       onDelete={handleEquipmentDelete}
+      onDuplicate={handleEquipmentDuplicate}
       project={getEquipmentProject(selectedEquipment.id) ?? null}
       equipmentProjects={getEquipmentProjects(selectedEquipment.id)}
       onProjectClick={handleProjectClick}
@@ -547,10 +555,11 @@ function AppInner() {
     <>
       <CreateEquipmentDrawer
         open={equipmentDrawerMode !== null}
-        onClose={() => setEquipmentDrawerMode(null)}
+        onClose={() => { setEquipmentDrawerMode(null); setDuplicateSource(null); }}
         onCreated={handleEquipmentCreated}
         initialEquipment={equipmentDrawerMode === 'edit' ? (selectedEquipment ?? undefined) : undefined}
         onUpdated={handleEquipmentUpdated}
+        duplicateSource={equipmentDrawerMode === 'create' ? (duplicateSource ?? undefined) : undefined}
         rooms={rooms}
       />
       <CreateProjectDrawer

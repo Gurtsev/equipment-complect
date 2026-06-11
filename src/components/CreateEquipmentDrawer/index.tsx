@@ -99,12 +99,13 @@ interface Props {
   onCreated: (equipment: Equipment) => void;
   initialEquipment?: Equipment;
   onUpdated?: (equipment: Equipment) => void;
+  duplicateSource?: Equipment;
   rooms?: Room[];
 }
 
 // ── Component ────────────────────────────────────────────────────────────────
 
-export function CreateEquipmentDrawer({ open, onClose, onCreated, initialEquipment, onUpdated, rooms = [] }: Props) {
+export function CreateEquipmentDrawer({ open, onClose, onCreated, initialEquipment, onUpdated, duplicateSource, rooms = [] }: Props) {
   const { message } = App.useApp();
   const [form] = Form.useForm<FormValues>();
   const isEdit = !!initialEquipment;
@@ -141,12 +142,37 @@ export function CreateEquipmentDrawer({ open, onClose, onCreated, initialEquipme
           ? [{ uid: '-1', name: 'photo', status: 'done', url: initialEquipment.image }]
           : [],
       );
+    } else if (duplicateSource) {
+      const sec = duplicateSource.section ?? sectionFromCategory(duplicateSource.category);
+      setSection(sec);
+      const attrs = duplicateSource.attributes
+        ? Object.entries(duplicateSource.attributes).map(([key, value]) => ({ key, value }))
+        : [];
+      form.setFieldsValue({
+        model: duplicateSource.model,
+        subtitle: duplicateSource.subtitle,
+        category: duplicateSource.category,
+        description: duplicateSource.description,
+        image: duplicateSource.image,
+        invNumber: '',
+        serialNumber: '',
+        responsible: duplicateSource.responsible,
+        accessories: duplicateSource.accessories.map((name) => ({ name })),
+        roomId: duplicateSource.roomId ?? undefined,
+        quantity: duplicateSource.quantity ?? undefined,
+        attributes: attrs,
+      });
+      setFileList(
+        duplicateSource.image
+          ? [{ uid: '-1', name: 'photo', status: 'done', url: duplicateSource.image }]
+          : [],
+      );
     } else {
       setSection('tech');
       form.resetFields();
       setFileList([]);
     }
-  }, [open, initialEquipment, form]);
+  }, [open, initialEquipment, duplicateSource, form]);
 
   const uploadProps: UploadProps = {
     listType: 'picture',
