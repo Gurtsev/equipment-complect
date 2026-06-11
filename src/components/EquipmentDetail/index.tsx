@@ -731,6 +731,19 @@ export function EquipmentDetail({ equipment, canEdit, isAdmin, onEdit, onDelete,
           <Text type="secondary" style={{ fontSize: 12 }}>
             {equipment.id} · {equipment.invNumber}
           </Text>
+          <Button
+            icon={<CopyOutlined />}
+            onClick={async () => {
+              try {
+                await navigator.clipboard.writeText(equipmentUrl);
+                void message.success('Ссылка скопирована');
+              } catch {
+                void message.error('Не удалось скопировать ссылку');
+              }
+            }}
+          >
+            Копировать ссылку
+          </Button>
         </Flex>
       </Modal>
     </div>
