@@ -15,8 +15,9 @@ import {
   Grid,
   Avatar,
   Alert,
+  Popconfirm,
 } from 'antd';
-import { QrcodeOutlined, EditOutlined, PrinterOutlined, ArrowLeftOutlined, UserOutlined, SwapOutlined } from '@ant-design/icons';
+import { QrcodeOutlined, EditOutlined, PrinterOutlined, ArrowLeftOutlined, UserOutlined, SwapOutlined, DeleteOutlined } from '@ant-design/icons';
 import { QRCodeSVG } from 'qrcode.react';
 import {
   Equipment,
@@ -51,6 +52,8 @@ const CATEGORY_LABEL: Record<Equipment['category'], string> = {
   microphone: 'Микрофон',
   light: 'Свет',
   computer: 'Компьютер',
+  laptop: 'Ноутбук',
+  tv: 'Телевизор',
   audio: 'Аудио',
   accessory: 'Аксессуар',
   optics: 'Оптика',
@@ -65,6 +68,8 @@ const CATEGORY_COLOR: Record<Equipment['category'], string> = {
   microphone: 'magenta',
   light: 'gold',
   computer: 'green',
+  laptop: 'geekblue',
+  tv: 'purple',
   audio: 'purple',
   accessory: 'default',
   optics: 'cyan',
@@ -112,7 +117,9 @@ const historyColumns = [
 interface Props {
   equipment: Equipment;
   canEdit: boolean;
+  isAdmin?: boolean;
   onEdit: () => void;
+  onDelete?: () => Promise<void>;
   project?: Project | null;
   equipmentProjects?: Project[];
   onProjectClick?: (project: Project) => void;
@@ -121,7 +128,7 @@ interface Props {
   rooms?: import('../../services/roomService').Room[];
 }
 
-export function EquipmentDetail({ equipment, canEdit, onEdit, project, equipmentProjects, onProjectClick, onStatusUpdate, onBack, rooms = [] }: Props) {
+export function EquipmentDetail({ equipment, canEdit, isAdmin, onEdit, onDelete, project, equipmentProjects, onProjectClick, onStatusUpdate, onBack, rooms = [] }: Props) {
   const { message } = App.useApp();
   const equipmentUrl = `${window.location.origin}${window.location.pathname}?eq=${equipment.id}`;
   const screens = Grid.useBreakpoint();
@@ -145,6 +152,7 @@ export function EquipmentDetail({ equipment, canEdit, onEdit, project, equipment
   const [loanDueDate, setLoanDueDate] = useState('');
   const [loanNotes, setLoanNotes] = useState('');
   const [loanLoading, setLoanLoading] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   const loadAssignment = useCallback(async () => {
     try {
@@ -179,6 +187,18 @@ export function EquipmentDetail({ equipment, canEdit, onEdit, project, equipment
     equipment.addHistoryEntry(status, location, changedBy);
     setHistory([...equipment.history]);
     void message.success('Статус обновлён');
+  };
+
+  const handleDelete = async () => {
+    setDeleteLoading(true);
+    try {
+      await onDelete?.();
+      void message.success('Карточка удалена');
+    } catch {
+      void message.error('Ошибка при удалении');
+    } finally {
+      setDeleteLoading(false);
+    }
   };
 
   return (
@@ -292,6 +312,20 @@ export function EquipmentDetail({ equipment, canEdit, onEdit, project, equipment
             >
               Вернуть
             </Button>
+          )}
+          {isAdmin && onDelete && (
+            <Popconfirm
+              title="Удалить карточку оборудования?"
+              description="Это действие необратимо: история, выдачи и займы по этой единице тоже будут удалены."
+              okText="Удалить"
+              okButtonProps={{ danger: true, loading: deleteLoading }}
+              cancelText="Отмена"
+              onConfirm={() => void handleDelete()}
+            >
+              <Button danger icon={<DeleteOutlined />} loading={deleteLoading}>
+                Удалить
+              </Button>
+            </Popconfirm>
           )}
         </Flex>
 

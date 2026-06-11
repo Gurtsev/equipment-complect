@@ -227,6 +227,13 @@ function AppInner() {
     }
   };
 
+  const handleEquipmentDelete = async () => {
+    if (!selectedEquipment) return;
+    await equipmentService.remove(selectedEquipment.id);
+    await loadAll();
+    setSelectedEquipment(null);
+  };
+
   // --- Project handlers ---
 
   const handleProjectSelect = (project: Project) => {
@@ -464,7 +471,9 @@ function AppInner() {
       key={`${selectedEquipment.id}-${detailKey}`}
       equipment={selectedEquipment}
       canEdit={canEdit}
+      isAdmin={role === 'admin'}
       onEdit={() => setEquipmentDrawerMode('edit')}
+      onDelete={handleEquipmentDelete}
       project={getEquipmentProject(selectedEquipment.id) ?? null}
       equipmentProjects={getEquipmentProjects(selectedEquipment.id)}
       onProjectClick={handleProjectClick}

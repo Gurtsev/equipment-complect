@@ -44,6 +44,21 @@ const CATEGORY_SVG: Record<string, React.ReactNode> = {
       <rect x="26" y="64" width="28" height="5" rx="2" {...S} />
     </svg>
   ),
+  laptop: (
+    <svg viewBox="0 0 80 80" width="64" height="64">
+      <rect x="14" y="10" width="52" height="36" rx="3" {...S} />
+      <rect x="19" y="15" width="42" height="26" rx="1" fill="#d4d4d4" stroke="#bfbfbf" strokeWidth={1.5} />
+      <path d="M8 56 L72 56 L66 66 L14 66 Z" {...S} />
+    </svg>
+  ),
+  tv: (
+    <svg viewBox="0 0 80 80" width="64" height="64">
+      <rect x="8" y="12" width="64" height="42" rx="3" {...S} />
+      <rect x="13" y="17" width="54" height="32" rx="1" fill="#d4d4d4" stroke="#bfbfbf" strokeWidth={1.5} />
+      <line x1="40" y1="54" x2="40" y2="68" {...SN} />
+      <line x1="26" y1="70" x2="54" y2="70" {...SN} />
+    </svg>
+  ),
   audio: (
     <svg viewBox="0 0 80 80" width="64" height="64">
       <path d="M18 44 Q18 14 40 14 Q62 14 62 44" {...SN} />
@@ -98,6 +113,8 @@ const CATEGORY_LABEL: Record<string, string> = {
   microphone: 'Микрофон',
   light: 'Свет',
   computer: 'Компьютер',
+  laptop: 'Ноутбук',
+  tv: 'Телевизор',
   audio: 'Аудио',
   accessory: 'Аксессуар',
   optics: 'Оптика',

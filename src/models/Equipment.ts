@@ -12,6 +12,8 @@ export type EquipmentCategory =
   | 'microphone'
   | 'light'
   | 'computer'
+  | 'laptop'
+  | 'tv'
   | 'audio'
   | 'accessory'
   | 'optics'

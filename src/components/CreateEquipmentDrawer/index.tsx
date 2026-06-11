@@ -20,6 +20,8 @@ const TECH_CATEGORIES: Array<{ label: string; value: EquipmentCategory }> = [
   { label: 'Микрофон', value: 'microphone' },
   { label: 'Свет', value: 'light' },
   { label: 'Компьютер', value: 'computer' },
+  { label: 'Ноутбук', value: 'laptop' },
+  { label: 'Телевизор', value: 'tv' },
   { label: 'Аудио', value: 'audio' },
   { label: 'Оптика', value: 'optics' },
   { label: 'Телефон', value: 'phone' },

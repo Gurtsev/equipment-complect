@@ -119,6 +119,11 @@ export const equipmentService = {
     }
   },
 
+  async remove(id: string): Promise<void> {
+    const { error } = await supabase.from('equipment').delete().eq('id', id);
+    if (error) throw error;
+  },
+
   async update(equipment: Equipment): Promise<void> {
     const { error } = await supabase
       .from('equipment')

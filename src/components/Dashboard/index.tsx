@@ -23,6 +23,8 @@ const CATEGORY_LABEL: Record<EquipmentCategory, string> = {
   microphone: 'Микрофоны',
   light: 'Свет',
   computer: 'Компьютеры',
+  laptop: 'Ноутбуки',
+  tv: 'Телевизоры',
   audio: 'Аудио',
   accessory: 'Аксессуары',
   optics: 'Оптика',
@@ -33,7 +35,7 @@ const CATEGORY_LABEL: Record<EquipmentCategory, string> = {
 };
 
 const STATUSES: EquipmentStatus[] = ['В Работе', 'Забронировано', 'На Складе', 'В Ремонте', 'В Пути', 'Списано'];
-const CATEGORIES: EquipmentCategory[] = ['camera', 'microphone', 'light', 'computer', 'audio', 'accessory', 'optics', 'phone', 'furniture', 'prop', 'tool'];
+const CATEGORIES: EquipmentCategory[] = ['camera', 'microphone', 'light', 'computer', 'laptop', 'tv', 'audio', 'accessory', 'optics', 'phone', 'furniture', 'prop', 'tool'];
 const LOCATIONS: EquipmentLocation[] = ['Склад', 'Ремонт', 'В пути', 'На руках', 'Офис'];
 
 interface Props {
