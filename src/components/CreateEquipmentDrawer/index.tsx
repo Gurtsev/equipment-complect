@@ -91,6 +91,7 @@ interface FormValues {
   roomId?: string;
   quantity?: number;
   attributes?: Array<{ key: string; value: string }>;
+  parentId?: string;
 }
 
 interface Props {
@@ -101,11 +102,12 @@ interface Props {
   onUpdated?: (equipment: Equipment) => void;
   duplicateSource?: Equipment;
   rooms?: Room[];
+  allEquipment?: Equipment[];
 }
 
 // ── Component ────────────────────────────────────────────────────────────────
 
-export function CreateEquipmentDrawer({ open, onClose, onCreated, initialEquipment, onUpdated, duplicateSource, rooms = [] }: Props) {
+export function CreateEquipmentDrawer({ open, onClose, onCreated, initialEquipment, onUpdated, duplicateSource, rooms = [], allEquipment = [] }: Props) {
   const { message } = App.useApp();
   const [form] = Form.useForm<FormValues>();
   const isEdit = !!initialEquipment;
@@ -136,6 +138,7 @@ export function CreateEquipmentDrawer({ open, onClose, onCreated, initialEquipme
         roomId: initialEquipment.roomId ?? undefined,
         quantity: initialEquipment.quantity ?? undefined,
         attributes: attrs,
+        parentId: initialEquipment.parentId ?? undefined,
       });
       setFileList(
         initialEquipment.image
@@ -161,6 +164,7 @@ export function CreateEquipmentDrawer({ open, onClose, onCreated, initialEquipme
         roomId: duplicateSource.roomId ?? undefined,
         quantity: duplicateSource.quantity ?? undefined,
         attributes: attrs,
+        parentId: undefined,
       });
       setFileList(
         duplicateSource.image
@@ -257,6 +261,8 @@ export function CreateEquipmentDrawer({ open, onClose, onCreated, initialEquipme
         roomId: values.roomId ?? null,
         attributes,
         quantity: values.quantity ?? null,
+        parentId: values.parentId ?? null,
+        assemblyStatus: initialEquipment.assemblyStatus,
       });
       onUpdated(updated);
       void message.success(`${updated.model} обновлено`);
@@ -279,6 +285,7 @@ export function CreateEquipmentDrawer({ open, onClose, onCreated, initialEquipme
       roomId: values.roomId ?? null,
       attributes,
       quantity: values.quantity ?? null,
+      parentId: values.parentId ?? null,
       history: [{
         date: new Date(),
         status: 'На Складе' as EquipmentStatus,
@@ -295,6 +302,10 @@ export function CreateEquipmentDrawer({ open, onClose, onCreated, initialEquipme
   const isTech = section === 'tech';
   const isFurniture = section === 'furniture';
   const isProp = section === 'prop';
+
+  const parentOptions = allEquipment
+    .filter((e) => !e.parentId && e.id !== initialEquipment?.id)
+    .map((e) => ({ value: e.id, label: `${e.model}${e.subtitle ? ' — ' + e.subtitle : ''}` }));
 
   return (
     <Drawer
@@ -366,6 +377,19 @@ export function CreateEquipmentDrawer({ open, onClose, onCreated, initialEquipme
               showSearch
               treeNodeFilterProp="title"
               style={{ width: '100%' }}
+            />
+          </Form.Item>
+        )}
+
+        {/* Входит в состав комплекта — только Техника */}
+        {isTech && (
+          <Form.Item name="parentId" label="Входит в состав">
+            <Select
+              placeholder="Не входит в комплект"
+              allowClear
+              showSearch
+              options={parentOptions}
+              filterOption={(input, opt) => (opt?.label as string ?? '').toLowerCase().includes(input.toLowerCase())}
             />
           </Form.Item>
         )}

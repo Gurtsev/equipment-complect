@@ -22,6 +22,8 @@ export type EquipmentCategory =
   | 'prop'
   | 'tool';
 
+export type AssemblyStatus = 'assembling' | 'ready' | 'synced';
+
 export interface HistoryEntry {
   date: Date;
   status: EquipmentStatus;
@@ -46,6 +48,8 @@ export interface EquipmentData {
   roomId?: string | null;
   attributes?: Record<string, string> | null;
   quantity?: number | null;
+  parentId?: string | null;
+  assemblyStatus?: AssemblyStatus | null;
 }
 
 export class Equipment {
@@ -64,6 +68,8 @@ export class Equipment {
   roomId: string | null;
   readonly attributes: Record<string, string> | null;
   readonly quantity: number | null;
+  parentId: string | null;
+  assemblyStatus: AssemblyStatus | null;
 
   constructor(data: EquipmentData) {
     this.id = data.id;
@@ -81,6 +87,8 @@ export class Equipment {
     this.roomId = data.roomId ?? null;
     this.attributes = data.attributes ?? null;
     this.quantity = data.quantity ?? null;
+    this.parentId = data.parentId ?? null;
+    this.assemblyStatus = data.assemblyStatus ?? null;
   }
 
   get currentStatus(): EquipmentStatus {

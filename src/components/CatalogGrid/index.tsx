@@ -5,7 +5,7 @@ import { EquipmentCard } from '../EquipmentCard';
 import { EquipmentDetail } from '../EquipmentDetail';
 import { historyService } from '../../services/historyService';
 import { buildRoomTree, OFFICE_LABEL } from '../../services/roomService';
-import type { Equipment, EquipmentStatus, EquipmentLocation, EquipmentSection, EquipmentCategory } from '../../models/Equipment';
+import type { AssemblyStatus, Equipment, EquipmentStatus, EquipmentLocation, EquipmentSection, EquipmentCategory } from '../../models/Equipment';
 import type { Project } from '../../models/Project';
 import type { Room } from '../../services/roomService';
 
@@ -142,6 +142,9 @@ interface Props {
   onProjectClick: (project: Project) => void;
   onEquipmentChange: () => Promise<void>;
   detailKey: number;
+  allEquipment: Equipment[];
+  onDetach?: (eq: Equipment) => Promise<void>;
+  onAssemblyStatusChange?: (eq: Equipment, status: AssemblyStatus) => Promise<void>;
 }
 
 export function CatalogGrid({
@@ -160,6 +163,9 @@ export function CatalogGrid({
   onProjectClick,
   onEquipmentChange,
   detailKey,
+  allEquipment,
+  onDetach,
+  onAssemblyStatusChange,
 }: Props) {
   const { message } = App.useApp();
 
@@ -195,9 +201,10 @@ export function CatalogGrid({
   });
 
   const filtered = useMemo(() => {
-    if (!showControls) return items;
+    if (!showControls) return items.filter((eq) => !eq.parentId);
     const q = search.toLowerCase();
     let result = items.filter((eq) => {
+      if (eq.parentId) return false;
       if (section !== 'all' && eq.section !== section) return false;
       if (category !== 'all' && eq.category !== category) return false;
       if (statusFilter && eq.currentStatus !== statusFilter) return false;
@@ -219,6 +226,8 @@ export function CatalogGrid({
   useEffect(() => { setModalKey((k) => k + 1); }, [detailKey]);
 
   const handleCardClick = (eq: Equipment) => { setModalEquipment(eq); setModalKey((k) => k + 1); };
+
+  const handleComponentClick = (eq: Equipment) => { setModalEquipment(eq); setModalKey((k) => k + 1); };
 
   const handleModalStatusUpdate = useCallback(async (
     status: EquipmentStatus,
@@ -313,6 +322,7 @@ export function CatalogGrid({
                 equipment={eq}
                 onClick={() => handleCardClick(eq)}
                 onAddToCart={onAddToCart ? () => void onAddToCart(eq.id) : undefined}
+                componentCount={allEquipment.filter((e) => e.parentId === eq.id).length}
               />
             ))}
           </div>
@@ -390,6 +400,10 @@ export function CatalogGrid({
               onProjectClick={(p) => { setModalEquipment(null); onProjectClick(p); }}
               onStatusUpdate={handleModalStatusUpdate}
               rooms={rooms}
+              allEquipment={allEquipment}
+              onComponentClick={handleComponentClick}
+              onDetach={onDetach ? async () => { await onDetach(modalEquipment); } : undefined}
+              onAssemblyStatusChange={onAssemblyStatusChange ? async (s) => { await onAssemblyStatusChange(modalEquipment, s); } : undefined}
             />
           </div>
         )}

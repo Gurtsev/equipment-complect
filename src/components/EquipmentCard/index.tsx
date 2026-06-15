@@ -128,9 +128,10 @@ interface Props {
   equipment: Equipment;
   onClick: () => void;
   onAddToCart?: () => void;
+  componentCount?: number;
 }
 
-export function EquipmentCard({ equipment, onClick, onAddToCart }: Props) {
+export function EquipmentCard({ equipment, onClick, onAddToCart, componentCount }: Props) {
 
   return (
     <div
@@ -155,6 +156,16 @@ export function EquipmentCard({ equipment, onClick, onAddToCart }: Props) {
         e.currentTarget.style.borderColor = '#f0f0f0';
       }}
     >
+      {!!componentCount && (
+        <div style={{
+          position: 'absolute', top: 6, left: 6, zIndex: 2,
+          background: 'rgba(0,0,0,0.55)', color: '#fff',
+          borderRadius: 10, padding: '1px 7px', fontSize: 11, fontWeight: 600,
+        }}>
+          🔗 {componentCount}
+        </div>
+      )}
+
       {/* Image / placeholder */}
       <div style={{ position: 'relative', paddingTop: '66%', background: '#f5f5f5', flexShrink: 0 }}>
         {equipment.image ? (

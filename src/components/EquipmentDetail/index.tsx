@@ -20,6 +20,7 @@ import {
 import { QrcodeOutlined, EditOutlined, PrinterOutlined, ArrowLeftOutlined, UserOutlined, SwapOutlined, DeleteOutlined, CopyOutlined } from '@ant-design/icons';
 import { QRCodeSVG } from 'qrcode.react';
 import {
+  AssemblyStatus,
   Equipment,
   EquipmentStatus,
   EquipmentLocation,
@@ -61,6 +62,18 @@ const CATEGORY_LABEL: Record<Equipment['category'], string> = {
   furniture: 'Мебель',
   prop: 'Реквизит',
   tool: 'Инструмент',
+};
+
+const ASSEMBLY_STATUS_LABEL: Record<AssemblyStatus, string> = {
+  assembling: 'Комплектуется',
+  ready: 'Готов к сверке',
+  synced: 'Синхронизирован',
+};
+
+const ASSEMBLY_STATUS_COLOR: Record<AssemblyStatus, string> = {
+  assembling: 'processing',
+  ready: 'success',
+  synced: 'default',
 };
 
 const CATEGORY_COLOR: Record<Equipment['category'], string> = {
@@ -127,9 +140,13 @@ interface Props {
   onStatusUpdate?: (status: EquipmentStatus, location: EquipmentLocation, responsible: string) => Promise<void>;
   onBack?: () => void;
   rooms?: import('../../services/roomService').Room[];
+  allEquipment?: Equipment[];
+  onComponentClick?: (equipment: Equipment) => void;
+  onDetach?: () => Promise<void>;
+  onAssemblyStatusChange?: (status: AssemblyStatus) => Promise<void>;
 }
 
-export function EquipmentDetail({ equipment, canEdit, isAdmin, onEdit, onDelete, onDuplicate, project, equipmentProjects, onProjectClick, onStatusUpdate, onBack, rooms = [] }: Props) {
+export function EquipmentDetail({ equipment, canEdit, isAdmin, onEdit, onDelete, onDuplicate, project, equipmentProjects, onProjectClick, onStatusUpdate, onBack, rooms = [], allEquipment = [], onComponentClick, onDetach, onAssemblyStatusChange }: Props) {
   const { message } = App.useApp();
   const equipmentUrl = `${window.location.origin}${window.location.pathname}?eq=${equipment.id}`;
   const screens = Grid.useBreakpoint();
@@ -154,6 +171,34 @@ export function EquipmentDetail({ equipment, canEdit, isAdmin, onEdit, onDelete,
   const [loanNotes, setLoanNotes] = useState('');
   const [loanLoading, setLoanLoading] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [detachLoading, setDetachLoading] = useState(false);
+  const [assemblyLoading, setAssemblyLoading] = useState(false);
+
+  const parent = equipment.parentId ? allEquipment.find((e) => e.id === equipment.parentId) ?? null : null;
+  const components = allEquipment.filter((e) => e.parentId === equipment.id);
+
+  const handleDetach = async () => {
+    setDetachLoading(true);
+    try {
+      await onDetach?.();
+      void message.success('Компонент отвязан от комплекта');
+    } catch {
+      void message.error('Ошибка при отвязке');
+    } finally {
+      setDetachLoading(false);
+    }
+  };
+
+  const handleAssemblyStatusChange = async (s: AssemblyStatus) => {
+    setAssemblyLoading(true);
+    try {
+      await onAssemblyStatusChange?.(s);
+    } catch {
+      void message.error('Ошибка при обновлении статуса сборки');
+    } finally {
+      setAssemblyLoading(false);
+    }
+  };
 
   const loadAssignment = useCallback(async () => {
     try {
@@ -238,6 +283,18 @@ export function EquipmentDetail({ equipment, canEdit, isAdmin, onEdit, onDelete,
                 {CATEGORY_LABEL[equipment.category]}
               </Tag>
               <Tag color={STATUS_COLOR[equipment.currentStatus]}>{equipment.currentStatus}</Tag>
+              {components.length > 0 && (
+                <Tag color="default">🔗 {components.length}</Tag>
+              )}
+              {parent && (
+                <Tag
+                  color="default"
+                  style={{ cursor: onComponentClick ? 'pointer' : 'default' }}
+                  onClick={() => onComponentClick?.(parent)}
+                >
+                  ↳ часть: {parent.model}
+                </Tag>
+              )}
             </Flex>
             <Title level={isMobile ? 5 : 4} style={{ margin: '0 0 2px', wordBreak: 'normal', overflowWrap: 'break-word' }}>
               {equipment.model}
@@ -318,6 +375,17 @@ export function EquipmentDetail({ equipment, canEdit, isAdmin, onEdit, onDelete,
             >
               Вернуть
             </Button>
+          )}
+          {canEdit && parent && onDetach && (
+            <Popconfirm
+              title="Отвязать от комплекта?"
+              description="Компонент станет самостоятельной единицей со своей историей статусов."
+              okText="Отвязать"
+              cancelText="Отмена"
+              onConfirm={() => void handleDetach()}
+            >
+              <Button loading={detachLoading}>Отвязать от комплекта</Button>
+            </Popconfirm>
           )}
           {isAdmin && onDelete && (
             <Popconfirm
@@ -450,6 +518,51 @@ export function EquipmentDetail({ equipment, canEdit, isAdmin, onEdit, onDelete,
           )}
         </Descriptions>
       </Card>
+
+      {/* Компоненты комплекта */}
+      {components.length > 0 && (
+        <Card title={`Компоненты (${components.length})`} size="small" style={{ marginBottom: 16 }} className="no-print">
+          <Flex vertical gap={8}>
+            {components.map((c) => (
+              <Flex
+                key={c.id}
+                align="center"
+                justify="space-between"
+                gap={8}
+                style={{ padding: '6px 10px', background: '#fafafa', borderRadius: 8, cursor: onComponentClick ? 'pointer' : 'default' }}
+                onClick={() => onComponentClick?.(c)}
+              >
+                <div style={{ minWidth: 0 }}>
+                  <Text strong style={{ fontSize: 13 }}>{c.model}</Text>
+                  {c.subtitle && <Text type="secondary" style={{ fontSize: 12, display: 'block' }}>{c.subtitle}</Text>}
+                </div>
+                <Tag color={STATUS_COLOR[c.currentStatus]} style={{ margin: 0 }}>{c.currentStatus}</Tag>
+              </Flex>
+            ))}
+          </Flex>
+        </Card>
+      )}
+
+      {/* Сборка */}
+      {components.length > 0 && canEdit && (
+        <Card title="Сборка" size="small" style={{ marginBottom: 16 }} className="no-print">
+          <Flex align="center" justify="space-between" gap={8} wrap>
+            <Tag color={ASSEMBLY_STATUS_COLOR[equipment.assemblyStatus ?? 'assembling']}>
+              {ASSEMBLY_STATUS_LABEL[equipment.assemblyStatus ?? 'assembling']}
+            </Tag>
+            {(equipment.assemblyStatus ?? 'assembling') === 'assembling' && (
+              <Button loading={assemblyLoading} onClick={() => void handleAssemblyStatusChange('ready')}>
+                Готов к сверке
+              </Button>
+            )}
+            {equipment.assemblyStatus === 'ready' && (
+              <Button loading={assemblyLoading} onClick={() => void handleAssemblyStatusChange('assembling')}>
+                Вернуть в сборку
+              </Button>
+            )}
+          </Flex>
+        </Card>
+      )}
 
       {/* Accessories */}
       {equipment.accessories.length > 0 && (

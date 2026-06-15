@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import { Equipment, EquipmentCategory, EquipmentLocation, EquipmentSection, EquipmentStatus } from '../models/Equipment';
+import { AssemblyStatus, Equipment, EquipmentCategory, EquipmentLocation, EquipmentSection, EquipmentStatus } from '../models/Equipment';
 
 interface EquipmentRow {
   id: string;
@@ -16,6 +16,8 @@ interface EquipmentRow {
   room_id: string | null;
   attributes: Record<string, string> | null;
   quantity: number | null;
+  parent_id: string | null;
+  assembly_status: string | null;
 }
 
 interface HistoryRow {
@@ -43,6 +45,8 @@ function toEquipment(row: EquipmentRow, history: HistoryRow[], nameById: Map<str
     roomId: row.room_id ?? null,
     attributes: row.attributes ?? null,
     quantity: row.quantity ?? null,
+    parentId: row.parent_id ?? null,
+    assemblyStatus: (row.assembly_status as AssemblyStatus | null) ?? null,
     history: history.map((h) => ({
       date: new Date(h.recorded_at),
       status: h.status as EquipmentStatus,
@@ -103,6 +107,8 @@ export const equipmentService = {
       room_id: equipment.roomId ?? null,
       attributes: equipment.attributes ?? null,
       quantity: equipment.quantity ?? null,
+      parent_id: equipment.parentId ?? null,
+      assembly_status: equipment.assemblyStatus ?? null,
     });
     if (eqErr) throw eqErr;
 
@@ -140,6 +146,8 @@ export const equipmentService = {
         room_id: equipment.roomId ?? null,
         attributes: equipment.attributes ?? null,
         quantity: equipment.quantity ?? null,
+        parent_id: equipment.parentId ?? null,
+        assembly_status: equipment.assemblyStatus ?? null,
       })
       .eq('id', equipment.id);
     if (error) throw error;

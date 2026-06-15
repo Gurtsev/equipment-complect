@@ -181,6 +181,7 @@ canEditEquipment(dept) = canEdit && (userDepartment === null || userDepartment =
 - `'Забронировано'` исключён из ручного выбора статуса.
 - Кнопка «Печать» → `window.print()`. Классы `no-print`/`print-only`.
 - Принимает `rooms: Room[]` для отображения имени помещения.
+- **Составные объекты (4.12):** принимает `allEquipment: Equipment[]` для поиска родителя/компонентов по `parentId`. Если у карточки есть компоненты — блок «Компоненты (N)» (клик → `onComponentClick`, навигация) и блок «Сборка» с `assemblyStatus` (`assembling`/`ready`/`synced`, переключение через `onAssemblyStatusChange`). Если карточка сама — компонент (`parentId` задан) — бейдж «↳ часть: …» и кнопка «Отвязать от комплекта» (`onDetach`, canEdit) — обнуляет `parentId`.
 
 ### `ProjectDetail`
 Импортирует `historyService`, `projectService`, `projectHistoryService` напрямую. Все мутирующие хендлеры async.
@@ -211,6 +212,7 @@ canEditEquipment(dept) = canEdit && (userDepartment === null || userDepartment =
 - Поле фото: `<Upload>` с `customRequest` → Supabase Storage bucket `equipment-images`.
 - Поле «Помещение»: `Select` из `rooms` с группировкой по офису.
 - `'В Ремонте'` auto-location: ставит локацию `'Ремонт'`, блокирует dropdown. Здесь и в `EquipmentDetail`.
+- Поле «Входит в состав» (только Техника): `Select` с поиском по `allEquipment`, доступны только карточки без своего `parentId` (исключает многоуровневые цепочки).
 
 ### `CatalogSidebar`
 - `exportCsv(items)` — нативный Blob без зависимостей.
@@ -224,6 +226,7 @@ EquipmentLocation = 'Склад' | 'Ремонт' | 'В пути' | 'На рук
 EquipmentCategory = 'camera' | 'microphone' | 'light' | 'computer' | 'audio' | 'accessory' | 'optics' | 'phone' | 'furniture' | 'prop' | 'tool'
 EquipmentDepartment = 'studio' | 'aho' | 'office'
 ProjectStatus     = 'Планируется' | 'Активен' | 'Завершён'
+AssemblyStatus    = 'assembling' | 'ready' | 'synced'  // только у родителя составного объекта
 UserRole          = 'admin' | 'operator' | 'viewer'
 ActiveTab         = 'catalog' | 'projects' | 'users' | 'calendar' | 'consumables' | 'rooms'
 ```
@@ -232,7 +235,7 @@ ActiveTab         = 'catalog' | 'projects' | 'users' | 'calendar' | 'consumables
 
 Миграции в `supabase/migrations/`. Запускать в Supabase SQL Editor по порядку.
 
-- `equipment` — `accessories: text[]`, `department: EquipmentDepartment`, `room_id: uuid`.
+- `equipment` — `accessories: text[]`, `room_id: uuid`, `parent_id: text` (self-reference, составной объект), `assembly_status: text` (`assembling`/`ready`/`synced`, только у родителя, 023).
 - `equipment_history` — `recorded_at desc` = текущий статус. `user_id` добавлен в 005.
 - `projects` — `start_date`/`end_date` тип `date`, конвертируются через `new Date(row.start_date)`.
 - `project_equipment` — join M:M. Синхронизируется DELETE + INSERT при каждом `projectService.update()`.

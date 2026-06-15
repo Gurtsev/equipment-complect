@@ -28,7 +28,7 @@ import { cartService } from './services/cartService';
 import type { CartItem } from './services/cartService';
 import { listService } from './services/listService';
 import type { EquipmentList } from './services/listService';
-import { Equipment, EquipmentLocation, EquipmentStatus } from './models/Equipment';
+import { AssemblyStatus, Equipment, EquipmentLocation, EquipmentStatus } from './models/Equipment';
 import { Project } from './models/Project';
 import type { Consumable } from './services/consumablesService';
 
@@ -241,6 +241,22 @@ function AppInner() {
     if (!target) return;
     setDuplicateSource(target);
     setEquipmentDrawerMode('create');
+  };
+
+  const handleComponentClick = (eq: Equipment) => {
+    setSelectedEquipment(eq);
+  };
+
+  const handleDetach = async (eq: Equipment) => {
+    const updated = new Equipment({ ...eq, parentId: null });
+    await equipmentService.update(updated);
+    await handleEquipmentChange();
+  };
+
+  const handleAssemblyStatusChange = async (eq: Equipment, status: AssemblyStatus) => {
+    const updated = new Equipment({ ...eq, assemblyStatus: status });
+    await equipmentService.update(updated);
+    await handleEquipmentChange();
   };
 
   // --- Project handlers ---
@@ -490,6 +506,10 @@ function AppInner() {
       onStatusUpdate={handleStatusUpdate}
       onBack={isMobile ? handleBack : undefined}
       rooms={rooms}
+      allEquipment={items}
+      onComponentClick={handleComponentClick}
+      onDetach={() => handleDetach(selectedEquipment)}
+      onAssemblyStatusChange={(status) => handleAssemblyStatusChange(selectedEquipment, status)}
     />
   ) : isMobile ? null : (
     <Dashboard items={items} />
@@ -563,6 +583,7 @@ function AppInner() {
         onUpdated={handleEquipmentUpdated}
         duplicateSource={equipmentDrawerMode === 'create' ? (duplicateSource ?? undefined) : undefined}
         rooms={rooms}
+        allEquipment={items}
       />
       <CreateProjectDrawer
         open={projectDrawerMode !== null}
@@ -712,6 +733,9 @@ function AppInner() {
               onProjectClick={handleProjectClick}
               onEquipmentChange={handleEquipmentChange}
               detailKey={detailKey}
+              allEquipment={items}
+              onDetach={handleDetach}
+              onAssemblyStatusChange={handleAssemblyStatusChange}
             />
           </div>
         ) : tabContent}
@@ -758,6 +782,9 @@ function AppInner() {
                onProjectClick={handleProjectClick}
                onEquipmentChange={handleEquipmentChange}
                detailKey={detailKey}
+               allEquipment={items}
+               onDetach={handleDetach}
+               onAssemblyStatusChange={handleAssemblyStatusChange}
              />
            ) :
            rightPane}
