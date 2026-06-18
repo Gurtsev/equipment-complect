@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { Input, Button, Modal, App, Drawer, Select, Badge, TreeSelect, Tag, List, Typography } from 'antd';
-import { SearchOutlined, PlusOutlined, FilterOutlined, RightOutlined } from '@ant-design/icons';
+import { SearchOutlined, PlusOutlined, FilterOutlined, RightOutlined, ShoppingCartOutlined } from '@ant-design/icons';
 import { EquipmentCard, CATEGORY_SVG } from '../EquipmentCard';
 import { EquipmentDetail } from '../EquipmentDetail';
 import { historyService } from '../../services/historyService';
@@ -202,7 +202,7 @@ function ModelCard({ group, onClick, onAddToCart }: {
           style={{ position: 'absolute', bottom: 8, right: 8, width: 28, height: 28, borderRadius: '50%', background: '#52c41a', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 13, boxShadow: '0 2px 6px rgba(82,196,26,0.4)', zIndex: 2 }}
           title="В корзину"
         >
-          +
+          <ShoppingCartOutlined />
         </button>
       )}
     </div>
