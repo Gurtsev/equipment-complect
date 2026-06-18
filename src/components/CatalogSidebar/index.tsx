@@ -21,7 +21,9 @@ const SECTION_OPTIONS: Array<{ label: string; value: EquipmentSection | 'all' }>
   { label: 'Реквизит', value: 'prop' },
 ];
 
-const CATEGORIES_BY_SECTION: Record<EquipmentSection | 'all', Array<{ label: string; value: EquipmentCategory | 'all' }>> = {
+type CategoryFilter = EquipmentCategory | 'all' | 'component';
+
+const CATEGORIES_BY_SECTION: Record<EquipmentSection | 'all', Array<{ label: string; value: CategoryFilter }>> = {
   all: [
     { label: 'Все категории', value: 'all' },
     { label: 'Камеры', value: 'camera' },
@@ -37,6 +39,7 @@ const CATEGORIES_BY_SECTION: Record<EquipmentSection | 'all', Array<{ label: str
     { label: 'Аксессуары', value: 'accessory' },
     { label: 'Мебель', value: 'furniture' },
     { label: 'Реквизит', value: 'prop' },
+    { label: 'Компоненты', value: 'component' },
   ],
   tech: [
     { label: 'Все категории', value: 'all' },
@@ -51,15 +54,18 @@ const CATEGORIES_BY_SECTION: Record<EquipmentSection | 'all', Array<{ label: str
     { label: 'Телефоны', value: 'phone' },
     { label: 'Инструмент', value: 'tool' },
     { label: 'Аксессуары', value: 'accessory' },
+    { label: 'Компоненты', value: 'component' },
   ],
   furniture: [
     { label: 'Все категории', value: 'all' },
     { label: 'Мебель', value: 'furniture' },
+    { label: 'Компоненты', value: 'component' },
   ],
   prop: [
     { label: 'Все категории', value: 'all' },
     { label: 'Реквизит', value: 'prop' },
     { label: 'Аксессуары', value: 'accessory' },
+    { label: 'Компоненты', value: 'component' },
   ],
 };
 
@@ -160,7 +166,7 @@ function getRoomFilterIds(rooms: Room[], selectedValue: string): Set<string> {
 
 function filterItems(
   items: Equipment[],
-  category: EquipmentCategory | 'all',
+  category: CategoryFilter,
   query: string,
   statusFilter: EquipmentStatus | 'all',
   locationFilter: EquipmentLocation | 'all',
@@ -169,7 +175,12 @@ function filterItems(
 ): Equipment[] {
   const q = query.toLowerCase().trim();
   return items.filter((item) => {
-    const matchesCategory = category === 'all' || item.category === category;
+    if (category === 'component') {
+      if (!item.parentId) return false;
+    } else {
+      if (item.parentId) return false;
+    }
+    const matchesCategory = category === 'all' || category === 'component' || item.category === category;
     const matchesSearch =
       !q ||
       item.model.toLowerCase().includes(q) ||
@@ -265,7 +276,7 @@ export function CatalogSidebar({ items, selected, canEdit, onSelect, onAdd, onAd
   const isMobile = !screens.md;
 
   const [query, setQuery] = useState('');
-  const [category, setCategory] = useState<EquipmentCategory | 'all'>('all');
+  const [category, setCategory] = useState<CategoryFilter>('all');
   const [statusFilter, setStatusFilter] = useState<EquipmentStatus | undefined>(undefined);
   const [locationFilter, setLocationFilter] = useState<EquipmentLocation | undefined>(undefined);
   const [sectionFilter, setSectionFilter] = useState<EquipmentSection | 'all'>('all');
