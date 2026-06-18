@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { Input, Button, Modal, App, Drawer, Select, Badge, TreeSelect, Tag, List, Typography, Grid } from 'antd';
 import { SearchOutlined, PlusOutlined, FilterOutlined, RightOutlined, ShoppingCartOutlined } from '@ant-design/icons';
-import { EquipmentCard, CATEGORY_SVG } from '../EquipmentCard';
+import { CATEGORY_SVG } from '../EquipmentCard';
 import { EquipmentDetail } from '../EquipmentDetail';
 import { historyService } from '../../services/historyService';
 import { buildRoomTree, OFFICE_LABEL } from '../../services/roomService';
@@ -328,14 +328,13 @@ export function CatalogGrid({
   }, [items, showControls, search, section, category, statusFilter, locationFilter, roomIds, sortBy]);
 
   const grouped = useMemo<Equipment[][]>(() => {
-    if (showControls) return [];
     const map = new Map<string, Equipment[]>();
     for (const eq of filtered) {
       if (!map.has(eq.model)) map.set(eq.model, []);
       map.get(eq.model)!.push(eq);
     }
     return Array.from(map.values());
-  }, [filtered, showControls]);
+  }, [filtered]);
 
   useEffect(() => {
     setModalEquipment((prev) => prev ? (items.find((e) => e.id === prev.id) ?? prev) : null);
@@ -436,18 +435,6 @@ export function CatalogGrid({
         {filtered.length === 0 ? (
           <div style={{ textAlign: 'center', color: '#bfbfbf', padding: '60px 0', fontSize: 14 }}>
             Ничего не найдено
-          </div>
-        ) : showControls ? (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 10 }}>
-            {filtered.map((eq) => (
-              <EquipmentCard
-                key={eq.id}
-                equipment={eq}
-                onClick={() => handleCardClick(eq)}
-                onAddToCart={onAddToCart ? () => void onAddToCart(eq.id) : undefined}
-                componentCount={allEquipment.filter((e) => e.parentId === eq.id).length}
-              />
-            ))}
           </div>
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 10 }}>
