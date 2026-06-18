@@ -201,7 +201,7 @@ export function CatalogGrid({
   });
 
   const filtered = useMemo(() => {
-    if (!showControls) return items.filter((eq) => !eq.parentId);
+    if (!showControls) return items;
     const q = search.toLowerCase();
     let result = items.filter((eq) => {
       if (eq.parentId) return false;
