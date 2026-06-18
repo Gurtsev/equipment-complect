@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
-import { Input, Button, Modal, App, Drawer, Select, Badge, TreeSelect, Tag, List, Typography } from 'antd';
+import { Input, Button, Modal, App, Drawer, Select, Badge, TreeSelect, Tag, List, Typography, Grid } from 'antd';
 import { SearchOutlined, PlusOutlined, FilterOutlined, RightOutlined, ShoppingCartOutlined } from '@ant-design/icons';
 import { EquipmentCard, CATEGORY_SVG } from '../EquipmentCard';
 import { EquipmentDetail } from '../EquipmentDetail';
@@ -271,6 +271,8 @@ export function CatalogGrid({
   onAssemblyStatusChange,
 }: Props) {
   const { message } = App.useApp();
+  const screens = Grid.useBreakpoint();
+  const isMobile = !screens.md;
 
   // Modal state
   const [modalEquipment, setModalEquipment] = useState<Equipment | null>(null);
@@ -513,8 +515,9 @@ export function CatalogGrid({
         return (
           <Drawer
             title={<span>{groupDrawerModel} <Typography.Text type="secondary" style={{ fontSize: 13 }}>({groupItems.length} шт.)</Typography.Text></span>}
-            placement="right"
-            width={420}
+            placement={isMobile ? 'bottom' : 'right'}
+            height={isMobile ? '60vh' : undefined}
+            width={isMobile ? undefined : 420}
             open
             onClose={() => setGroupDrawerModel(null)}
             styles={{ body: { padding: 0 } }}
@@ -523,12 +526,28 @@ export function CatalogGrid({
               dataSource={groupItems}
               renderItem={(eq) => (
                 <List.Item
-                  style={{ padding: '10px 16px', cursor: 'pointer' }}
-                  onClick={() => { setGroupDrawerModel(null); handleCardClick(eq); }}
-                  actions={[<RightOutlined key="open" style={{ color: '#bfbfbf' }} />]}
+                  style={{ padding: '10px 16px' }}
+                  actions={[
+                    onAddToCart && (
+                      <Button
+                        key="cart"
+                        size="small"
+                        icon={<ShoppingCartOutlined />}
+                        onClick={(e) => { e.stopPropagation(); void onAddToCart(eq.id); }}
+                        title="В корзину"
+                      />
+                    ),
+                    <Button
+                      key="open"
+                      size="small"
+                      type="text"
+                      icon={<RightOutlined />}
+                      onClick={() => { setGroupDrawerModel(null); handleCardClick(eq); }}
+                    />,
+                  ].filter(Boolean)}
                 >
                   <List.Item.Meta
-                    title={<span style={{ fontSize: 13 }}>{eq.invNumber || eq.id}</span>}
+                    title={<span style={{ fontSize: 13, cursor: 'pointer' }} onClick={() => { setGroupDrawerModel(null); handleCardClick(eq); }}>{eq.invNumber || eq.id}</span>}
                     description={
                       <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', marginTop: 2 }}>
                         <Tag color={STATUS_DOT_COLOR[eq.currentStatus]} style={{ margin: 0, fontSize: 11 }}>{eq.currentStatus}</Tag>
