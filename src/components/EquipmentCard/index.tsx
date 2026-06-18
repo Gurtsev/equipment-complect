@@ -7,7 +7,7 @@ import type { Equipment } from '../../models/Equipment';
 const S = { fill: '#e8e8e8', stroke: '#bfbfbf', strokeWidth: 2.5, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
 const SN = { ...S, fill: 'none' };
 
-const CATEGORY_SVG: Record<string, React.ReactNode> = {
+export const CATEGORY_SVG: Record<string, React.ReactNode> = {
   camera: (
     <svg viewBox="0 0 80 80" width="64" height="64">
       <rect x="10" y="22" width="60" height="38" rx="5" {...S} />
@@ -108,7 +108,7 @@ const CATEGORY_SVG: Record<string, React.ReactNode> = {
   ),
 };
 
-const CATEGORY_LABEL: Record<string, string> = {
+export const CATEGORY_LABEL: Record<string, string> = {
   camera: 'Камера',
   microphone: 'Микрофон',
   light: 'Свет',

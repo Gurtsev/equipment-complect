@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
-import { Input, Button, Modal, App, Drawer, Select, Badge, TreeSelect } from 'antd';
-import { SearchOutlined, PlusOutlined, FilterOutlined } from '@ant-design/icons';
-import { EquipmentCard } from '../EquipmentCard';
+import { Input, Button, Modal, App, Drawer, Select, Badge, TreeSelect, Tag, List, Typography } from 'antd';
+import { SearchOutlined, PlusOutlined, FilterOutlined, RightOutlined } from '@ant-design/icons';
+import { EquipmentCard, CATEGORY_SVG } from '../EquipmentCard';
 import { EquipmentDetail } from '../EquipmentDetail';
 import { historyService } from '../../services/historyService';
 import { buildRoomTree, OFFICE_LABEL } from '../../services/roomService';
@@ -106,6 +106,109 @@ function buildFilterOfficeTree(rooms: Room[]): object[] {
     });
 }
 
+const STATUS_DOT_COLOR: Record<string, string> = {
+  'В Работе': '#52c41a',
+  'На Складе': '#1677ff',
+  'В Ремонте': '#fa8c16',
+  'Списано': '#ff4d4f',
+  'В Пути': '#722ed1',
+  'Забронировано': '#13c2c2',
+  'Выдан': '#fa541c',
+};
+
+// ── ModelCard ─────────────────────────────────────────────────────────────────
+
+function ModelCard({ group, onClick, onAddToCart }: {
+  group: Equipment[];
+  onClick: () => void;
+  onAddToCart?: () => void;
+}) {
+  const first = group[0];
+  const image = group.find((e) => e.image)?.image ?? null;
+
+  const statusCounts = group.reduce<Record<string, number>>((acc, eq) => {
+    acc[eq.currentStatus] = (acc[eq.currentStatus] ?? 0) + 1;
+    return acc;
+  }, {});
+
+  return (
+    <div
+      onClick={onClick}
+      style={{
+        background: '#fff',
+        borderRadius: 8,
+        overflow: 'hidden',
+        cursor: 'pointer',
+        border: '1px solid #f0f0f0',
+        transition: 'box-shadow 0.18s, border-color 0.18s',
+        display: 'flex',
+        flexDirection: 'column',
+        position: 'relative',
+      }}
+      onMouseEnter={(e) => { e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.12)'; e.currentTarget.style.borderColor = '#d9d9d9'; }}
+      onMouseLeave={(e) => { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.borderColor = '#f0f0f0'; }}
+    >
+      {group.length > 1 && (
+        <div style={{
+          position: 'absolute', top: 6, right: 6, zIndex: 2,
+          background: 'rgba(0,0,0,0.55)', color: '#fff',
+          borderRadius: 10, padding: '1px 7px', fontSize: 11, fontWeight: 600,
+        }}>
+          {group.length} шт.
+        </div>
+      )}
+
+      <div style={{ position: 'relative', paddingTop: '66%', background: '#f5f5f5', flexShrink: 0 }}>
+        {image ? (
+          <img src={image} alt={first.model} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'contain' }} />
+        ) : (
+          <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            {CATEGORY_SVG[first.category] ?? (
+              <svg viewBox="0 0 80 80" width="64" height="64">
+                <rect x="14" y="14" width="52" height="52" rx="8" fill="#e8e8e8" stroke="#bfbfbf" strokeWidth={2.5} />
+              </svg>
+            )}
+          </div>
+        )}
+      </div>
+
+      <div style={{ padding: '10px 12px', flex: 1, minWidth: 0 }}>
+        <div style={{ fontWeight: 600, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: 2 }}>
+          {first.model}
+        </div>
+        {first.subtitle && (
+          <div style={{ fontSize: 12, color: '#8c8c8c', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: 6 }}>
+            {first.subtitle}
+          </div>
+        )}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: 4 }}>
+          {Object.entries(statusCounts).map(([status, count]) => (
+            <span key={status} style={{ fontSize: 11, color: STATUS_DOT_COLOR[status] ?? '#595959', display: 'flex', alignItems: 'center', gap: 4 }}>
+              <span style={{ fontSize: 9 }}>●</span> {count} {status}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      {group.length > 1 && (
+        <div style={{ padding: '6px 12px', borderTop: '1px solid #f5f5f5', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 4, fontSize: 12, color: '#1677ff' }}>
+          Все единицы <RightOutlined style={{ fontSize: 10 }} />
+        </div>
+      )}
+
+      {onAddToCart && group.length === 1 && (
+        <button
+          onClick={(e) => { e.stopPropagation(); onAddToCart(); }}
+          style={{ position: 'absolute', bottom: 8, right: 8, width: 28, height: 28, borderRadius: '50%', background: '#52c41a', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 13, boxShadow: '0 2px 6px rgba(82,196,26,0.4)', zIndex: 2 }}
+          title="В корзину"
+        >
+          +
+        </button>
+      )}
+    </div>
+  );
+}
+
 // ── Chip style ───────────────────────────────────────────────────────────────
 
 const chipStyle = (active: boolean): React.CSSProperties => ({
@@ -173,6 +276,9 @@ export function CatalogGrid({
   const [modalEquipment, setModalEquipment] = useState<Equipment | null>(null);
   const [modalKey, setModalKey] = useState(0);
 
+  // Group drawer state
+  const [groupDrawerModel, setGroupDrawerModel] = useState<string | null>(null);
+
   // Mobile filter state (only used when showControls=true)
   const [search, setSearch] = useState('');
   const [section, setSection] = useState<EquipmentSection | 'all'>('all');
@@ -219,6 +325,16 @@ export function CatalogGrid({
     return result;
   }, [items, showControls, search, section, category, statusFilter, locationFilter, roomIds, sortBy]);
 
+  const grouped = useMemo<Equipment[][]>(() => {
+    if (showControls) return [];
+    const map = new Map<string, Equipment[]>();
+    for (const eq of filtered) {
+      if (!map.has(eq.model)) map.set(eq.model, []);
+      map.get(eq.model)!.push(eq);
+    }
+    return Array.from(map.values());
+  }, [filtered, showControls]);
+
   useEffect(() => {
     setModalEquipment((prev) => prev ? (items.find((e) => e.id === prev.id) ?? prev) : null);
   }, [items]);
@@ -226,6 +342,11 @@ export function CatalogGrid({
   useEffect(() => { setModalKey((k) => k + 1); }, [detailKey]);
 
   const handleCardClick = (eq: Equipment) => { setModalEquipment(eq); setModalKey((k) => k + 1); };
+
+  const handleGroupClick = (group: Equipment[]) => {
+    if (group.length === 1) { handleCardClick(group[0]); }
+    else { setGroupDrawerModel(group[0].model); }
+  };;
 
   const handleComponentClick = (eq: Equipment) => { setModalEquipment(eq); setModalKey((k) => k + 1); };
 
@@ -314,7 +435,7 @@ export function CatalogGrid({
           <div style={{ textAlign: 'center', color: '#bfbfbf', padding: '60px 0', fontSize: 14 }}>
             Ничего не найдено
           </div>
-        ) : (
+        ) : showControls ? (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 10 }}>
             {filtered.map((eq) => (
               <EquipmentCard
@@ -323,6 +444,17 @@ export function CatalogGrid({
                 onClick={() => handleCardClick(eq)}
                 onAddToCart={onAddToCart ? () => void onAddToCart(eq.id) : undefined}
                 componentCount={allEquipment.filter((e) => e.parentId === eq.id).length}
+              />
+            ))}
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 10 }}>
+            {grouped.map((group) => (
+              <ModelCard
+                key={group[0].model}
+                group={group}
+                onClick={() => handleGroupClick(group)}
+                onAddToCart={onAddToCart && group.length === 1 ? () => void onAddToCart(group[0].id) : undefined}
               />
             ))}
           </div>
@@ -374,6 +506,43 @@ export function CatalogGrid({
           </div>
         </Drawer>
       )}
+
+      {/* Model group drawer */}
+      {groupDrawerModel !== null && (() => {
+        const groupItems = filtered.filter((e) => e.model === groupDrawerModel);
+        return (
+          <Drawer
+            title={<span>{groupDrawerModel} <Typography.Text type="secondary" style={{ fontSize: 13 }}>({groupItems.length} шт.)</Typography.Text></span>}
+            placement="right"
+            width={420}
+            open
+            onClose={() => setGroupDrawerModel(null)}
+            styles={{ body: { padding: 0 } }}
+          >
+            <List
+              dataSource={groupItems}
+              renderItem={(eq) => (
+                <List.Item
+                  style={{ padding: '10px 16px', cursor: 'pointer' }}
+                  onClick={() => { setGroupDrawerModel(null); handleCardClick(eq); }}
+                  actions={[<RightOutlined key="open" style={{ color: '#bfbfbf' }} />]}
+                >
+                  <List.Item.Meta
+                    title={<span style={{ fontSize: 13 }}>{eq.invNumber || eq.id}</span>}
+                    description={
+                      <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', marginTop: 2 }}>
+                        <Tag color={STATUS_DOT_COLOR[eq.currentStatus]} style={{ margin: 0, fontSize: 11 }}>{eq.currentStatus}</Tag>
+                        <span style={{ fontSize: 11, color: '#8c8c8c' }}>{eq.currentLocation}</span>
+                        {eq.serialNumber && <span style={{ fontSize: 11, color: '#bfbfbf' }}>s/n: {eq.serialNumber}</span>}
+                      </div>
+                    }
+                  />
+                </List.Item>
+              )}
+            />
+          </Drawer>
+        );
+      })()}
 
       {/* Detail modal */}
       <Modal
