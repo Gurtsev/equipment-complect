@@ -40,6 +40,7 @@ const STATUS_COLOR: Record<EquipmentStatus, string> = {
   'В Пути': 'purple',
   'Забронировано': 'cyan',
   'Выдан': 'volcano',
+  'Комплектуется': 'geekblue',
 };
 
 function toTreeNodes(nodes: RoomTreeNode[]): DataNode[] {

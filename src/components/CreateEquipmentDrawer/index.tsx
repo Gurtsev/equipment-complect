@@ -305,7 +305,7 @@ export function CreateEquipmentDrawer({ open, onClose, onCreated, initialEquipme
   const isProp = section === 'prop';
 
   const parentOptions = allEquipment
-    .filter((e) => !e.parentId && e.id !== initialEquipment?.id)
+    .filter((e) => e.assemblyStatus !== null && !e.parentId && e.id !== initialEquipment?.id)
     .map((e) => ({ value: e.id, label: `${e.model}${e.subtitle ? ' — ' + e.subtitle : ''}` }));
 
   return (

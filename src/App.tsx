@@ -256,6 +256,11 @@ function AppInner() {
   const handleAssemblyStatusChange = async (eq: Equipment, status: AssemblyStatus) => {
     const updated = new Equipment({ ...eq, assemblyStatus: status });
     await equipmentService.update(updated);
+    if (status === 'assembling') {
+      await historyService.addEntry(eq.id, 'Комплектуется', eq.currentLocation, eq.responsible);
+    } else if (status === 'ready') {
+      await historyService.addEntry(eq.id, 'На Складе', 'Склад', eq.responsible);
+    }
     await handleEquipmentChange();
   };
 

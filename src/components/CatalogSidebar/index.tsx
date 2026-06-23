@@ -93,6 +93,7 @@ const STATUS_OPTIONS: Array<{ label: string; value: EquipmentStatus }> = [
   { label: 'На Складе', value: 'На Складе' },
   { label: 'В Ремонте', value: 'В Ремонте' },
   { label: 'Забронировано', value: 'Забронировано' },
+  { label: 'Комплектуется', value: 'Комплектуется' },
   { label: 'Списано', value: 'Списано' },
   { label: 'В Пути', value: 'В Пути' },
 ];
@@ -121,6 +122,7 @@ const STATUS_COLOR: Record<EquipmentStatus, string> = {
   'В Пути': 'purple',
   'Забронировано': 'cyan',
   'Выдан': 'volcano',
+  'Комплектуется': 'geekblue',
 };
 
 // ── Room filter helpers ──────────────────────────────────────────────────────

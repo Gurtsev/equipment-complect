@@ -1,6 +1,6 @@
 export type EquipmentSection = 'tech' | 'furniture' | 'prop';
 
-export type EquipmentStatus = 'В Работе' | 'На Складе' | 'В Ремонте' | 'Списано' | 'В Пути' | 'Забронировано' | 'Выдан';
+export type EquipmentStatus = 'В Работе' | 'На Складе' | 'В Ремонте' | 'Списано' | 'В Пути' | 'Забронировано' | 'Выдан' | 'Комплектуется';
 export type EquipmentLocation =
   | 'Склад'
   | 'Ремонт'
