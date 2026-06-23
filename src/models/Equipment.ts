@@ -18,6 +18,7 @@ export type EquipmentCategory =
   | 'accessory'
   | 'optics'
   | 'phone'
+  | 'stand'
   | 'furniture'
   | 'prop'
   | 'tool';

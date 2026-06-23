@@ -33,8 +33,10 @@ src/
     consumablesService.ts     # Расходные материалы + транзакции
     roomService.ts            # Помещения: дерево, ответственный, утилиты buildRoomTree/getRoomPath
     usersService.ts           # profiles + allowed_emails CRUD
+    cartService.ts            # Корзина (carts + cart_items) — одна на пользователя
+    listService.ts            # Списки оборудования (equipment_lists + equipment_list_items)
   contexts/
-    AuthContext.tsx            # AuthProvider, useAuth hook, роли и отдел пользователя
+    AuthContext.tsx            # AuthProvider, useAuth hook, роли пользователя
   models/
     Equipment.ts              # Equipment class + TypeScript types
     Project.ts                # Project class + ProjectStatus type
@@ -49,10 +51,12 @@ src/
     CalendarView/             # Полноширинная вкладка: Ant Design Calendar с проектами
     ConsumablesPage/          # Полноширинная вкладка: расходники + транзакции
     RoomsPage/                # Полноширинная вкладка: дерево помещений + QR
+    ListsPage/                # Полноширинная вкладка: списки оборудования (только canEdit)
     EmployeeCard/             # Drawer из UsersPage: выданное оборудование сотрудника
     UsersPage/                # Вкладка «Пользователи» (только admin)
     CatalogGrid/              # Полноширинная сетка карточек (режим grid вместо списка)
     EquipmentCard/            # Карточка для сетки: SVG-заглушка по категории, статус-бейдж
+    CartDrawer/               # Drawer корзины (иконка в хедере с бейджем)
   App.tsx                     # Root: весь стейт, async загрузка, роутинг правой панели
   main.tsx                    # React entry point
   print.css                   # @media print стили
@@ -65,27 +69,39 @@ supabase/
     005_history_user.sql      # user_id в equipment_history
     006_project_history.sql   # таблица project_history
     007_employee_assignments.sql # employee_assignments
-    008_department.sql        # поле department в equipment
-    009_profiles_department.sql  # поле department в profiles
+    008_department.sql        # (устарело) поле department в equipment
+    009_profiles_department.sql  # (устарело) поле department в profiles
     010_consumables.sql       # consumables + consumable_transactions
     011_equipment_loans.sql   # equipment_loans
     012_loan_start_date.sql   # start_date в equipment_loans
     013_rooms.sql             # rooms (иерархия помещений)
     014_rooms_responsible.sql # поле responsible в rooms
+    015_integration_prep.sql  # profile_id→user_id, is_active в profiles
+    016_section_attributes.sql # section, attributes, quantity в equipment
+    017_datetime_precision.sql # date→timestamptz для projects и equipment_loans
+    018_cart_and_lists.sql    # carts, cart_items, equipment_lists, equipment_list_items, loan_conflict_events
+    019_profiles_rls_fix.sql  # RLS: viewer не видит email/роли других
+    020_profile_names_function.sql # VIEW/функция profile_names
+    021_remove_departments.sql # удалены колонки department из equipment и profiles
+    022_inv_number_nullable.sql # inv_number стал nullable (до присвоения из 1С)
+    023_composite_equipment.sql # assembly_status в equipment
 ```
 
 ## Auth Flow
 
-**SSO через Nexus (с 2026-06-10):** своей формы логина/регистрации нет. `AuthProvider` оборачивает всё приложение в `App.tsx`, поднимает сессию через `onAuthStateChange` + `supabase.auth.getSession()`. `detectSessionInUrl: true` подхватывает токены из URL-хеша (`#access_token=…&refresh_token=…`), которые передаёт портал Nexus после логина. Если сессии нет — `App.tsx` редиректит на `https://nexus.knzteam.ru/login?redirect=<текущий_url>`.
+**SSO через Nexus (с 2026-06-10):** своей формы логина/регистрации нет. `AuthProvider` оборачивает всё приложение в `App.tsx`, поднимает сессию через `onAuthStateChange` + `supabase.auth.getSession()`. Nexus передаёт токены в URL-хеше (`#access_token=…&refresh_token=…`); `AuthContext` разбирает хеш вручную и поднимает сессию через `setSession()` (`detectSessionInUrl` не подходит — Nexus передаёт только два параметра, а не полный набор). Если сессии нет — `App.tsx` редиректит на `https://nexus.knzteam.ru/login?redirect=<текущий_url>`.
 
-- `loading` в AuthProvider = проверка сессии при старте
+- `loading` в AuthProvider = проверка сессии при старте (с таймаутом 10 с)
+- `INITIAL_SESSION` в `onAuthStateChange` пропускается — обработка хеша ещё не завершена, иначе редирект на Nexus до поднятия SSO-сессии
 - `dataLoading` в AppInner = загрузка данных из БД после авторизации
 - `isRecovery` = пользователь пришёл по ссылке сброса пароля; показывается форма смены пароля вместо основного UI
 - `recoveryError` = ссылка сброса пароля устарела/недействительна — показывается сообщение со ссылкой на портал Nexus
 
-`useAuth()` возвращает: `user`, `role`, `userName`, `userDepartment`, `loading`, `isRecovery`, `recoveryError`, `signOut()`, `updatePassword()`.
+`useAuth()` возвращает: `user`, `role`, `userName`, `loading`, `isRecovery`, `recoveryError`, `signOut()`, `updatePassword()`.
 
-**Создание пользователей:** через Nexus-онбординг (`public.users` + `auth.users`) — `fetchOrCreateProfile` в `AuthContext` авто-создаёт `inventory.profiles` с ролью `viewer` при первом входе SSO-пользователя; админ Inventory затем повышает роль вручную. `allowed_emails`/триггер `handle_new_user` пока остаются в БД (используются только серверной логикой), но форма саморегистрации удалена.
+**Выход:** `signOut()` немедленно перенаправляет на `https://nexus.knzteam.ru/?logout=1` (гасит сессию Nexus) и параллельно вызывает `supabase.auth.signOut({ scope: 'global' })` (отзывает refresh-токен глобально). Перенаправление именно на `/?logout=1`, а не на `/login?redirect=…` — иначе Nexus, ещё не разлогиненный, сразу вернёт токены обратно.
+
+**Создание пользователей:** через Nexus-онбординг (`public.users` + `auth.users`) — `fetchOrCreateProfile` в `AuthContext` авто-создаёт `inventory.profiles` с ролью `viewer` при первом входе SSO-пользователя; админ Inventory затем повышает роль вручную. `allowed_emails`/триггер `handle_new_user` пока остаются в БД, но форма саморегистрации удалена.
 
 **Доступ запрещён** (`user && !role`): пользователь прошёл auth, но профиля нет — заглушка с кнопкой выхода.
 
@@ -93,12 +109,9 @@ supabase/
 
 ```ts
 canEdit = role === 'admin' || role === 'operator'
-canEditEquipment(dept) = canEdit && (userDepartment === null || userDepartment === dept)
 ```
 
-`canEditEquipment` передаётся в `EquipmentDetail` вместо `canEdit` — оператор с привязанным отделом не может редактировать оборудование чужого отдела.
-
-Вкладка «Расходники» в навигации — только для `canEdit` (admin + operator). Вкладка «Пользователи» — только `admin`.
+Вкладка «Расходники» и «Списки» в навигации — только для `canEdit` (admin + operator). Вкладка «Пользователи» — только `admin`.
 
 ## Services
 
@@ -149,11 +162,24 @@ canEditEquipment(dept) = canEdit && (userDepartment === null || userDepartment =
 - `getProfiles()` / `updateProfile(id, fields)` / `deleteProfile(id)`.
 - `getAllowedEntries()` / `addAllowedEntry(entry)` / `updateAllowedEntry(id, fields)` / `deleteAllowedEntry(id)`.
 
+### `cartService`
+- Одна корзина на пользователя (lazy-create через `getOrCreateCartId()`).
+- `getItems()` / `addItem(equipmentId)` / `removeItem(equipmentId)` / `clear()`.
+- Дубликаты игнорируются (`unique` constraint в БД).
+
+### `listService`
+- Именованные списки оборудования; могут быть привязаны к проекту или займу.
+- `getAll()` / `create(name)` / `update(id, fields)` / `delete(id)`.
+- `addItem(listId, equipmentId)` / `removeItem(listId, equipmentId)`.
+- `getLoanConflicts()` — `LoanConflictEvent[]` для уведомлений о конфликтах займов.
+
 ## State Flow (App.tsx)
 
 Все мутации: **сервис → `loadAll()` → обновление стейта**.
 
 `loadAll()` параллельно загружает: `equipmentService`, `projectService`, `consumablesService`, `roomService`.
+
+**Корзина и списки** загружаются отдельно при старте: `cartService.getItems()` → `setCartItems`; `listService.getAll()` → `setLists`.
 
 **Realtime:** Supabase канал `'db-changes'` подписан на `*` события таблиц `equipment`, `equipment_history`, `projects`, `project_equipment`, `employee_assignments`, `consumables`, `consumable_transactions`, `equipment_loans`. При событии — debounce 300 мс → `realtimeReload()` (обновляет стейт + синхронизирует `selectedEquipment`/`selectedProject`).
 
@@ -172,7 +198,9 @@ canEditEquipment(dept) = canEdit && (userDepartment === null || userDepartment =
 
 **`detailKey`** — инкрементируется при внешних изменениях статуса из `ProjectDetail`.
 
-**Навигация:** Sidebar (320px) отображается только для `activeTab === 'catalog' | 'projects'`. Остальные вкладки (`calendar`, `consumables`, `rooms`, `users`) — полноширинные в `Content`.
+**`duplicateSource`** — `Equipment | null`; если задан, `CreateEquipmentDrawer` открывается в режиме дублирования карточки.
+
+**Навигация:** Sidebar (320px) отображается только для `activeTab === 'catalog' | 'projects'`. Остальные вкладки (`calendar`, `consumables`, `rooms`, `users`, `lists`) — полноширинные в `Content`.
 
 ## Components
 
@@ -181,7 +209,7 @@ canEditEquipment(dept) = canEdit && (userDepartment === null || userDepartment =
 - `'Забронировано'` исключён из ручного выбора статуса.
 - Кнопка «Печать» → `window.print()`. Классы `no-print`/`print-only`.
 - Принимает `rooms: Room[]` для отображения имени помещения.
-- **Составные объекты (4.12):** принимает `allEquipment: Equipment[]` для поиска родителя/компонентов по `parentId`. Если у карточки есть компоненты — блок «Компоненты (N)» (клик → `onComponentClick`, навигация) и блок «Сборка» с `assemblyStatus` (`assembling`/`ready`/`synced`, переключение через `onAssemblyStatusChange`). Если карточка сама — компонент (`parentId` задан) — бейдж «↳ часть: …» и кнопка «Отвязать от комплекта» (`onDetach`, canEdit) — обнуляет `parentId`.
+- **Составные объекты:** принимает `allEquipment: Equipment[]` для поиска родителя/компонентов по `parentId`. Если у карточки есть компоненты — блок «Компоненты (N)» (клик → `onComponentClick`, навигация) и блок «Сборка» с `assemblyStatus` (`assembling`/`ready`/`synced`, переключение через `onAssemblyStatusChange`). Если карточка сама — компонент (`parentId` задан) — бейдж «↳ часть: …» и кнопка «Отвязать от комплекта» (`onDetach`, canEdit) — обнуляет `parentId`.
 
 ### `ProjectDetail`
 Импортирует `historyService`, `projectService`, `projectHistoryService` напрямую. Все мутирующие хендлеры async.
@@ -212,48 +240,56 @@ canEditEquipment(dept) = canEdit && (userDepartment === null || userDepartment =
 - Поле фото: `<Upload>` с `customRequest` → Supabase Storage bucket `equipment-images`.
 - Поле «Помещение»: `Select` из `rooms` с группировкой по офису.
 - `'В Ремонте'` auto-location: ставит локацию `'Ремонт'`, блокирует dropdown. Здесь и в `EquipmentDetail`.
-- Поле «Входит в состав» (только Техника): `Select` с поиском по `allEquipment`, доступны только карточки без своего `parentId` (исключает многоуровневые цепочки).
+- Поле «Входит в состав» (только секция `tech`): `Select` с поиском по `allEquipment`, доступны только карточки без своего `parentId` (исключает многоуровневые цепочки).
 
 ### `CatalogSidebar`
 - `exportCsv(items)` — нативный Blob без зависимостей.
 - `exportExcel(items)` — `xlsx`: лист «Оборудование» + лист «История».
+
+### `CartDrawer`
+- Иконка корзины с бейджем в хедере App.tsx (`cartItems.length`).
+- Показывает список оборудования из корзины с кнопками удаления и очистки.
 
 ## Key Types
 
 ```ts
 EquipmentStatus   = 'В Работе' | 'На Складе' | 'В Ремонте' | 'Списано' | 'В Пути' | 'Забронировано' | 'Выдан'
 EquipmentLocation = 'Склад' | 'Ремонт' | 'В пути' | 'На руках' | 'Офис'
-EquipmentCategory = 'camera' | 'microphone' | 'light' | 'computer' | 'audio' | 'accessory' | 'optics' | 'phone' | 'furniture' | 'prop' | 'tool'
-EquipmentDepartment = 'studio' | 'aho' | 'office'
+EquipmentSection  = 'tech' | 'furniture' | 'prop'
+EquipmentCategory = 'camera' | 'microphone' | 'light' | 'computer' | 'laptop' | 'tv' | 'audio' | 'accessory' | 'optics' | 'phone' | 'stand' | 'furniture' | 'prop' | 'tool'
 ProjectStatus     = 'Планируется' | 'Активен' | 'Завершён'
 AssemblyStatus    = 'assembling' | 'ready' | 'synced'  // только у родителя составного объекта
 UserRole          = 'admin' | 'operator' | 'viewer'
-ActiveTab         = 'catalog' | 'projects' | 'users' | 'calendar' | 'consumables' | 'rooms'
+ActiveTab         = 'catalog' | 'projects' | 'users' | 'calendar' | 'consumables' | 'rooms' | 'lists'
 ```
 
 ## Database Schema
 
 Миграции в `supabase/migrations/`. Запускать в Supabase SQL Editor по порядку.
 
-- `equipment` — `accessories: text[]`, `room_id: uuid`, `parent_id: text` (self-reference, составной объект), `assembly_status: text` (`assembling`/`ready`/`synced`, только у родителя, 023).
+- `equipment` — `section: text` (`tech`/`furniture`/`prop`), `accessories: text[]`, `room_id: uuid`, `attributes: jsonb` (произвольные поля), `quantity: int`, `inv_number: text` (nullable — до присвоения из 1С), `parent_id: uuid` (self-reference, составной объект), `assembly_status: text` (`assembling`/`ready`/`synced`, только у родителя).
 - `equipment_history` — `recorded_at desc` = текущий статус. `user_id` добавлен в 005.
-- `projects` — `start_date`/`end_date` тип `date`, конвертируются через `new Date(row.start_date)`.
+- `projects` — `start_date`/`end_date` тип `timestamptz` (с миграции 017), конвертируются через `new Date(row.start_date)`.
 - `project_equipment` — join M:M. Синхронизируется DELETE + INSERT при каждом `projectService.update()`.
 - `project_history` — лог действий по проекту с `user_id`, `action`, `equipment_id`.
-- `employee_assignments` — выдача оборудования сотруднику. `returned_at IS NULL` = активная выдача.
-- `equipment_loans` — временные займы. `loan_type: 'employee' | 'department'`. `start_date` позволяет создавать будущие займы.
+- `employee_assignments` — выдача оборудования сотруднику. Колонка `user_id` (переименована с `profile_id` в 015). `returned_at IS NULL` = активная выдача.
+- `equipment_loans` — временные займы. `loan_type: 'employee' | 'department'`. `start_date: timestamptz` позволяет создавать будущие займы.
 - `consumables` — `quantity` обновляется триггером при INSERT в `consumable_transactions`.
 - `consumable_transactions` — `type: 'in' | 'out' | 'writeoff'`, `delta: int`.
 - `rooms` — иерархия (self-reference `parent_id`). `office: 'A' | 'B' | 'C'`, `sort_order`.
-- `profiles` — `department: EquipmentDepartment | null` (ограничение редактирования для operator).
+- `profiles` — `id, name, role, email, is_active`. Поле `department` удалено (миграция 021).
 - `allowed_emails` — `email` и `domain` взаимоисключающие (CHECK). Приоритет: конкретный email над доменом.
+- `carts` / `cart_items` — корзина пользователя (одна на user_id), позиции с уникальным `equipment_id`.
+- `equipment_lists` / `equipment_list_items` — именованные списки с опциональной привязкой к `project_id`/`loan_id`.
+- `loan_conflict_events` — события конфликтов займов (займ перекрывается проектом).
 
 **RLS:** SELECT на `equipment`/`projects`/`project_equipment` открыт всем authenticated. INSERT/UPDATE/DELETE на данных — только admin + operator. `allowed_emails` — SELECT всем authenticated, остальное — только admin. Storage bucket `equipment-images` — публичный на чтение, authenticated на запись.
 
 ## Conventions
 
-- **IDs:** `EQP-####` для оборудования, `INV-YYYY-####` для инв. номеров, `PRJ-####` для проектов.
+- **IDs:** `EQP-####` для оборудования, `INV-YYYY-####` для инв. номеров (nullable), `PRJ-####` для проектов.
 - **Dates:** `date.toLocaleString('ru-RU')` для datetime, `date.toLocaleDateString('ru-RU')` для date.
 - **Ant Design context:** `message`, `modal` — только через `App.useApp()` внутри `<AntApp>`.
 - **`STATUS_COLOR`** определён в четырёх местах: `CatalogSidebar`, `EquipmentDetail`, `Dashboard`, `RoomsPage`. При добавлении нового `EquipmentStatus` обновить все четыре.
 - **Supabase + onAuthStateChange:** нельзя вызывать `supabase.from()` внутри обработчика `onAuthStateChange` — дедлок с внутренним мьютексом клиента.
+- **DB-схема:** все таблицы в схеме `inventory`. `supabase.ts` создаёт клиент с `db: { schema: 'inventory' }`. PostgREST настроен на `db-schemas = inventory, public`.

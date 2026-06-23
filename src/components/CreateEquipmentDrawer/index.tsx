@@ -27,6 +27,7 @@ const TECH_CATEGORIES: Array<{ label: string; value: EquipmentCategory }> = [
   { label: 'Телефон', value: 'phone' },
   { label: 'Инструмент', value: 'tool' },
   { label: 'Аксессуар', value: 'accessory' },
+  { label: 'Стойка/Штатив', value: 'stand' },
 ];
 
 const PROP_CATEGORIES: Array<{ label: string; value: EquipmentCategory }> = [

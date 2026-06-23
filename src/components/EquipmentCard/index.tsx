@@ -106,6 +106,17 @@ export const CATEGORY_SVG: Record<string, React.ReactNode> = {
       <circle cx="30" cy="62" r="5" fill="#d4d4d4" stroke="#bfbfbf" strokeWidth={2} />
     </svg>
   ),
+  stand: (
+    <svg viewBox="0 0 80 80" width="64" height="64">
+      <line x1="40" y1="8" x2="40" y2="64" {...SN} />
+      <line x1="40" y1="30" x2="16" y2="68" {...SN} />
+      <line x1="40" y1="30" x2="64" y2="68" {...SN} />
+      <line x1="12" y1="68" x2="20" y2="68" {...SN} />
+      <line x1="60" y1="68" x2="68" y2="68" {...SN} />
+      <line x1="36" y1="68" x2="44" y2="68" {...SN} />
+      <rect x="34" y="5" width="12" height="7" rx="2" {...S} />
+    </svg>
+  ),
 };
 
 export const CATEGORY_LABEL: Record<string, string> = {
@@ -119,6 +130,7 @@ export const CATEGORY_LABEL: Record<string, string> = {
   accessory: 'Аксессуар',
   optics: 'Оптика',
   phone: 'Телефон',
+  stand: 'Стойка/Штатив',
   furniture: 'Мебель',
   prop: 'Реквизит',
   tool: 'Инструмент',
