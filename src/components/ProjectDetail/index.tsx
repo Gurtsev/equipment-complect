@@ -286,6 +286,7 @@ export function ProjectDetail({
   };
 
   const pickerFiltered = allEquipment.filter((e) => {
+    if (e.currentStatus === 'Комплектуется') return false;
     const q = pickerSearch.toLowerCase().trim();
     return !q || e.model.toLowerCase().includes(q) || e.invNumber.toLowerCase().includes(q);
   });

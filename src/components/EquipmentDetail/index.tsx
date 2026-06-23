@@ -332,7 +332,7 @@ export function EquipmentDetail({ equipment, canEdit, isAdmin, onEdit, onDelete,
           <Button icon={<QrcodeOutlined />} onClick={() => setQrOpen(true)}>
             QR-код
           </Button>
-          {canEdit && equipment.currentStatus !== 'Выдан' && equipment.currentStatus !== 'Забронировано' && equipment.currentStatus !== 'В Работе' && (
+          {canEdit && equipment.currentStatus !== 'Выдан' && equipment.currentStatus !== 'Забронировано' && equipment.currentStatus !== 'В Работе' && equipment.currentStatus !== 'Комплектуется' && (
             <Button
               icon={<UserOutlined />}
               onClick={async () => {
@@ -346,7 +346,7 @@ export function EquipmentDetail({ equipment, canEdit, isAdmin, onEdit, onDelete,
               Выдать сотруднику
             </Button>
           )}
-          {canEdit && !assignment && (
+          {canEdit && !assignment && equipment.currentStatus !== 'Комплектуется' && (
             <Button
               icon={<SwapOutlined />}
               onClick={async () => {

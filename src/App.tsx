@@ -308,6 +308,11 @@ function AppInner() {
   };
 
   const handleAddToCart = async (equipmentId: string) => {
+    const eq = items.find((i) => i.id === equipmentId);
+    if (eq?.currentStatus === 'Комплектуется') {
+      void message.warning('Оборудование в сборке — нельзя добавить в корзину');
+      return;
+    }
     try {
       await cartService.addItem(equipmentId);
       const newCartItems = await cartService.getItems();
