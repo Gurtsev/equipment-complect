@@ -28,6 +28,7 @@ const TECH_CATEGORIES: Array<{ label: string; value: EquipmentCategory }> = [
   { label: 'Инструмент', value: 'tool' },
   { label: 'Аксессуар', value: 'accessory' },
   { label: 'Стойка/Штатив', value: 'stand' },
+  { label: 'Крепление', value: 'mount' },
 ];
 
 const PROP_CATEGORIES: Array<{ label: string; value: EquipmentCategory }> = [

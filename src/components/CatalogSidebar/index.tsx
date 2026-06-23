@@ -38,6 +38,7 @@ const CATEGORIES_BY_SECTION: Record<EquipmentSection | 'all', Array<{ label: str
     { label: 'Инструмент', value: 'tool' },
     { label: 'Аксессуары', value: 'accessory' },
     { label: 'Стойки/Штативы', value: 'stand' },
+    { label: 'Крепления', value: 'mount' },
     { label: 'Мебель', value: 'furniture' },
     { label: 'Реквизит', value: 'prop' },
     { label: 'Компоненты', value: 'component' },
@@ -56,6 +57,7 @@ const CATEGORIES_BY_SECTION: Record<EquipmentSection | 'all', Array<{ label: str
     { label: 'Инструмент', value: 'tool' },
     { label: 'Аксессуары', value: 'accessory' },
     { label: 'Стойки/Штативы', value: 'stand' },
+    { label: 'Крепления', value: 'mount' },
     { label: 'Компоненты', value: 'component' },
   ],
   furniture: [
@@ -83,6 +85,7 @@ const CATEGORY_LABEL: Record<EquipmentCategory, string> = {
   optics: 'Оптика',
   phone: 'Телефон',
   stand: 'Стойка/Штатив',
+  mount: 'Крепление',
   furniture: 'Мебель',
   prop: 'Реквизит',
   tool: 'Инструмент',
