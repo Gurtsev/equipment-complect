@@ -106,6 +106,24 @@ export const CATEGORY_SVG: Record<string, React.ReactNode> = {
       <circle cx="30" cy="62" r="5" fill="#d4d4d4" stroke="#bfbfbf" strokeWidth={2} />
     </svg>
   ),
+  network: (
+    <svg viewBox="0 0 80 80" width="64" height="64">
+      <rect x="28" y="8" width="24" height="14" rx="3" {...S} />
+      <rect x="8" y="56" width="20" height="12" rx="3" {...S} />
+      <rect x="52" y="56" width="20" height="12" rx="3" {...S} />
+      <line x1="40" y1="22" x2="40" y2="40" {...SN} />
+      <line x1="40" y1="40" x2="18" y2="56" {...SN} />
+      <line x1="40" y1="40" x2="62" y2="56" {...SN} />
+      <circle cx="40" cy="40" r="4" {...S} />
+    </svg>
+  ),
+  cable: (
+    <svg viewBox="0 0 80 80" width="64" height="64">
+      <rect x="6" y="34" width="14" height="12" rx="3" {...S} />
+      <rect x="60" y="34" width="14" height="12" rx="3" {...S} />
+      <path d="M20 40 C32 40 32 28 40 28 C48 28 48 52 56 52 C64 52 60 40 60 40" {...SN} />
+    </svg>
+  ),
   mount: (
     <svg viewBox="0 0 80 80" width="64" height="64">
       <rect x="8" y="34" width="20" height="12" rx="3" {...S} />
@@ -142,6 +160,8 @@ export const CATEGORY_LABEL: Record<string, string> = {
   phone: 'Телефон',
   stand: 'Стойка/Штатив',
   mount: 'Крепление',
+  network: 'Сетевое',
+  cable: 'Кабель',
   furniture: 'Мебель',
   prop: 'Реквизит',
   tool: 'Инструмент',

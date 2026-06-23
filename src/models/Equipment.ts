@@ -20,6 +20,8 @@ export type EquipmentCategory =
   | 'phone'
   | 'stand'
   | 'mount'
+  | 'network'
+  | 'cable'
   | 'furniture'
   | 'prop'
   | 'tool';

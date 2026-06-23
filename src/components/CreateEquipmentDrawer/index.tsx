@@ -29,6 +29,8 @@ const TECH_CATEGORIES: Array<{ label: string; value: EquipmentCategory }> = [
   { label: 'Аксессуар', value: 'accessory' },
   { label: 'Стойка/Штатив', value: 'stand' },
   { label: 'Крепление', value: 'mount' },
+  { label: 'Сетевое', value: 'network' },
+  { label: 'Кабель', value: 'cable' },
 ];
 
 const PROP_CATEGORIES: Array<{ label: string; value: EquipmentCategory }> = [
