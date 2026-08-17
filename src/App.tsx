@@ -17,6 +17,7 @@ import type { EquipmentList } from './services/listService';
 import { AssemblyStatus, Equipment, EquipmentLocation, EquipmentStatus } from './models/Equipment';
 import { Project } from './models/Project';
 import type { Consumable } from './services/consumablesService';
+import { parseInventoryDeepLink } from './services/deepLink';
 
 const CatalogSidebar = lazy(() => import('./components/CatalogSidebar').then((module) => ({ default: module.CatalogSidebar })));
 const CatalogGrid = lazy(() => import('./components/CatalogGrid').then((module) => ({ default: module.CatalogGrid })));
@@ -112,24 +113,26 @@ function AppInner() {
 
     void loadAll()
       .then(({ newItems, newRooms }) => {
-        const params = new URLSearchParams(window.location.search);
-        const eqId = params.get('eq');
-        if (eqId) {
-          const found = newItems.find((e) => e.id === eqId);
+        const deepLink = parseInventoryDeepLink(window.location.search);
+        if (deepLink.target?.type === 'equipment') {
+          const found = newItems.find((e) => e.id === deepLink.target?.value);
           if (found) {
             setSelectedEquipment(found);
             setActiveTab('catalog');
           }
-          window.history.replaceState(null, '', window.location.pathname);
-        }
-        const roomCode = params.get('room');
-        if (roomCode) {
-          const found = newRooms.find((r) => r.code === roomCode);
+        } else if (deepLink.target?.type === 'room') {
+          const found = newRooms.find((r) => r.code === deepLink.target?.value);
           if (found) {
             setSelectedRoom(found);
             setActiveTab('rooms');
           }
-          window.history.replaceState(null, '', window.location.pathname);
+        }
+        if (deepLink.hadInventoryParams) {
+          window.history.replaceState(
+            null,
+            '',
+            window.location.pathname + deepLink.remainingSearch,
+          );
         }
       })
       .catch(() => { setLoadError(true); })

@@ -61,7 +61,7 @@ export const equipmentService = {
   async getAll(): Promise<Equipment[]> {
     const { data: rows, error: eqErr } = await supabase
       .from('equipment')
-      .select('*')
+      .select('id, model, subtitle, category, section, description, image, inv_number, serial_number, responsible, accessories, room_id, attributes, quantity, parent_id, assembly_status')
       .order('created_at', { ascending: false });
     if (eqErr) throw eqErr;
     if (!rows || rows.length === 0) return [];

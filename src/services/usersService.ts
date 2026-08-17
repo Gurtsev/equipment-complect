@@ -40,7 +40,7 @@ export const usersService = {
   async getAllowedEntries(): Promise<AllowedEntry[]> {
     const { data, error } = await supabase
       .from('allowed_emails')
-      .select('*')
+      .select('id, email, domain, role, note, created_at')
       .order('created_at');
     if (error) throw error;
     return (data ?? []) as AllowedEntry[];

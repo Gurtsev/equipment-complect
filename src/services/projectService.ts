@@ -33,7 +33,7 @@ export const projectService = {
   async getAll(): Promise<Project[]> {
     const { data, error } = await supabase
       .from('projects')
-      .select('*, project_equipment(equipment_id)')
+      .select('id, name, client, start_date, end_date, location, responsible, status, notes, project_equipment(equipment_id)')
       .order('created_at', { ascending: false });
     if (error) throw error;
     return (data ?? []).map(toProject);

@@ -27,7 +27,7 @@ export const consumablesService = {
   async getAll(): Promise<Consumable[]> {
     const { data, error } = await supabase
       .from('consumables')
-      .select('*')
+      .select('id, name, category, unit, quantity, min_threshold, notes, created_at')
       .order('name');
     if (error) throw error;
     return (data ?? []).map((row) => ({
@@ -88,7 +88,7 @@ export const consumablesService = {
   async getTransactions(consumableId: string): Promise<ConsumableTransaction[]> {
     const { data, error } = await supabase
       .from('consumable_transactions')
-      .select('*')
+      .select('id, consumable_id, type, delta, user_id, recorded_at, notes')
       .eq('consumable_id', consumableId)
       .order('recorded_at', { ascending: false });
     if (error) throw error;

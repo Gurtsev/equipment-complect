@@ -45,7 +45,7 @@ export const listService = {
   async getAll(): Promise<EquipmentList[]> {
     const { data, error } = await supabase
       .from('equipment_lists')
-      .select('*, equipment_list_items(equipment_id)')
+      .select('id, name, user_id, is_archived, created_at, updated_at, equipment_list_items(equipment_id)')
       .order('created_at', { ascending: false });
     if (error) throw error;
     return (data ?? []).map((r) => mapList(r as unknown as ListRow));
@@ -56,7 +56,7 @@ export const listService = {
     const { data: list, error } = await supabase
       .from('equipment_lists')
       .insert({ name, user_id: user?.id })
-      .select('*, equipment_list_items(equipment_id)')
+      .select('id, name, user_id, is_archived, created_at, updated_at, equipment_list_items(equipment_id)')
       .single();
     if (error) throw error;
 
@@ -81,7 +81,7 @@ export const listService = {
   async copyAsTemplate(listId: string, newName: string): Promise<EquipmentList> {
     const { data, error } = await supabase
       .from('equipment_lists')
-      .select('*, equipment_list_items(equipment_id)')
+      .select('id, name, user_id, is_archived, created_at, updated_at, equipment_list_items(equipment_id)')
       .eq('id', listId)
       .single();
     if (error) throw error;
@@ -189,7 +189,7 @@ export const listService = {
   async getConflictEvents(): Promise<LoanConflictEvent[]> {
     const { data, error } = await supabase
       .from('loan_conflict_events')
-      .select('*')
+      .select('id, loan_id, equipment_id, project_id, is_read, created_at')
       .order('created_at', { ascending: false });
     if (error) throw error;
     return (data ?? []).map((row) => ({

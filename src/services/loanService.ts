@@ -1,8 +1,11 @@
 import { supabase } from './supabase';
 import { historyService } from './historyService';
 import type { EquipmentStatus, EquipmentLocation } from '../models/Equipment';
+import { unwrapSingleRelation } from './supabaseRelations';
 
 export type LoanType = 'employee';
+
+const LOAN_COLUMNS = 'id, equipment_id, loan_type, to_profile_id, project_id, issued_by, issued_at, start_date, due_date, returned_at, notes';
 
 export interface Loan {
   id: string;
@@ -63,7 +66,7 @@ export const loanService = {
   async getOpenLoans(equipmentId: string): Promise<Loan[]> {
     const { data, error } = await supabase
       .from('equipment_loans')
-      .select('*')
+      .select(LOAN_COLUMNS)
       .eq('equipment_id', equipmentId)
       .is('returned_at', null)
       .order('start_date', { ascending: true, nullsFirst: true });
@@ -76,7 +79,7 @@ export const loanService = {
   async getLoansForEquipment(equipmentId: string): Promise<Loan[]> {
     const { data, error } = await supabase
       .from('equipment_loans')
-      .select('*')
+      .select(LOAN_COLUMNS)
       .eq('equipment_id', equipmentId)
       .order('issued_at', { ascending: false });
     if (error) throw error;
@@ -88,22 +91,25 @@ export const loanService = {
   async getActiveLoansForProfile(profileId: string): Promise<EquipmentLoanSummary[]> {
     const { data, error } = await supabase
       .from('equipment_loans')
-      .select('*, equipment!equipment_id(model, inv_number, image)')
+      .select('id, equipment_id, loan_type, issued_at, due_date, notes, equipment!equipment_id(model, inv_number, image)')
       .eq('to_profile_id', profileId)
       .is('returned_at', null)
       .order('issued_at', { ascending: false });
     if (error) throw error;
-    return (data ?? []).map((row) => ({
-      id: row.id as string,
-      equipmentId: row.equipment_id as string,
-      equipmentModel: (row.equipment as Record<string, unknown>)?.model as string ?? '',
-      equipmentInvNumber: (row.equipment as Record<string, unknown>)?.inv_number as string ?? '',
-      equipmentImage: (row.equipment as Record<string, unknown>)?.image as string ?? null,
-      loanType: row.loan_type as LoanType,
-      issuedAt: new Date(row.issued_at as string),
-      dueDate: row.due_date ? new Date(row.due_date as string) : null,
-      notes: (row.notes as string) ?? null,
-    }));
+    return (data ?? []).map((row) => {
+      const equipment = unwrapSingleRelation(row.equipment);
+      return {
+        id: row.id as string,
+        equipmentId: row.equipment_id as string,
+        equipmentModel: equipment?.model as string ?? '',
+        equipmentInvNumber: equipment?.inv_number as string ?? '',
+        equipmentImage: equipment?.image as string ?? null,
+        loanType: row.loan_type as LoanType,
+        issuedAt: new Date(row.issued_at as string),
+        dueDate: row.due_date ? new Date(row.due_date as string) : null,
+        notes: (row.notes as string) ?? null,
+      };
+    });
   },
 
   async create(params: {
@@ -148,7 +154,7 @@ export const loanService = {
     const now = new Date().toISOString();
     const { data, error } = await supabase
       .from('equipment_loans')
-      .select('*')
+      .select(LOAN_COLUMNS)
       .is('returned_at', null)
       .or(`start_date.is.null,start_date.lte.${now}`);
     if (error) throw error;

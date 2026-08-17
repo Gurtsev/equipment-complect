@@ -1,6 +1,7 @@
 import { supabase } from './supabase';
 import { historyService } from './historyService';
 import { EquipmentLocation } from '../models/Equipment';
+import { unwrapSingleRelation } from './supabaseRelations';
 
 export interface Assignment {
   id: string;
@@ -27,7 +28,7 @@ export const assignmentService = {
   async getCurrentAssignment(equipmentId: string): Promise<Assignment | null> {
     const { data, error } = await supabase
       .from('employee_assignments')
-      .select('*')
+      .select('id, equipment_id, user_id, assigned_at, returned_at, notes')
       .eq('equipment_id', equipmentId)
       .is('returned_at', null)
       .maybeSingle();
@@ -48,12 +49,12 @@ export const assignmentService = {
   async getForProfile(profileId: string): Promise<ProfileAssignment[]> {
     const { data, error } = await supabase
       .from('employee_assignments')
-      .select('*, equipment!equipment_id(id, model, inv_number, image)')
+      .select('id, equipment_id, assigned_at, returned_at, notes, equipment!equipment_id(id, model, inv_number, image)')
       .eq('user_id', profileId)
       .order('assigned_at', { ascending: false });
     if (error) throw error;
     return (data ?? []).map((r) => {
-      const eq = r.equipment as { id: string; model: string; inv_number: string; image: string } | null;
+      const eq = unwrapSingleRelation(r.equipment);
       return {
         id: r.id,
         equipmentId: r.equipment_id,

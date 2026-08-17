@@ -77,7 +77,7 @@ export const roomService = {
   async getAll(): Promise<Room[]> {
     const { data, error } = await supabase
       .from('rooms')
-      .select('*')
+      .select('id, code, office, name, parent_id, sort_order, responsible')
       .order('office')
       .order('sort_order');
     if (error) throw error;
