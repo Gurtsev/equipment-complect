@@ -29,6 +29,7 @@ import {
 import { Project } from '../../models/Project';
 import { assignmentService, Assignment } from '../../services/assignmentService';
 import { loanService, Loan } from '../../services/loanService';
+import { getCustodyErrorMessage } from '../../services/custodyErrors';
 import { getRoomPath } from '../../services/roomService';
 import { usersService, Profile } from '../../services/usersService';
 
@@ -213,15 +214,19 @@ export function EquipmentDetail({ equipment, canEdit, isAdmin, onEdit, onDelete,
     try {
       const a = await assignmentService.getCurrentAssignment(equipment.id);
       setAssignment(a);
-    } catch { /* не блокируем UI */ }
-  }, [equipment.id]);
+    } catch {
+      void message.error('Ошибка при загрузке текущей выдачи');
+    }
+  }, [equipment.id, message]);
 
   const loadOpenLoans = useCallback(async () => {
     try {
       const loans = await loanService.getOpenLoans(equipment.id);
       setOpenLoans(loans);
-    } catch { /* не блокируем UI */ }
-  }, [equipment.id]);
+    } catch {
+      void message.error('Ошибка при загрузке займов');
+    }
+  }, [equipment.id, message]);
 
   useEffect(() => { void loadAssignment(); void loadOpenLoans(); }, [loadAssignment, loadOpenLoans]);
 
@@ -703,8 +708,8 @@ export function EquipmentDetail({ equipment, canEdit, isAdmin, onEdit, onDelete,
             setAssignOpen(false);
             void loadAssignment();
             void message.success(`Выдано: ${profile.name}`);
-          } catch {
-            void message.error('Ошибка при выдаче');
+          } catch (error) {
+            void message.error(getCustodyErrorMessage(error, 'Ошибка при выдаче'));
           } finally {
             setAssignLoading(false);
           }
@@ -755,6 +760,7 @@ export function EquipmentDetail({ equipment, canEdit, isAdmin, onEdit, onDelete,
           }),
         ];
         const blockedPeriods = allConflictPeriods.join(', ');
+        const hasInvalidPeriod = !!loanEnd && loanEnd <= loanStart;
         const hasConflict = allConflictPeriods.length > 0 && !!loanDueDate;
         const hasSoftConflict = (conflictProjects.length > 0 || conflictLoans.some(l => !l.dueDate)) && !loanDueDate;
         return (
@@ -765,7 +771,7 @@ export function EquipmentDetail({ equipment, canEdit, isAdmin, onEdit, onDelete,
         okText="Оформить"
         cancelText="Отмена"
         confirmLoading={loanLoading}
-        okButtonProps={{ disabled: hasConflict }}
+        okButtonProps={{ disabled: hasConflict || hasInvalidPeriod }}
         onOk={async () => {
           if (!loanProfileId) {
             void message.error('Выберите сотрудника');
@@ -785,8 +791,8 @@ export function EquipmentDetail({ equipment, canEdit, isAdmin, onEdit, onDelete,
             setLoanOpen(false);
             void loadOpenLoans();
             void message.success('Займ оформлен');
-          } catch {
-            void message.error('Ошибка при оформлении займа');
+          } catch (error) {
+            void message.error(getCustodyErrorMessage(error, 'Ошибка при оформлении займа'));
           } finally {
             setLoanLoading(false);
           }
@@ -814,6 +820,13 @@ export function EquipmentDetail({ equipment, canEdit, isAdmin, onEdit, onDelete,
             value={loanDueDate}
             onChange={(e) => setLoanDueDate(e.target.value)}
           />
+          {hasInvalidPeriod && (
+            <Alert
+              type="error"
+              showIcon
+              message="Дата возврата должна быть позже даты начала"
+            />
+          )}
           {hasConflict && (
             <Alert
               type="error"
