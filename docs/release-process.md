@@ -47,7 +47,8 @@ git diff --check
 
 Push в `master` запускает `.github/workflows/cd.yml`:
 
-1. `quality`: `npm ci`, typecheck и тесты.
+1. `quality`: `npm ci`, typecheck, тесты и проверка соответствия
+   `supabase/combined_001_XXX.sql` последовательным миграциям.
 2. `build-and-push`: Docker image с тегами `latest` и полным commit SHA.
 3. `deploy`: production запускается именно на immutable SHA-теге.
 4. `Verify production`: HTTP smoke-check `https://inventory.knzteam.ru/`.
@@ -78,4 +79,3 @@ docker compose up -d --force-recreate
 
 Откат frontend не откатывает БД. Перед необратимой миграцией должен существовать
 отдельный проверенный план восстановления из backup.
-

@@ -103,25 +103,15 @@
 
 | Проблема | Статус |
 |----------|--------|
-| GitHub Pages не работает с self-hosted Supabase — нет SSL | Нужен HTTPS (Caddy/nginx + Let's Encrypt) |
+| Frontend bundle около 611 КБ gzip | Требуется lazy loading и разделение chunks |
+| Многошаговые операции проектов/выдач не транзакционны | Перенести критичные операции в PostgreSQL RPC |
+| Миграции 024–025 ещё не подтверждены на production | Применить по `docs/deploy-024-project-list-templates.md` |
 
 ---
 
 ## 📋 Что делать дальше
 
-### Приоритет 1 — SSL для production
-**Проблема:** GitHub Pages работает по HTTPS, self-hosted Supabase — по HTTP. Браузер блокирует запросы (Mixed Content).
-
-**Решение:** настроить Caddy или nginx на сервере с Let's Encrypt:
-```
-inventory.megapolis.media  → Supabase API (порт 8000)
-db.megapolis.media         → Supabase Studio (порт 3000)
-```
-После этого GitHub Pages будет полностью работать с self-hosted.
-
----
-
-### Приоритет 2 — Безопасность (4.11)
+### Приоритет 1 — Безопасность и целостность (4.11)
 
 | # | Задача | Риск |
 |---|--------|------|

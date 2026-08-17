@@ -1,6 +1,6 @@
 -- ============================================================
--- Объединённые миграции 001-022 для применения на чистой self-hosted БД одним скриптом
--- Сгенерировано из supabase/migrations/*.sql, порядок сохранён
+-- Объединённые миграции 001-025 для применения на чистой self-hosted БД одним скриптом
+-- Сгенерировано командой npm run db:combine; вручную не редактировать
 -- ============================================================
 
 -- ─────────────────────────────────────────────────────────────
@@ -69,7 +69,6 @@ create index if not exists project_equipment_equipment_idx
 
 -- Storage bucket для фотографий оборудования
 -- Создаётся через Dashboard: Storage → New bucket → "equipment-images" → Public
-
 
 -- ─────────────────────────────────────────────────────────────
 -- Миграция: 002_auth.sql
@@ -155,7 +154,6 @@ create policy "pe_delete" on inventory.project_equipment
   for delete to authenticated
   using (inventory.current_user_role() in ('admin', 'operator'));
 
-
 -- ─────────────────────────────────────────────────────────────
 -- Миграция: 003_storage_policies.sql
 -- ─────────────────────────────────────────────────────────────
@@ -176,7 +174,6 @@ create policy "storage_delete"
 on storage.objects for delete
 to authenticated
 using (bucket_id = 'equipment-images');
-
 
 -- ─────────────────────────────────────────────────────────────
 -- Миграция: 004_access_control.sql
@@ -290,7 +287,6 @@ create policy "profiles_delete" on inventory.profiles
   for delete to authenticated
   using (inventory.current_user_role() = 'admin');
 
-
 -- ─────────────────────────────────────────────────────────────
 -- Миграция: 005_history_user.sql
 -- ─────────────────────────────────────────────────────────────
@@ -320,7 +316,6 @@ create trigger set_history_user_id
 drop policy if exists "profiles_select" on inventory.profiles;
 create policy "profiles_select" on inventory.profiles
   for select to authenticated using (true);
-
 
 -- ─────────────────────────────────────────────────────────────
 -- Миграция: 006_project_history.sql
@@ -364,7 +359,6 @@ create policy "ph_insert" on inventory.project_history
 
 -- Добавить в realtime
 alter publication supabase_realtime add table inventory.project_history;
-
 
 -- ─────────────────────────────────────────────────────────────
 -- Миграция: 007_employee_assignments.sql
@@ -410,14 +404,12 @@ create policy "ea_update" on inventory.employee_assignments
 
 alter publication supabase_realtime add table inventory.employee_assignments;
 
-
 -- ─────────────────────────────────────────────────────────────
 -- Миграция: 008_department.sql
 -- ─────────────────────────────────────────────────────────────
 alter table inventory.equipment
   add column if not exists department text not null default 'studio'
   check (department in ('studio', 'aho', 'office'));
-
 
 -- ─────────────────────────────────────────────────────────────
 -- Миграция: 009_profiles_department.sql
@@ -461,7 +453,6 @@ create policy "equipment_update" on inventory.equipment
       or department = inventory.current_user_department()
     )
   );
-
 
 -- ─────────────────────────────────────────────────────────────
 -- Миграция: 010_consumables.sql
@@ -537,7 +528,6 @@ create policy "ctrans_insert" on inventory.consumable_transactions
 alter publication supabase_realtime add table inventory.consumables;
 alter publication supabase_realtime add table inventory.consumable_transactions;
 
-
 -- ─────────────────────────────────────────────────────────────
 -- Миграция: 011_equipment_loans.sql
 -- ─────────────────────────────────────────────────────────────
@@ -591,14 +581,12 @@ create policy "loans_update" on inventory.equipment_loans
 -- Realtime
 alter publication supabase_realtime add table inventory.equipment_loans;
 
-
 -- ─────────────────────────────────────────────────────────────
 -- Миграция: 012_loan_start_date.sql
 -- ─────────────────────────────────────────────────────────────
 -- Дата начала займа (null = начинается в день оформления)
 alter table inventory.equipment_loans
   add column if not exists start_date date;
-
 
 -- ─────────────────────────────────────────────────────────────
 -- Миграция: 013_rooms.sql
@@ -912,13 +900,11 @@ select 'C-01-08-01', 'C', 'Кабинет HR и руководителя отд�
 insert into inventory.rooms (code, office, name, parent_id, sort_order)
 select 'C-01-09-01', 'C', 'Кабинет отдела спецпроектов (Отдел продаж)', id, 1 from inventory.rooms where code = 'C-01-09';
 
-
 -- ─────────────────────────────────────────────────────────────
 -- Миграция: 014_rooms_responsible.sql
 -- ─────────────────────────────────────────────────────────────
 alter table inventory.rooms
   add column if not exists responsible text not null default '';
-
 
 -- ─────────────────────────────────────────────────────────────
 -- Миграция: 015_integration_prep.sql
@@ -929,7 +915,6 @@ ALTER TABLE inventory.employee_assignments RENAME COLUMN profile_id TO user_id;
 
 -- Добавить is_active для совместимости с shared.users
 ALTER TABLE inventory.profiles ADD COLUMN IF NOT EXISTS is_active boolean NOT NULL DEFAULT true;
-
 
 -- ─────────────────────────────────────────────────────────────
 -- Миграция: 016_section_attributes.sql
@@ -951,7 +936,6 @@ ALTER TABLE inventory.equipment
 ALTER TABLE inventory.equipment
   ADD COLUMN quantity integer;
 
-
 -- ─────────────────────────────────────────────────────────────
 -- Миграция: 017_datetime_precision.sql
 -- ─────────────────────────────────────────────────────────────
@@ -965,7 +949,6 @@ alter table inventory.projects
 alter table inventory.equipment_loans
   alter column start_date type timestamptz using start_date::timestamptz,
   alter column due_date   type timestamptz using due_date::timestamptz;
-
 
 -- ─────────────────────────────────────────────────────────────
 -- Миграция: 018_cart_and_lists.sql
@@ -1095,7 +1078,6 @@ alter publication supabase_realtime add table inventory.equipment_lists;
 alter publication supabase_realtime add table inventory.equipment_list_items;
 alter publication supabase_realtime add table inventory.loan_conflict_events;
 
-
 -- ─────────────────────────────────────────────────────────────
 -- Миграция: 019_profiles_rls_fix.sql
 -- ─────────────────────────────────────────────────────────────
@@ -1113,7 +1095,6 @@ create policy "profiles_select" on inventory.profiles
   for select to authenticated using (
     id = auth.uid() or inventory.current_user_role() = 'admin'
   );
-
 
 -- ─────────────────────────────────────────────────────────────
 -- Миграция: 020_profile_names_function.sql
@@ -1134,7 +1115,6 @@ as $$
 $$;
 
 grant execute on function inventory.get_profile_names(uuid[]) to authenticated;
-
 
 -- ─────────────────────────────────────────────────────────────
 -- Миграция: 021_remove_departments.sql
@@ -1208,3 +1188,92 @@ alter table inventory.equipment
   add column assembly_status text check (assembly_status in ('assembling', 'ready', 'synced'));
 
 create index equipment_parent_id_idx on inventory.equipment(parent_id);
+
+-- ─────────────────────────────────────────────────────────────
+-- Миграция: 024_project_list_templates.sql
+-- ─────────────────────────────────────────────────────────────
+-- Списки становятся переиспользуемыми шаблонами, а не принадлежат одному
+-- проекту/займу. Источник каждого импорта сохраняется в истории проекта.
+
+alter table inventory.project_history
+  drop constraint if exists project_history_action_check;
+
+alter table inventory.project_history
+  add constraint project_history_action_check check (action in (
+    'equipment_added', 'equipment_removed', 'activated', 'finished',
+    'created', 'updated', 'list_imported'
+  ));
+
+alter table inventory.project_history
+  add column list_id uuid references inventory.equipment_lists(id) on delete set null,
+  add column list_name text,
+  add column imported_count integer,
+  add column skipped_count integer;
+
+-- Сохраняем уже существующие связи как записи истории до удаления колонок.
+insert into inventory.project_history (
+  project_id, action, list_id, list_name, imported_count, skipped_count
+)
+select
+  l.project_id,
+  'list_imported',
+  l.id,
+  l.name,
+  (select count(*) from inventory.equipment_list_items li where li.list_id = l.id),
+  0
+from inventory.equipment_lists l
+where l.project_id is not null;
+
+drop index if exists inventory.equipment_lists_project_idx;
+drop index if exists inventory.equipment_lists_loan_idx;
+
+alter table inventory.equipment_lists
+  drop constraint if exists equipment_lists_check;
+
+alter table inventory.equipment_lists
+  drop column if exists project_id,
+  drop column if exists loan_id;
+
+-- ─────────────────────────────────────────────────────────────
+-- Миграция: 025_reconcile_realtime_publication.sql
+-- ─────────────────────────────────────────────────────────────
+-- Фиксирует Realtime-контракт frontend в схеме inventory.
+-- На production часть таблиц могла быть добавлена вручную, поэтому миграция
+-- идемпотентна и добавляет только отсутствующие таблицы.
+
+do $$
+declare
+  target_table text;
+  realtime_tables text[] := array[
+    'equipment',
+    'equipment_history',
+    'projects',
+    'project_equipment',
+    'project_history',
+    'employee_assignments',
+    'consumables',
+    'consumable_transactions',
+    'equipment_loans',
+    'cart_items',
+    'equipment_lists',
+    'equipment_list_items',
+    'rooms'
+  ];
+begin
+  foreach target_table in array realtime_tables loop
+    if not exists (
+      select 1
+      from pg_publication_tables ppt
+      where ppt.pubname = 'supabase_realtime'
+        and ppt.schemaname = 'inventory'
+        and ppt.tablename = target_table
+    ) then
+      execute format(
+        'alter publication supabase_realtime add table %I.%I',
+        'inventory',
+        target_table
+      );
+    end if;
+  end loop;
+end
+$$;
