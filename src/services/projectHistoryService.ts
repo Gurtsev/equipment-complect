@@ -24,6 +24,25 @@ export interface ProjectHistoryEntry {
   recordedAt: Date;
 }
 
+const BASE_HISTORY_COLUMNS =
+  'id, project_id, user_id, action, equipment_id, equipment_name, recorded_at';
+const LIST_IMPORT_COLUMNS =
+  `${BASE_HISTORY_COLUMNS}, list_id, list_name, imported_count, skipped_count`;
+
+interface HistoryRow {
+  id: string;
+  project_id: string;
+  user_id: string | null;
+  action: string;
+  equipment_id: string | null;
+  equipment_name: string | null;
+  recorded_at: string;
+  list_id?: string | null;
+  list_name?: string | null;
+  imported_count?: number | null;
+  skipped_count?: number | null;
+}
+
 export const projectHistoryService = {
   async addEntry(
     projectId: string,
@@ -37,36 +56,62 @@ export const projectHistoryService = {
       skippedCount?: number;
     },
   ): Promise<void> {
-    const { error } = await supabase.from('project_history').insert({
+    const payload: Record<string, unknown> = {
       project_id: projectId,
       action,
       equipment_id: options?.equipmentId ?? null,
       equipment_name: options?.equipmentName ?? null,
-      list_id: options?.listId ?? null,
-      list_name: options?.listName ?? null,
-      imported_count: options?.importedCount ?? null,
-      skipped_count: options?.skippedCount ?? null,
-    });
+    };
+    if (action === 'list_imported') {
+      payload.list_id = options?.listId ?? null;
+      payload.list_name = options?.listName ?? null;
+      payload.imported_count = options?.importedCount ?? 0;
+      payload.skipped_count = options?.skippedCount ?? 0;
+    }
+    const { error } = await supabase.from('project_history').insert(payload);
     if (error) throw error;
   },
 
-  async getForProject(projectId: string): Promise<ProjectHistoryEntry[]> {
-    const { data, error } = await supabase
+  async supportsListImports(): Promise<boolean> {
+    const { error } = await supabase
       .from('project_history')
-      .select('id, project_id, user_id, action, equipment_id, equipment_name, list_id, list_name, imported_count, skipped_count, recorded_at')
+      .select('list_id')
+      .limit(1);
+    return !error;
+  },
+
+  async getForProject(projectId: string): Promise<ProjectHistoryEntry[]> {
+    const extendedResult = await supabase
+      .from('project_history')
+      .select(LIST_IMPORT_COLUMNS)
       .eq('project_id', projectId)
       .order('recorded_at', { ascending: false })
       .limit(100);
-    if (error) throw error;
 
-    const userIds = [...new Set((data ?? []).map((r) => r.user_id).filter(Boolean))] as string[];
+    // Во время rolling deploy frontend может обновиться раньше миграции 024.
+    // В этом случае сохраняем доступ к прежней истории проекта.
+    let rows: HistoryRow[];
+    if (extendedResult.error) {
+      const legacyResult = await supabase
+        .from('project_history')
+        .select(BASE_HISTORY_COLUMNS)
+        .eq('project_id', projectId)
+        .order('recorded_at', { ascending: false })
+        .limit(100);
+      if (legacyResult.error) throw legacyResult.error;
+      rows = (legacyResult.data ?? []) as unknown as HistoryRow[];
+    } else {
+      rows = (extendedResult.data ?? []) as unknown as HistoryRow[];
+    }
+
+    const userIds = [...new Set(rows.map((r) => r.user_id).filter(Boolean))] as string[];
     const nameById = new Map<string, string>();
     if (userIds.length > 0) {
       const { data: profiles } = await supabase.rpc('get_profile_names', { ids: userIds });
       for (const p of profiles ?? []) nameById.set(p.id, p.name);
     }
 
-    return (data ?? []).map((r) => ({
+    return rows.map((r) => ({
       id: r.id,
       projectId: r.project_id,
       userId: r.user_id,

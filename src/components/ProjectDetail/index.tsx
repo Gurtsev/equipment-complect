@@ -147,6 +147,7 @@ export function ProjectDetail({
   const [listImportOpen, setListImportOpen] = useState(false);
   const [selectedListId, setSelectedListId] = useState<string>();
   const [listImportLoading, setListImportLoading] = useState(false);
+  const [listImportSupported, setListImportSupported] = useState(false);
 
   const reloadHistory = useCallback(async () => {
     try {
@@ -160,6 +161,14 @@ export function ProjectDetail({
   }, [project.id]);
 
   useEffect(() => { void reloadHistory(); }, [reloadHistory]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void projectHistoryService.supportsListImports().then((supported) => {
+      if (!cancelled) setListImportSupported(supported);
+    });
+    return () => { cancelled = true; };
+  }, []);
 
   const projectEquipment = project.equipmentIds
     .map((id) => allEquipment.find((e) => e.id === id))
@@ -515,13 +524,15 @@ export function ProjectDetail({
         extra={
           canEdit && project.status !== 'Завершён' && (
             <Space size={6}>
-              <Button
-                size="small"
-                icon={<UnorderedListOutlined />}
-                onClick={() => void openListImport()}
-              >
-                Из списка
-              </Button>
+              {listImportSupported && (
+                <Button
+                  size="small"
+                  icon={<UnorderedListOutlined />}
+                  onClick={() => void openListImport()}
+                >
+                  Из списка
+                </Button>
+              )}
               <Button
                 size="small"
                 type="dashed"
