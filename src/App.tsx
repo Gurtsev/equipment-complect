@@ -1,20 +1,6 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { lazy, Suspense, useState, useEffect, useCallback, useRef } from 'react';
 import { Layout, App as AntApp, Spin, Button, Typography, Grid, Form, Input, Badge, Drawer } from 'antd';
 import { LogoutOutlined, ShoppingCartOutlined } from '@ant-design/icons';
-import { CatalogSidebar } from './components/CatalogSidebar';
-import { CatalogGrid } from './components/CatalogGrid';
-import { EquipmentDetail } from './components/EquipmentDetail';
-import { CreateEquipmentDrawer } from './components/CreateEquipmentDrawer';
-import { Dashboard } from './components/Dashboard';
-import { ProjectsSidebar } from './components/ProjectsSidebar';
-import { ProjectDetail } from './components/ProjectDetail';
-import { CreateProjectDrawer } from './components/CreateProjectDrawer';
-import { UsersPage } from './components/UsersPage';
-import { CalendarView } from './components/CalendarView';
-import { ConsumablesPage } from './components/ConsumablesPage';
-import { RoomsPage } from './components/RoomsPage';
-import { CartDrawer } from './components/CartDrawer';
-import { ListsPage } from './components/ListsPage';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import logo from './data/мм.webp';
 import { supabase } from './services/supabase';
@@ -32,8 +18,29 @@ import { AssemblyStatus, Equipment, EquipmentLocation, EquipmentStatus } from '.
 import { Project } from './models/Project';
 import type { Consumable } from './services/consumablesService';
 
+const CatalogSidebar = lazy(() => import('./components/CatalogSidebar').then((module) => ({ default: module.CatalogSidebar })));
+const CatalogGrid = lazy(() => import('./components/CatalogGrid').then((module) => ({ default: module.CatalogGrid })));
+const EquipmentDetail = lazy(() => import('./components/EquipmentDetail').then((module) => ({ default: module.EquipmentDetail })));
+const CreateEquipmentDrawer = lazy(() => import('./components/CreateEquipmentDrawer').then((module) => ({ default: module.CreateEquipmentDrawer })));
+const Dashboard = lazy(() => import('./components/Dashboard').then((module) => ({ default: module.Dashboard })));
+const ProjectsSidebar = lazy(() => import('./components/ProjectsSidebar').then((module) => ({ default: module.ProjectsSidebar })));
+const ProjectDetail = lazy(() => import('./components/ProjectDetail').then((module) => ({ default: module.ProjectDetail })));
+const CreateProjectDrawer = lazy(() => import('./components/CreateProjectDrawer').then((module) => ({ default: module.CreateProjectDrawer })));
+const UsersPage = lazy(() => import('./components/UsersPage').then((module) => ({ default: module.UsersPage })));
+const CalendarView = lazy(() => import('./components/CalendarView').then((module) => ({ default: module.CalendarView })));
+const ConsumablesPage = lazy(() => import('./components/ConsumablesPage').then((module) => ({ default: module.ConsumablesPage })));
+const RoomsPage = lazy(() => import('./components/RoomsPage').then((module) => ({ default: module.RoomsPage })));
+const CartDrawer = lazy(() => import('./components/CartDrawer').then((module) => ({ default: module.CartDrawer })));
+const ListsPage = lazy(() => import('./components/ListsPage').then((module) => ({ default: module.ListsPage })));
+
 const { Sider, Content } = Layout;
 const { Text } = Typography;
+
+const contentFallback = (
+  <div style={{ width: '100%', height: '100%', minHeight: 160, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+    <Spin />
+  </div>
+);
 
 type ActiveTab = 'catalog' | 'projects' | 'users' | 'calendar' | 'consumables' | 'rooms' | 'lists';
 
@@ -492,7 +499,7 @@ function AppInner() {
     setSelectedProject(null);
   };
 
-  const rightPane = selectedProject ? (
+  const rightPane = <Suspense fallback={contentFallback}>{selectedProject ? (
     <ProjectDetail
       key={selectedProject.id}
       project={selectedProject}
@@ -527,7 +534,7 @@ function AppInner() {
     />
   ) : isMobile ? null : (
     <Dashboard items={items} />
-  );
+  )}</Suspense>;
 
   const criticalCount = consumables.filter(
     (c) => c.minThreshold > 0 && c.quantity < c.minThreshold,
@@ -561,9 +568,9 @@ function AppInner() {
     },
   };
 
-  const tabContent = (
+  const tabContent = <Suspense fallback={contentFallback}>
     <div style={{ height: '100%', overflow: 'hidden', position: 'relative' }}>
-      <div style={{ height: '100%', display: activeTab === 'catalog' ? 'flex' : 'none', flexDirection: 'column' }}>
+      {activeTab === 'catalog' ? <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
         <CatalogSidebar
           items={items}
           selected={null}
@@ -574,8 +581,7 @@ function AppInner() {
           onFilteredItemsChange={setCatalogFilteredItems}
           rooms={rooms}
         />
-      </div>
-      <div style={{ height: '100%', display: activeTab === 'projects' ? 'block' : 'none' }}>
+      </div> : <div style={{ height: '100%' }}>
         <ProjectsSidebar
           projects={projects}
           selected={selectedProject}
@@ -583,13 +589,13 @@ function AppInner() {
           onSelect={handleProjectSelect}
           onAdd={() => setProjectDrawerMode('create')}
         />
-      </div>
+      </div>}
     </div>
-  );
+  </Suspense>;
 
-  const drawers = (
+  const drawers = <Suspense fallback={null}>
     <>
-      <CreateEquipmentDrawer
+      {equipmentDrawerMode !== null && <CreateEquipmentDrawer
         open={equipmentDrawerMode !== null}
         onClose={() => { setEquipmentDrawerMode(null); setDuplicateSource(null); }}
         onCreated={handleEquipmentCreated}
@@ -598,15 +604,15 @@ function AppInner() {
         duplicateSource={equipmentDrawerMode === 'create' ? (duplicateSource ?? undefined) : undefined}
         rooms={rooms}
         allEquipment={items}
-      />
-      <CreateProjectDrawer
+      />}
+      {projectDrawerMode !== null && <CreateProjectDrawer
         open={projectDrawerMode !== null}
         onClose={() => setProjectDrawerMode(null)}
         onCreated={handleProjectCreated}
         initialProject={projectDrawerMode === 'edit' ? (selectedProject ?? undefined) : undefined}
         onUpdated={handleProjectUpdated}
-      />
-      <CartDrawer
+      />}
+      {cartOpen && <CartDrawer
         open={cartOpen}
         onClose={() => setCartOpen(false)}
         cartItems={cartItems}
@@ -614,8 +620,8 @@ function AppInner() {
         lists={lists}
         onCartChanged={handleCartChanged}
         onListsChanged={handleListsChanged}
-      />
-      <Drawer
+      />}
+      {dashboardOpen && <Drawer
         title="Обзор инвентаря"
         open={dashboardOpen}
         onClose={() => setDashboardOpen(false)}
@@ -623,9 +629,9 @@ function AppInner() {
         styles={{ body: { padding: 0 } }}
       >
         <Dashboard items={items} />
-      </Drawer>
+      </Drawer>}
     </>
-  );
+  </Suspense>;
 
   const showSider = activeTab === 'catalog' || activeTab === 'projects';
 
@@ -717,7 +723,7 @@ function AppInner() {
             {navTabs(true)}
           </div>
         )}
-        {showDetail ? (
+        <Suspense fallback={contentFallback}>{showDetail ? (
           <div style={{ flex: 1, overflow: 'auto', background: '#f5f7fa' }}>{rightPane}</div>
         ) : activeTab === 'users' ? (
           <div style={{ flex: 1, overflow: 'auto', background: '#f5f7fa' }}><UsersPage canEdit={canEdit} allEquipment={items} onEquipmentChanged={handleEquipmentChange} /></div>
@@ -752,7 +758,7 @@ function AppInner() {
               onAssemblyStatusChange={handleAssemblyStatusChange}
             />
           </div>
-        ) : tabContent}
+        ) : tabContent}</Suspense>
         {drawers}
       </div>
     );
@@ -773,6 +779,7 @@ function AppInner() {
           </Sider>
         )}
         <Content style={{ overflow: 'auto', background: '#f5f7fa', height: '100%' }}>
+          <Suspense fallback={contentFallback}>
           {activeTab === 'users' ? <UsersPage canEdit={canEdit} allEquipment={items} onEquipmentChanged={handleEquipmentChange} /> :
            activeTab === 'calendar' ? <CalendarView {...calendarProps} /> :
            activeTab === 'consumables' ? <ConsumablesPage consumables={consumables} canEdit={canEdit} onChanged={() => void loadAll()} /> :
@@ -802,6 +809,7 @@ function AppInner() {
              />
            ) :
            rightPane}
+          </Suspense>
         </Content>
       </Layout>
       {drawers}

@@ -108,7 +108,7 @@
 
 | Проблема | Статус |
 |----------|--------|
-| Frontend bundle около 611 КБ gzip | Требуется lazy loading и разделение chunks |
+| Стартовый frontend bundle | ✅ ~260 КБ gzip после lazy loading; build-бюджет 300 КБ |
 | Многошаговые операции проектов/выдач не транзакционны | Перенести критичные операции в PostgreSQL RPC |
 | Миграции 024–028 ещё не подтверждены на production | Применить по runbook в `docs/deploy-024-project-list-templates.md`, `docs/storage-security.md` и `docs/deploy-027-028-integrity.md` |
 

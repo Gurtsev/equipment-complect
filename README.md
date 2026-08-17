@@ -55,7 +55,7 @@ Anon key попадает в клиентскую сборку по назнач
 npm run typecheck       # TypeScript
 npm run test:run        # Vitest, один прогон
 npm run check           # typecheck + тесты + проверка combined SQL
-npm run build           # production-сборка
+npm run build           # production-сборка + бюджет стартового JS (300 КБ gzip)
 ```
 
 Перед коммитом также выполняется `git diff --check`. Полный порядок выпуска:

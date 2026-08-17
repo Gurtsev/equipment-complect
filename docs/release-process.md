@@ -49,7 +49,8 @@ Push в `master` запускает `.github/workflows/cd.yml`:
 
 1. `quality`: `npm ci`, typecheck, тесты и проверка соответствия
    `supabase/combined_001_XXX.sql` последовательным миграциям.
-2. `build-and-push`: Docker image с тегами `latest` и полным commit SHA.
+2. `build-and-push`: production-сборка проверяет бюджет стартового JS 300 КБ gzip;
+   затем Docker image публикуется с тегами `latest` и полным commit SHA.
 3. `deploy`: production запускается именно на immutable SHA-теге.
 4. `Verify production`: HTTP smoke-check `https://inventory.knzteam.ru/`.
 

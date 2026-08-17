@@ -14,6 +14,9 @@ export default defineConfig(({ mode }) => {
       'import.meta.env.VITE_SUPABASE_URL': JSON.stringify(supabaseUrl),
       'import.meta.env.VITE_SUPABASE_ANON_KEY': JSON.stringify(supabaseKey),
     },
+    build: {
+      manifest: true,
+    },
     test: {
       globals: true,
       environment: 'jsdom',

@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build": "tsc && vite build && node scripts/check-bundle-size.mjs",
     "typecheck": "tsc --noEmit",
     "check": "npm run typecheck && npm run test:run && npm run db:combine:check",
     "db:combine": "node scripts/generate-combined-migration.mjs",

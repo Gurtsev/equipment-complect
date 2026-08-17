@@ -1,7 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Input, List, Avatar, Typography, Tag, Flex, Button, Select, Dropdown, TreeSelect, Grid, Badge } from 'antd';
+import { Input, List, Avatar, Typography, Tag, Flex, Button, Select, Dropdown, TreeSelect, Grid, Badge, App } from 'antd';
 import { SearchOutlined, PlusOutlined, DownloadOutlined, FilterOutlined, ShoppingCartOutlined } from '@ant-design/icons';
-import * as XLSX from 'xlsx';
 import {
   Equipment,
   EquipmentCategory,
@@ -245,14 +244,8 @@ function exportCsv(items: Equipment[]) {
   URL.revokeObjectURL(url);
 }
 
-function exportExcel(items: Equipment[]) {
+async function exportExcel(items: Equipment[]) {
   const equipmentRows = toRows(items);
-  const wsEquipment = XLSX.utils.json_to_sheet(equipmentRows);
-  wsEquipment['!cols'] = [
-    { wch: 16 }, { wch: 28 }, { wch: 14 }, { wch: 14 },
-    { wch: 22 }, { wch: 18 }, { wch: 18 }, { wch: 20 },
-  ];
-
   const historyRows = items.flatMap((item) =>
     item.history.map((h) => ({
       'Инв. номер': item.invNumber,
@@ -263,15 +256,12 @@ function exportExcel(items: Equipment[]) {
       'Ответственный': h.responsible,
     }))
   );
-  const wsHistory = XLSX.utils.json_to_sheet(historyRows);
-  wsHistory['!cols'] = [
-    { wch: 16 }, { wch: 28 }, { wch: 20 }, { wch: 14 }, { wch: 22 }, { wch: 18 },
-  ];
-
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, wsEquipment, 'Оборудование');
-  XLSX.utils.book_append_sheet(wb, wsHistory, 'История');
-  XLSX.writeFile(wb, `equipment-${new Date().toISOString().slice(0, 10)}.xlsx`);
+  const { exportEquipmentWorkbook } = await import('../../services/excelExport');
+  exportEquipmentWorkbook(
+    equipmentRows,
+    historyRows,
+    `equipment-${new Date().toISOString().slice(0, 10)}.xlsx`,
+  );
 }
 
 interface Props {
@@ -286,6 +276,7 @@ interface Props {
 }
 
 export function CatalogSidebar({ items, selected, canEdit, onSelect, onAdd, onAddToCart, onFilteredItemsChange, rooms = [] }: Props) {
+  const { message } = App.useApp();
   const screens = Grid.useBreakpoint();
   const isMobile = !screens.md;
 
@@ -361,7 +352,9 @@ export function CatalogSidebar({ items, selected, canEdit, onSelect, onAdd, onAd
     {
       key: 'excel',
       label: 'Экспорт Excel',
-      onClick: () => exportExcel(filtered),
+      onClick: () => {
+        void exportExcel(filtered).catch(() => message.error('Не удалось сформировать Excel-файл'));
+      },
       disabled: filtered.length === 0,
     },
   ];

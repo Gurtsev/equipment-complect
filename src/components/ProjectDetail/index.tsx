@@ -34,7 +34,6 @@ import {
   CheckCircleOutlined,
   UnorderedListOutlined,
 } from '@ant-design/icons';
-import * as XLSX from 'xlsx';
 import { Project, ProjectData, ProjectStatus } from '../../models/Project';
 import { Equipment, EquipmentLocation, EquipmentStatus } from '../../models/Equipment';
 import { historyService } from '../../services/historyService';
@@ -98,7 +97,7 @@ function formatDateRange(start: Date, end: Date): string {
   return `${start.toLocaleDateString('ru-RU')} — ${end.toLocaleDateString('ru-RU')}`;
 }
 
-function exportCompletion(project: Project, equipment: Equipment[]) {
+async function exportCompletion(project: Project, equipment: Equipment[]) {
   const rows = equipment.map((e) => ({
     'Инв. номер': e.invNumber,
     'Модель': e.model,
@@ -106,12 +105,9 @@ function exportCompletion(project: Project, equipment: Equipment[]) {
     'Статус': e.currentStatus,
     'Ответственный': e.responsible,
   }));
-  const ws = XLSX.utils.json_to_sheet(rows);
-  ws['!cols'] = [{ wch: 16 }, { wch: 28 }, { wch: 18 }, { wch: 16 }, { wch: 18 }];
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'Комплект');
+  const { exportProjectWorkbook } = await import('../../services/excelExport');
   const endDate = project.endDate.toLocaleDateString('ru-RU');
-  XLSX.writeFile(wb, `${project.name} до ${endDate}.xlsx`);
+  exportProjectWorkbook(rows, `${project.name} до ${endDate}.xlsx`);
 }
 
 interface Props {
@@ -515,7 +511,10 @@ export function ProjectDetail({
             )}
             <Button
               icon={<DownloadOutlined />}
-              onClick={() => exportCompletion(project, projectEquipment)}
+              onClick={() => {
+                void exportCompletion(project, projectEquipment)
+                  .catch(() => message.error('Не удалось сформировать Excel-файл'));
+              }}
               disabled={projectEquipment.length === 0}
             >
               Экспорт
