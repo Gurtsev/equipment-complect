@@ -117,10 +117,10 @@
 
 | # | Задача | Риск |
 |---|--------|------|
-| 1 | `profiles` RLS: viewer видит email и роли всех | 🔴 Высокий |
+| 1 | `profiles` RLS: viewer видит только свой профиль | ✅ Миграции 019–020 |
 | 2 | Триггеры на `equipment_loans` и `employee_assignments`: проверять статус перед выдачей | 🔴 Высокий |
 | 3 | Валидация файлов (image/*, max 10 МБ) | ✅ Реализовано, проверить bucket |
-| 4 | Race condition в consumables: `FOR UPDATE` в триггере | 🔴 Высокий |
+| 4 | Race condition в consumables: блокировка и запрет частичного списания | ✅ Миграция 027 |
 | 5 | `allowed_emails` доступны только admin | ✅ Миграция 026 |
 | 6 | Тихие ошибки в EquipmentDetail (loadAssignment, loadLoan) | 🟡 Средний |
 | 7 | Storage bucket: запись только operator+ | ✅ Миграция 026 |
@@ -216,3 +216,4 @@ CREATE TABLE pending_1c_items (
 | 024_project_list_templates | списки-шаблоны и история импорта в проект |
 | 025_reconcile_realtime_publication | идемпотентный Realtime-контракт таблиц frontend |
 | 026_storage_and_allowlist_security | Storage только operator+, allowlist только admin |
+| 027_consumables_stock_integrity | блокировка остатка и атомарный отказ при недостатке расходника |

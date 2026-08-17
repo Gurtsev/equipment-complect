@@ -10,6 +10,7 @@ import {
 import {
   consumablesService, Consumable, ConsumableCategory, ConsumableTransaction,
 } from '../../services/consumablesService';
+import { getConsumableTransactionErrorMessage } from '../../services/consumableErrors';
 
 const { Text } = Typography;
 
@@ -110,8 +111,8 @@ export function ConsumablesPage({ consumables, canEdit, onChanged }: Props) {
       setTxType(null);
       onChanged();
       void loadTransactions(selected.id);
-    } catch {
-      void message.error('Ошибка при записи операции');
+    } catch (error) {
+      void message.error(getConsumableTransactionErrorMessage(error));
     } finally {
       setTxSubmitting(false);
     }

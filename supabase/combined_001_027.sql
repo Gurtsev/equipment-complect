@@ -1,5 +1,5 @@
 -- ============================================================
--- Объединённые миграции 001-026 для применения на чистой self-hosted БД одним скриптом
+-- Объединённые миграции 001-027 для применения на чистой self-hosted БД одним скриптом
 -- Сгенерировано командой npm run db:combine; вручную не редактировать
 -- ============================================================
 
@@ -1320,3 +1320,49 @@ drop policy if exists "allowed_emails_select" on inventory.allowed_emails;
 create policy "allowed_emails_select" on inventory.allowed_emails
   for select to authenticated
   using (inventory.current_user_role() = 'admin');
+
+-- ─────────────────────────────────────────────────────────────
+-- Миграция: 027_consumables_stock_integrity.sql
+-- ─────────────────────────────────────────────────────────────
+-- Serialize consumable stock changes and reject partial/negative withdrawals.
+create or replace function inventory.apply_consumable_transaction()
+returns trigger
+language plpgsql
+security definer
+set search_path = inventory, public
+as $$
+declare
+  current_quantity integer;
+begin
+  select quantity
+    into current_quantity
+    from inventory.consumables
+   where id = new.consumable_id
+   for update;
+
+  if not found then
+    raise exception using
+      errcode = '23503',
+      message = 'INVENTORY_CONSUMABLE_NOT_FOUND';
+  end if;
+
+  if new.type = 'in' then
+    update inventory.consumables
+       set quantity = current_quantity + new.delta
+     where id = new.consumable_id;
+  else
+    if current_quantity < new.delta then
+      raise exception using
+        errcode = 'P0001',
+        message = 'INVENTORY_INSUFFICIENT_STOCK',
+        detail = format('available=%s requested=%s', current_quantity, new.delta);
+    end if;
+
+    update inventory.consumables
+       set quantity = current_quantity - new.delta
+     where id = new.consumable_id;
+  end if;
+
+  return new;
+end;
+$$;
