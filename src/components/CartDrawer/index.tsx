@@ -37,7 +37,7 @@ export function CartDrawer({
   const [selectedListId, setSelectedListId] = useState<string | undefined>(undefined);
 
   const equipmentMap = new Map(allEquipment.map((e) => [e.id, e]));
-  const draftLists = lists.filter((l) => !l.isArchived && !l.projectId && !l.loanId);
+  const draftLists = lists.filter((l) => !l.isArchived);
 
   const handleRemove = async (equipmentId: string) => {
     try {

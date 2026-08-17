@@ -16,6 +16,9 @@ import {
   Timeline,
   Spin,
   Grid,
+  Select,
+  Alert,
+  Space,
 } from 'antd';
 import {
   EditOutlined,
@@ -29,6 +32,7 @@ import {
   MinusCircleOutlined,
   PlayCircleOutlined,
   CheckCircleOutlined,
+  UnorderedListOutlined,
 } from '@ant-design/icons';
 import * as XLSX from 'xlsx';
 import { Project, ProjectData, ProjectStatus } from '../../models/Project';
@@ -37,6 +41,8 @@ import { historyService } from '../../services/historyService';
 import { projectService } from '../../services/projectService';
 import { projectHistoryService, ProjectHistoryEntry } from '../../services/projectHistoryService';
 import { loanService, Loan } from '../../services/loanService';
+import type { EquipmentList } from '../../services/listService';
+import { analyzeProjectListImport } from '../../services/projectListImport';
 
 const { Title, Text } = Typography;
 
@@ -64,6 +70,7 @@ const HISTORY_LABEL: Record<string, string> = {
   finished: 'завершил проект',
   created: 'создал проект',
   updated: 'обновил проект',
+  list_imported: 'добавил оборудование из списка',
 };
 
 const HISTORY_COLOR: Record<string, string> = {
@@ -73,6 +80,7 @@ const HISTORY_COLOR: Record<string, string> = {
   finished: 'gray',
   created: 'blue',
   updated: 'gray',
+  list_imported: 'purple',
 };
 
 const HISTORY_ICON: Record<string, React.ReactNode> = {
@@ -82,6 +90,7 @@ const HISTORY_ICON: Record<string, React.ReactNode> = {
   finished: <CheckCircleOutlined />,
   created: <PlusCircleOutlined />,
   updated: <EditOutlined />,
+  list_imported: <UnorderedListOutlined />,
 };
 
 function formatDateRange(start: Date, end: Date): string {
@@ -112,6 +121,7 @@ interface Props {
   onUpdate: (project: Project) => void;
   onEquipmentChange: () => void;
   getEquipmentProject: (equipmentId: string) => Project | undefined;
+  lists: EquipmentList[];
   onBack?: () => void;
 }
 
@@ -123,6 +133,7 @@ export function ProjectDetail({
   onUpdate,
   onEquipmentChange,
   getEquipmentProject,
+  lists,
   onBack,
 }: Props) {
   const { message, modal } = App.useApp();
@@ -133,6 +144,9 @@ export function ProjectDetail({
   const [activeLoans, setActiveLoans] = useState<Record<string, Loan>>({});
   const [projectHistory, setProjectHistory] = useState<ProjectHistoryEntry[]>([]);
   const [historyLoading, setHistoryLoading] = useState(true);
+  const [listImportOpen, setListImportOpen] = useState(false);
+  const [selectedListId, setSelectedListId] = useState<string>();
+  const [listImportLoading, setListImportLoading] = useState(false);
 
   const reloadHistory = useCallback(async () => {
     try {
@@ -159,6 +173,96 @@ export function ProjectDetail({
       setActiveLoans(loans);
     } catch { setActiveLoans({}); }
     setPickerOpen(true);
+  };
+
+  const loadActiveLoans = async () => {
+    try {
+      setActiveLoans(await loanService.getAllActiveLoans());
+    } catch {
+      setActiveLoans({});
+    }
+  };
+
+  const openListImport = async () => {
+    setSelectedListId(undefined);
+    await loadActiveLoans();
+    setListImportOpen(true);
+  };
+
+  const selectedList = lists.find((list) => list.id === selectedListId);
+
+  const getListItemBlockReason = (eq: Equipment): string | null => {
+    if (eq.currentStatus === 'Комплектуется') return 'Комплектуется';
+    if (eq.currentStatus === 'Списано') return 'Списано';
+    if (eq.currentStatus === 'В Ремонте') return 'В ремонте';
+    if (eq.currentStatus === 'Выдан' && !activeLoans[eq.id]) return 'Выдано сотруднику';
+
+    const occupyingProject = getEquipmentProject(eq.id);
+    if (occupyingProject && occupyingProject.id !== project.id) {
+      const overlaps = project.startDate <= occupyingProject.endDate
+        && occupyingProject.startDate <= project.endDate;
+      if (overlaps) return `Занято проектом «${occupyingProject.name}»`;
+    }
+    return null;
+  };
+
+  const listImportRows = analyzeProjectListImport(
+    selectedList?.equipmentIds ?? [],
+    project.equipmentIds,
+    allEquipment,
+    getListItemBlockReason,
+  );
+  const importableRows = listImportRows.filter((row) => !row.reason && row.equipment);
+  const alreadyCount = listImportRows.filter((row) => row.reason === 'Уже в проекте').length;
+  const unavailableRows = listImportRows.filter((row) => row.reason && row.reason !== 'Уже в проекте');
+
+  const handleListImport = async () => {
+    if (!selectedList || importableRows.length === 0) return;
+    setListImportLoading(true);
+    try {
+      const toAdd = importableRows.map((row) => row.equipment!);
+      const loansToClose = toAdd
+        .map((eq) => activeLoans[eq.id])
+        .filter(Boolean) as Loan[];
+      const addStatus: EquipmentStatus = project.status === 'Активен' ? 'В Работе' : 'Забронировано';
+      const addLocation = project.status === 'Активен' ? project.location : undefined;
+      const newEquipmentIds = [...new Set([...project.equipmentIds, ...toAdd.map((eq) => eq.id)])];
+      const updated = new Project({ ...project, equipmentIds: newEquipmentIds } as ProjectData);
+
+      // Возврат пишет статус «На Складе», поэтому сначала закрываем займы и только
+      // затем записываем проектный статус — иначе параллельные записи могут поменяться местами.
+      await Promise.all(loansToClose.map((loan) => loanService.returnLoan(loan.id, loan.equipmentId)));
+      await Promise.all([
+        ...toAdd.map((eq) =>
+          historyService.addEntry(eq.id, addStatus, addLocation ?? eq.currentLocation, project.responsible),
+        ),
+        ...toAdd.map((eq) =>
+          projectHistoryService.addEntry(project.id, 'equipment_added', {
+            equipmentId: eq.id,
+            equipmentName: eq.model,
+          }),
+        ),
+        projectService.update(updated),
+        projectHistoryService.addEntry(project.id, 'list_imported', {
+          listId: selectedList.id,
+          listName: selectedList.name,
+          importedCount: toAdd.length,
+          skippedCount: listImportRows.length - toAdd.length,
+        }),
+      ]);
+
+      project.equipmentIds = newEquipmentIds;
+      onUpdate(project);
+      onEquipmentChange();
+      void reloadHistory();
+      setListImportOpen(false);
+      setSelectedListId(undefined);
+      void message.success(`Из списка «${selectedList.name}» добавлено ${toAdd.length} поз.`);
+    } catch {
+      void message.error('Не удалось добавить оборудование из списка');
+    } finally {
+      setListImportLoading(false);
+    }
   };
 
   // Выдать всё: проект → Активен, оборудование → В Работе
@@ -410,14 +514,23 @@ export function ProjectDetail({
         style={{ marginBottom: 12 }}
         extra={
           canEdit && project.status !== 'Завершён' && (
-            <Button
-              size="small"
-              type="dashed"
-              icon={<PlusOutlined />}
-              onClick={() => void openPicker()}
-            >
-              Добавить
-            </Button>
+            <Space size={6}>
+              <Button
+                size="small"
+                icon={<UnorderedListOutlined />}
+                onClick={() => void openListImport()}
+              >
+                Из списка
+              </Button>
+              <Button
+                size="small"
+                type="dashed"
+                icon={<PlusOutlined />}
+                onClick={() => void openPicker()}
+              >
+                Добавить
+              </Button>
+            </Space>
           )
         }
       >
@@ -430,6 +543,54 @@ export function ProjectDetail({
           locale={{ emptyText: 'Нет оборудования — добавьте из каталога' }}
         />
       </Card>
+
+      {/* Import equipment from a reusable list template */}
+      <Modal
+        title="Добавить оборудование из списка"
+        open={listImportOpen}
+        onCancel={() => setListImportOpen(false)}
+        onOk={() => void handleListImport()}
+        okText={importableRows.length > 0 ? `Добавить (${importableRows.length})` : 'Добавить'}
+        okButtonProps={{ disabled: importableRows.length === 0, loading: listImportLoading }}
+        cancelText="Отмена"
+        width={620}
+      >
+        <Select
+          value={selectedListId}
+          onChange={setSelectedListId}
+          placeholder="Выберите список-шаблон"
+          style={{ width: '100%', marginBottom: 16 }}
+          options={lists
+            .filter((list) => !list.isArchived && list.equipmentIds.length > 0)
+            .map((list) => ({
+              value: list.id,
+              label: `${list.name} (${list.equipmentIds.length} поз.)`,
+            }))}
+        />
+
+        {selectedList && (
+          <>
+            <Alert
+              type={unavailableRows.length > 0 ? 'warning' : 'info'}
+              showIcon
+              message={`Будет добавлено: ${importableRows.length}; уже в проекте: ${alreadyCount}; недоступно: ${unavailableRows.length}`}
+              description="Оборудование, которое уже есть в проекте, останется без изменений. Лишние позиции из проекта не удаляются."
+              style={{ marginBottom: 12 }}
+            />
+            <div style={{ maxHeight: 320, overflowY: 'auto' }}>
+              {listImportRows.map(({ equipmentId, equipment, reason }) => (
+                <Flex key={equipmentId} justify="space-between" align="center" gap={12} style={{ padding: '7px 4px', borderBottom: '1px solid #f0f0f0' }}>
+                  <div style={{ minWidth: 0 }}>
+                    <Text strong>{equipment?.model ?? equipmentId}</Text>
+                    {equipment?.invNumber && <Text type="secondary"> · {equipment.invNumber}</Text>}
+                  </div>
+                  {reason ? <Tag color={reason === 'Уже в проекте' ? 'default' : 'red'}>{reason}</Tag> : <Tag color="green">Будет добавлено</Tag>}
+                </Flex>
+              ))}
+            </div>
+          </>
+        )}
+      </Modal>
 
       {/* Equipment picker modal */}
       <Modal
@@ -553,6 +714,11 @@ export function ProjectDetail({
                     {' '}{HISTORY_LABEL[entry.action]}
                     {entry.equipmentName && (
                       <Text type="secondary"> — {entry.equipmentName}</Text>
+                    )}
+                    {entry.action === 'list_imported' && (
+                      <Text type="secondary">
+                        {' '}«{entry.listName ?? 'Удалённый список'}» — добавлено {entry.importedCount ?? 0}, пропущено {entry.skippedCount ?? 0}
+                      </Text>
                     )}
                   </Text>
                   <br />

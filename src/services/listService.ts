@@ -4,8 +4,6 @@ export interface EquipmentList {
   id: string;
   name: string;
   userId: string;
-  projectId: string | null;
-  loanId: string | null;
   isArchived: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -25,8 +23,6 @@ interface ListRow {
   id: string;
   name: string;
   user_id: string;
-  project_id: string | null;
-  loan_id: string | null;
   is_archived: boolean;
   created_at: string;
   updated_at: string;
@@ -38,8 +34,6 @@ function mapList(row: ListRow): EquipmentList {
     id: row.id,
     name: row.name,
     userId: row.user_id,
-    projectId: row.project_id ?? null,
-    loanId: row.loan_id ?? null,
     isArchived: row.is_archived,
     createdAt: new Date(row.created_at),
     updatedAt: new Date(row.updated_at),
@@ -99,30 +93,6 @@ export const listService = {
     const { error } = await supabase
       .from('equipment_lists')
       .update({ name })
-      .eq('id', listId);
-    if (error) throw error;
-  },
-
-  async attachToProject(listId: string, projectId: string): Promise<void> {
-    const { error } = await supabase
-      .from('equipment_lists')
-      .update({ project_id: projectId, loan_id: null })
-      .eq('id', listId);
-    if (error) throw error;
-  },
-
-  async attachToLoan(listId: string, loanId: string): Promise<void> {
-    const { error } = await supabase
-      .from('equipment_lists')
-      .update({ loan_id: loanId, project_id: null })
-      .eq('id', listId);
-    if (error) throw error;
-  },
-
-  async detach(listId: string): Promise<void> {
-    const { error } = await supabase
-      .from('equipment_lists')
-      .update({ project_id: null, loan_id: null })
       .eq('id', listId);
     if (error) throw error;
   },

@@ -499,6 +499,7 @@ function AppInner() {
       onUpdate={handleProjectUpdate}
       onEquipmentChange={handleEquipmentChange}
       getEquipmentProject={getEquipmentProject}
+      lists={lists}
       onBack={isMobile ? handleBack : undefined}
     />
   ) : selectedEquipment ? (
@@ -724,7 +725,7 @@ function AppInner() {
         ) : activeTab === 'rooms' ? (
           <div style={{ flex: 1, overflow: 'hidden', background: '#fff' }}><RoomsPage rooms={rooms} allEquipment={items} canEdit={canEdit} selectedRoom={selectedRoom} onRoomSelect={setSelectedRoom} onRoomsChanged={handleRoomsChanged} /></div>
         ) : activeTab === 'lists' ? (
-          <div style={{ flex: 1, overflow: 'auto', background: '#f5f7fa' }}><ListsPage lists={lists} allEquipment={items} projects={projects} canEdit={canEdit} onListsChanged={handleListsChanged} /></div>
+          <div style={{ flex: 1, overflow: 'auto', background: '#f5f7fa' }}><ListsPage lists={lists} allEquipment={items} canEdit={canEdit} onListsChanged={handleListsChanged} /></div>
         ) : activeTab === 'catalog' ? (
           <div style={{ flex: 1, overflow: 'hidden', background: '#f5f7fa' }}>
             <CatalogGrid
@@ -773,7 +774,7 @@ function AppInner() {
            activeTab === 'calendar' ? <CalendarView {...calendarProps} /> :
            activeTab === 'consumables' ? <ConsumablesPage consumables={consumables} canEdit={canEdit} onChanged={() => void loadAll()} /> :
            activeTab === 'rooms' ? <RoomsPage rooms={rooms} allEquipment={items} canEdit={canEdit} selectedRoom={selectedRoom} onRoomSelect={setSelectedRoom} onRoomsChanged={handleRoomsChanged} /> :
-           activeTab === 'lists' ? <ListsPage lists={lists} allEquipment={items} projects={projects} canEdit={canEdit} onListsChanged={handleListsChanged} /> :
+           activeTab === 'lists' ? <ListsPage lists={lists} allEquipment={items} canEdit={canEdit} onListsChanged={handleListsChanged} /> :
            activeTab === 'catalog' ? (
              <CatalogGrid
                items={catalogFilteredItems ?? items}

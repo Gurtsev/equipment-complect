@@ -2,35 +2,28 @@ import { useState } from 'react';
 import { Typography, List, Tag, Button, Empty, App, Popconfirm, Input, Space, Tooltip, Collapse } from 'antd';
 import {
   EditOutlined, DeleteOutlined, CopyOutlined,
-  DisconnectOutlined, DownOutlined,
+  DownOutlined,
 } from '@ant-design/icons';
 import { listService } from '../../services/listService';
 import type { EquipmentList } from '../../services/listService';
 import type { Equipment } from '../../models/Equipment';
-import type { Project } from '../../models/Project';
 
 const { Text, Title } = Typography;
 
 interface Props {
   lists: EquipmentList[];
   allEquipment: Equipment[];
-  projects: Project[];
   canEdit: boolean;
   onListsChanged: () => Promise<void>;
 }
 
-function ListStatusTag({ list, projects }: { list: EquipmentList; projects: Project[] }) {
+function ListStatusTag({ list }: { list: EquipmentList }) {
   if (list.isArchived) return <Tag color="default">Архив</Tag>;
-  if (list.projectId) {
-    const proj = projects.find((p) => p.id === list.projectId);
-    return <Tag color="blue">Проект: {proj?.name ?? list.projectId}</Tag>;
-  }
-  if (list.loanId) return <Tag color="orange">Займ</Tag>;
-  return <Tag color="green">Черновик</Tag>;
+  return <Tag color="green">Шаблон</Tag>;
 }
 
-export function ListsPage({ lists, allEquipment, projects, canEdit, onListsChanged }: Props) {
-  const { message, modal } = App.useApp();
+export function ListsPage({ lists, allEquipment, canEdit, onListsChanged }: Props) {
+  const { message } = App.useApp();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState('');
   const [loading, setLoading] = useState<string | null>(null);
@@ -68,26 +61,6 @@ export function ListsPage({ lists, allEquipment, projects, canEdit, onListsChang
     }
   };
 
-  const handleDetach = async (list: EquipmentList) => {
-    modal.confirm({
-      title: 'Открепить список?',
-      content: 'Список останется как черновик. Бронирование оборудования снимается отдельно.',
-      okText: 'Открепить',
-      cancelText: 'Отмена',
-      onOk: async () => {
-        setLoading(list.id);
-        try {
-          await listService.detach(list.id);
-          await onListsChanged();
-        } catch {
-          void message.error('Ошибка при откреплении');
-        } finally {
-          setLoading(null);
-        }
-      },
-    });
-  };
-
   const handleDelete = async (list: EquipmentList) => {
     setLoading(list.id);
     try {
@@ -103,8 +76,6 @@ export function ListsPage({ lists, allEquipment, projects, canEdit, onListsChang
   const renderList = (list: EquipmentList) => {
     const isLoading = loading === list.id;
     const isEditing = editingId === list.id;
-    const attached = !!(list.projectId || list.loanId);
-
     return (
       <List.Item
         key={list.id}
@@ -128,24 +99,18 @@ export function ListsPage({ lists, allEquipment, projects, canEdit, onListsChang
               <Tooltip title="Скопировать как шаблон">
                 <Button type="text" size="small" icon={<CopyOutlined />} loading={isLoading} onClick={() => void handleCopy(list)} />
               </Tooltip>
-              {attached && (
-                <Tooltip title="Открепить">
-                  <Button type="text" size="small" icon={<DisconnectOutlined />} onClick={() => void handleDetach(list)} />
+              <Popconfirm
+                title="Удалить список?"
+                description="Уже наполненные из него проекты не изменятся."
+                okText="Удалить"
+                okButtonProps={{ danger: true }}
+                cancelText="Отмена"
+                onConfirm={() => void handleDelete(list)}
+              >
+                <Tooltip title="Удалить">
+                  <Button type="text" danger size="small" icon={<DeleteOutlined />} />
                 </Tooltip>
-              )}
-              {!attached && (
-                <Popconfirm
-                  title="Удалить список?"
-                  okText="Удалить"
-                  okButtonProps={{ danger: true }}
-                  cancelText="Отмена"
-                  onConfirm={() => void handleDelete(list)}
-                >
-                  <Tooltip title="Удалить">
-                    <Button type="text" danger size="small" icon={<DeleteOutlined />} />
-                  </Tooltip>
-                </Popconfirm>
-              )}
+              </Popconfirm>
             </Space>
           ),
         ] : []}
@@ -164,7 +129,7 @@ export function ListsPage({ lists, allEquipment, projects, canEdit, onListsChang
             ) : (
               <Space size={8}>
                 <Text strong>{list.name}</Text>
-                <ListStatusTag list={list} projects={projects} />
+                <ListStatusTag list={list} />
               </Space>
             )
           }

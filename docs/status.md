@@ -1,6 +1,10 @@
 # Состояние проекта — Инвентаризация студии
 
-Актуально на: 2026-06-08
+Актуально на: 2026-08-17
+
+> Документ проходит актуализацию после быстрого развития проекта. Текущие решения
+> имеют приоритет над историческими разделами ниже: `CLAUDE.md`, миграции БД и
+> `docs/decisions/`.
 
 ---
 
@@ -14,8 +18,8 @@
 - В перспективе — синхронизироваться с 1С и корпоративной системой Nexus
 
 **Стек:** React 18 + TypeScript + Vite + Ant Design 5  
-**Бэкенд:** Self-hosted Supabase (inventory.megapolis.media) — PostgreSQL + Auth + Storage + Realtime  
-**Деплой:** GitHub Pages → gurtsev.github.io/equipment-complect  
+**Бэкенд:** Self-hosted Supabase — PostgreSQL + Auth + Storage + Realtime
+**Деплой:** Docker (`nginx:alpine`) через GitHub Actions на `https://inventory.knzteam.ru`
 **Репозиторий:** github.com/Gurtsev/equipment-complect
 
 ---
@@ -24,17 +28,17 @@
 
 ### Ядро системы
 - Каталог оборудования: сетка карточек (только grid-режим, список убран), фильтрация через боковую панель / drawer на мобайле
-- Фильтры: по разделу (Техника / Мебель / Реквизит), категории, статусу, локации, помещению, отделу
+- Фильтры: по разделу (Техника / Мебель / Реквизит), категории, статусу, локации и помещению
 - История перемещений с указанием пользователя, который внёс изменение
 - Экспорт в CSV и Excel
 - Печать карточки и QR-кода (открывает карточку по ссылке `?eq=EQP-####`)
 - Мобильный адаптив
 
 ### Пользователи и доступ
-- Авторизация: Supabase Auth (email + пароль, восстановление пароля)
+- Авторизация: единый SSO через Nexus и Supabase Auth
 - Роли: **admin** / **operator** / **viewer**
-- Контроль доступа по отделу: оператор АХО не может редактировать технику студии
-- Регистрация: только для email/доменов из таблицы `allowed_emails` (проверка через RPC до создания аккаунта)
+- Отделы в Inventory удалены миграцией 021; operator редактирует весь инвентарь
+- Профиль SSO-пользователя до объединения справочников создаётся с ролью viewer
 - Защита мастер-аккаунта от смены роли (триггер в БД)
 - Страница управления пользователями (только admin)
 
@@ -48,7 +52,7 @@
 ### Сотрудники и займы
 - Выдача оборудования сотруднику (`employee_assignments`) со статусом «Выдан»
 - Карточка сотрудника: текущие выдачи, история, кнопка «Вернуть»
-- Временные займы (`equipment_loans`): сотруднику или в другой отдел, с датой возврата
+- Временные займы (`equipment_loans`) сотруднику с датой возврата
 - Проверка незакрытого оборудования при увольнении (API для Nexus)
 
 ### Расходники
@@ -60,17 +64,19 @@
 ### Инфраструктура
 - Self-hosted Supabase (перенесён из облака, 2026-06-04)
 - Realtime: обновления у всех пользователей без перезагрузки (дебаунс 300 мс)
-- GitHub Actions CI/CD: push в master → сборка → деплой на GitHub Pages
-- Vitest тесты: diff-синхронизация project_equipment (5 тестов)
+- GitHub Actions CI/CD: push в master → Docker image → production VDS
+- Vitest: 8 тестов сервисной логики
 
-### Корзина и Списки (бронирование)
-- Архитектура: Корзина → Список → Проект/Займ с проверкой конфликтов дат
+### Корзина и списки-шаблоны
+- Архитектура: Корзина → переиспользуемый Список → импорт в Проект
 - DB: `carts`, `cart_items`, `equipment_lists`, `equipment_list_items`, `loan_conflict_events` (миграция 018)
 - DB: `date → timestamptz` для `projects` и `equipment_loans`, DateTimePicker с шагом 15 мин (миграция 017)
 - Сервисы `cartService`, `listService`; компоненты `CartDrawer`, `ListsPage` (вкладка «Списки», только canEdit)
 - Кнопка «В корзину» на карточках оборудования и в списке каталога
 - Иконка корзины с бейджем в хедере
-- Не реализовано: привязка списка к проекту/займу с проверкой конфликтов, UI уведомлений о конфликтах займов
+- Проект наполняется из списка с предварительным сравнением позиций и проверкой конфликтов
+- Повторный импорт добавляет только новые доступные позиции; состав проекта и список после импорта независимы
+- Решение: `docs/decisions/001-reusable-equipment-list-templates.md`
 
 ### Подготовка к интеграции с Nexus
 - Переименование `profile_id → user_id` в `employee_assignments` (миграция 015)
@@ -81,17 +87,13 @@
 
 ## 🔧 Требует применения в БД
 
-Миграции написаны, но могут быть ещё не применены на self-hosted:
+Перед выкладкой текущего frontend требуется применить:
 
 ```
-017_datetime_precision.sql — date→timestamptz для projects и equipment_loans
-018_cart_and_lists.sql     — таблицы корзины и списков
+024_project_list_templates.sql — переиспользуемые списки и история импорта
 ```
 
-Также создать вручную в Studio:
-- Storage bucket `equipment-images` (Public)
-- RPC-функция `is_email_allowed` (из LoginPage)
-- Триггер `protect_master_admin`
+Порядок применения и проверки: `docs/deploy-024-project-list-templates.md`.
 
 ---
 
@@ -212,4 +214,9 @@ CREATE TABLE pending_1c_items (
 | 016_section_attributes | section, attributes, quantity в equipment |
 | 017_datetime_precision | date→timestamptz для projects и equipment_loans |
 | 018_cart_and_lists | carts, cart_items, equipment_lists, equipment_list_items, loan_conflict_events |
-| — | **019** (план): pending_1c_items, parent_id, synced_with_1c |
+| 019_profiles_rls_fix | ограничение чтения профилей |
+| 020_profile_names_function | безопасная выдача имён профилей |
+| 021_remove_departments | удаление отделов и межотдельских займов |
+| 022_inv_number_nullable | nullable инвентарный номер до сверки с 1С |
+| 023_composite_equipment | составные объекты оборудования |
+| 024_project_list_templates | списки-шаблоны и история импорта в проект |
