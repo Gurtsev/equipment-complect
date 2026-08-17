@@ -92,6 +92,7 @@
 
 ```
 024_project_list_templates.sql — переиспользуемые списки и история импорта
+025_reconcile_realtime_publication.sql — сверка Realtime publication со frontend
 ```
 
 Порядок применения и проверки: `docs/deploy-024-project-list-templates.md`.
@@ -221,3 +222,4 @@ CREATE TABLE pending_1c_items (
 | 022_inv_number_nullable | nullable инвентарный номер до сверки с 1С |
 | 023_composite_equipment | составные объекты оборудования |
 | 024_project_list_templates | списки-шаблоны и история импорта в проект |
+| 025_reconcile_realtime_publication | идемпотентный Realtime-контракт таблиц frontend |

@@ -168,6 +168,7 @@ function AppInner() {
       .on('postgres_changes', { event: '*', schema: 'inventory', table: 'cart_items' }, reload)
       .on('postgres_changes', { event: '*', schema: 'inventory', table: 'equipment_lists' }, reload)
       .on('postgres_changes', { event: '*', schema: 'inventory', table: 'equipment_list_items' }, reload)
+      .on('postgres_changes', { event: '*', schema: 'inventory', table: 'rooms' }, reload)
       .subscribe();
     return () => {
       clearTimeout(timer);
@@ -205,9 +206,11 @@ function AppInner() {
   ) => {
     if (!selectedEquipment) return;
     try {
-      await historyService.addEntry(selectedEquipment.id, status, location, responsible);
+      const equipmentId = selectedEquipment.id;
+      await historyService.addEntry(equipmentId, status, location, responsible);
       const newItems = await equipmentService.getAll();
       setItems(newItems);
+      setSelectedEquipment(newItems.find((item) => item.id === equipmentId) ?? null);
     } catch {
       void message.error('Ошибка при обновлении статуса');
     }

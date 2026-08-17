@@ -46,6 +46,10 @@ order by recorded_at desc;
 `project_history` должны существовать колонки `list_id`, `list_name`,
 `imported_count`, `skipped_count`.
 
+После `024` применить идемпотентную миграцию
+`025_reconcile_realtime_publication.sql`. Она фиксирует в репозитории Realtime
+publication, часть которой ранее была настроена на production вручную.
+
 ## Проверка интерфейса
 
 1. Создать список из корзины.

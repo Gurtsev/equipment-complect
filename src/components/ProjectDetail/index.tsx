@@ -43,6 +43,7 @@ import { projectHistoryService, ProjectHistoryEntry } from '../../services/proje
 import { loanService, Loan } from '../../services/loanService';
 import type { EquipmentList } from '../../services/listService';
 import { analyzeProjectListImport } from '../../services/projectListImport';
+import { supabase } from '../../services/supabase';
 
 const { Title, Text } = Typography;
 
@@ -161,6 +162,23 @@ export function ProjectDetail({
   }, [project.id]);
 
   useEffect(() => { void reloadHistory(); }, [reloadHistory]);
+
+  useEffect(() => {
+    const channel = supabase
+      .channel(`project-history-${project.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'inventory',
+          table: 'project_history',
+          filter: `project_id=eq.${project.id}`,
+        },
+        () => void reloadHistory(),
+      )
+      .subscribe();
+    return () => { void supabase.removeChannel(channel); };
+  }, [project.id, reloadHistory]);
 
   useEffect(() => {
     let cancelled = false;
