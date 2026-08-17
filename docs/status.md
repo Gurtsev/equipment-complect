@@ -64,8 +64,9 @@
 ### Инфраструктура
 - Self-hosted Supabase (перенесён из облака, 2026-06-04)
 - Realtime: обновления у всех пользователей без перезагрузки (дебаунс 300 мс)
-- GitHub Actions CI/CD: push в master → Docker image → production VDS
-- Vitest: 8 тестов сервисной логики
+- GitHub Actions CI/CD: quality gate → immutable Docker image по commit SHA → production VDS → HTTP smoke-check
+- Vitest: 10 тестов сервисной логики
+- Процесс выпуска и отката: `docs/release-process.md`
 
 ### Корзина и списки-шаблоны
 - Архитектура: Корзина → переиспользуемый Список → импорт в Проект

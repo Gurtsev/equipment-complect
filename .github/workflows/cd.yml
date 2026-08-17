@@ -1,11 +1,31 @@
 name: CD
+
 on:
   push:
     branches: [master]
   workflow_dispatch:
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
 jobs:
+  quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+
   build-and-push:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: quality
     permissions:
       contents: read
       packages: write
@@ -21,13 +41,16 @@ jobs:
         with:
           context: .
           push: true
-          tags: ghcr.io/gurtsev/equipment-complect:latest
+          tags: |
+            ghcr.io/gurtsev/equipment-complect:latest
+            ghcr.io/gurtsev/equipment-complect:${{ github.sha }}
           build-args: |
             VITE_SUPABASE_URL=https://auth.knzteam.ru
             VITE_SUPABASE_ANON_KEY=eyJhbGciOiAiSFMyNTYiLCAidHlwIjogIkpXVCJ9.eyJyb2xlIjogImFub24iLCAiaXNzIjogInN1cGFiYXNlIiwgImlhdCI6IDE3MDAwMDAwMDAsICJleHAiOiAxOTAwMDAwMDAwfQ.YKDUlCDKjwblY5ZA9YqmzMvr76zTfXRvRoG2KorbWOM
 
   deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     needs: build-and-push
     steps:
       - uses: appleboy/ssh-action@v1.2.0
@@ -40,7 +63,7 @@ jobs:
             cat << 'EOF' > ~/inventory/docker-compose.yml
             services:
               inventory:
-                image: ghcr.io/gurtsev/equipment-complect:latest
+                image: ghcr.io/gurtsev/equipment-complect:${{ github.sha }}
                 container_name: inventory-web
                 restart: unless-stopped
                 networks:
@@ -54,3 +77,5 @@ jobs:
             echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             docker compose pull
             docker compose up -d --force-recreate --remove-orphans
+      - name: Verify production
+        run: curl --fail --show-error --silent --retry 5 --retry-delay 5 https://inventory.knzteam.ru/ > /dev/null
