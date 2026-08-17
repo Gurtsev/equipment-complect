@@ -3,6 +3,7 @@ const CUSTODY_ERROR_MESSAGES: Array<[string, string]> = [
   ['INVENTORY_OPEN_LOAN_EXISTS', 'По оборудованию уже есть открытый или запланированный займ'],
   ['INVENTORY_LOAN_PERIOD_CONFLICT', 'Период займа пересекается с другим займом'],
   ['INVENTORY_INVALID_LOAN_PERIOD', 'Дата возврата должна быть позже даты начала'],
+  ['INVENTORY_PROFILE_NOT_AVAILABLE', 'Сотрудник не найден или деактивирован'],
 ];
 
 export function getCustodyErrorMessage(error: unknown, fallback: string): string {

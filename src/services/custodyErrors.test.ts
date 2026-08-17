@@ -7,6 +7,7 @@ describe('getCustodyErrorMessage', () => {
     ['INVENTORY_OPEN_LOAN_EXISTS', 'По оборудованию уже есть открытый или запланированный займ'],
     ['INVENTORY_LOAN_PERIOD_CONFLICT', 'Период займа пересекается с другим займом'],
     ['INVENTORY_INVALID_LOAN_PERIOD', 'Дата возврата должна быть позже даты начала'],
+    ['INVENTORY_PROFILE_NOT_AVAILABLE', 'Сотрудник не найден или деактивирован'],
   ])('преобразует серверный код %s', (code, expected) => {
     expect(getCustodyErrorMessage({ message: code }, 'Ошибка')).toBe(expected);
   });

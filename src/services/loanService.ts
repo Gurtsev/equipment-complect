@@ -2,6 +2,7 @@ import { supabase } from './supabase';
 import { historyService } from './historyService';
 import type { EquipmentStatus, EquipmentLocation } from '../models/Equipment';
 import { unwrapSingleRelation } from './supabaseRelations';
+import { isMissingRpcFunction } from './rpcFallback';
 
 export type LoanType = 'employee';
 
@@ -122,6 +123,19 @@ export const loanService = {
     dueDate?: string;
     notes?: string;
   }): Promise<void> {
+    const { error: rpcError } = await supabase.rpc('create_equipment_loan', {
+      p_equipment_id: params.equipmentId,
+      p_to_profile_id: params.toProfileId ?? null,
+      p_current_location: params.currentLocation,
+      p_start_date: params.startDate ?? null,
+      p_project_id: params.projectId ?? null,
+      p_due_date: params.dueDate ?? null,
+      p_notes: params.notes ?? '',
+    });
+    if (!rpcError) return;
+    if (!isMissingRpcFunction(rpcError)) throw rpcError;
+
+    // Rolling-deploy fallback until migration 029 is applied.
     const { error } = await supabase.from('equipment_loans').insert({
       equipment_id: params.equipmentId,
       loan_type: params.loanType,
@@ -142,6 +156,13 @@ export const loanService = {
   },
 
   async returnLoan(loanId: string, equipmentId: string): Promise<void> {
+    const { error: rpcError } = await supabase.rpc('return_equipment_loan', {
+      p_loan_id: loanId,
+    });
+    if (!rpcError) return;
+    if (!isMissingRpcFunction(rpcError)) throw rpcError;
+
+    // Rolling-deploy fallback until migration 029 is applied.
     const { error } = await supabase
       .from('equipment_loans')
       .update({ returned_at: new Date().toISOString() })

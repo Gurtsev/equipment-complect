@@ -98,11 +98,12 @@
 026_storage_and_allowlist_security.sql — права Storage и приватность allowlist
 027_consumables_stock_integrity.sql — атомарные изменения остатков расходников
 028_equipment_custody_integrity.sql — серверная целостность выдач и займов
+029_atomic_custody_operations.sql — транзакционные выдачи/возвраты вместе с историей
 ```
 
 Порядок применения списков и Realtime: `docs/deploy-024-project-list-templates.md`.
 Настройка и проверка Storage: `docs/storage-security.md`.
-Проверка и применение ограничений целостности: `docs/deploy-027-028-integrity.md`.
+Проверка и применение ограничений целостности: `docs/deploy-027-029-integrity.md`.
 
 ---
 
@@ -111,8 +112,8 @@
 | Проблема | Статус |
 |----------|--------|
 | Стартовый frontend bundle | ✅ ~260 КБ gzip после lazy loading; build-бюджет 300 КБ |
-| Многошаговые операции проектов/выдач не транзакционны | Перенести критичные операции в PostgreSQL RPC |
-| Миграции 024–028 ещё не подтверждены на production | Применить по runbook в `docs/deploy-024-project-list-templates.md`, `docs/storage-security.md` и `docs/deploy-027-028-integrity.md` |
+| Многошаговые операции проектов не транзакционны | Перенести создание и синхронизацию состава в PostgreSQL RPC |
+| Миграции 024–029 ещё не подтверждены на production | Применить по runbook в `docs/deploy-024-project-list-templates.md`, `docs/storage-security.md` и `docs/deploy-027-029-integrity.md` |
 
 ---
 
@@ -223,3 +224,4 @@ CREATE TABLE pending_1c_items (
 | 026_storage_and_allowlist_security | Storage только operator+, allowlist только admin |
 | 027_consumables_stock_integrity | блокировка остатка и атомарный отказ при недостатке расходника |
 | 028_equipment_custody_integrity | взаимное исключение выдач и займов, контроль пересечения периодов |
+| 029_atomic_custody_operations | атомарные выдачи, займы, возвраты и история оборудования |

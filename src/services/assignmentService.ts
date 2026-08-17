@@ -2,6 +2,7 @@ import { supabase } from './supabase';
 import { historyService } from './historyService';
 import { EquipmentLocation } from '../models/Equipment';
 import { unwrapSingleRelation } from './supabaseRelations';
+import { isMissingRpcFunction } from './rpcFallback';
 
 export interface Assignment {
   id: string;
@@ -75,6 +76,16 @@ export const assignmentService = {
     currentLocation: EquipmentLocation,
     notes?: string,
   ): Promise<void> {
+    const { error: rpcError } = await supabase.rpc('assign_equipment', {
+      p_equipment_id: equipmentId,
+      p_user_id: profileId,
+      p_current_location: currentLocation,
+      p_notes: notes ?? '',
+    });
+    if (!rpcError) return;
+    if (!isMissingRpcFunction(rpcError)) throw rpcError;
+
+    // Rolling-deploy fallback until migration 029 is applied.
     const { error } = await supabase.from('employee_assignments').insert({
       equipment_id: equipmentId,
       user_id: profileId,
@@ -85,6 +96,13 @@ export const assignmentService = {
   },
 
   async returnEquipment(assignmentId: string, equipmentId: string): Promise<void> {
+    const { error: rpcError } = await supabase.rpc('return_equipment_assignment', {
+      p_assignment_id: assignmentId,
+    });
+    if (!rpcError) return;
+    if (!isMissingRpcFunction(rpcError)) throw rpcError;
+
+    // Rolling-deploy fallback until migration 029 is applied.
     const { error } = await supabase
       .from('employee_assignments')
       .update({ returned_at: new Date().toISOString() })
