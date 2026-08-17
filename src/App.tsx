@@ -157,17 +157,17 @@ function AppInner() {
     };
     const channel = supabase
       .channel('db-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'equipment' }, reload)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'equipment_history' }, reload)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'projects' }, reload)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'project_equipment' }, reload)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'employee_assignments' }, reload)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'consumables' }, reload)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'consumable_transactions' }, reload)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'equipment_loans' }, reload)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'cart_items' }, reload)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'equipment_lists' }, reload)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'equipment_list_items' }, reload)
+      .on('postgres_changes', { event: '*', schema: 'inventory', table: 'equipment' }, reload)
+      .on('postgres_changes', { event: '*', schema: 'inventory', table: 'equipment_history' }, reload)
+      .on('postgres_changes', { event: '*', schema: 'inventory', table: 'projects' }, reload)
+      .on('postgres_changes', { event: '*', schema: 'inventory', table: 'project_equipment' }, reload)
+      .on('postgres_changes', { event: '*', schema: 'inventory', table: 'employee_assignments' }, reload)
+      .on('postgres_changes', { event: '*', schema: 'inventory', table: 'consumables' }, reload)
+      .on('postgres_changes', { event: '*', schema: 'inventory', table: 'consumable_transactions' }, reload)
+      .on('postgres_changes', { event: '*', schema: 'inventory', table: 'equipment_loans' }, reload)
+      .on('postgres_changes', { event: '*', schema: 'inventory', table: 'cart_items' }, reload)
+      .on('postgres_changes', { event: '*', schema: 'inventory', table: 'equipment_lists' }, reload)
+      .on('postgres_changes', { event: '*', schema: 'inventory', table: 'equipment_list_items' }, reload)
       .subscribe();
     return () => {
       clearTimeout(timer);
