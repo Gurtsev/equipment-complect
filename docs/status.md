@@ -65,7 +65,7 @@
 - Self-hosted Supabase (перенесён из облака, 2026-06-04)
 - Realtime: обновления у всех пользователей без перезагрузки (дебаунс 300 мс)
 - GitHub Actions CI/CD: quality gate → immutable Docker image по commit SHA → production VDS → HTTP smoke-check
-- Vitest: 10 тестов сервисной логики
+- Vitest: 13 тестов сервисной логики
 - Процесс выпуска и отката: `docs/release-process.md`
 
 ### Корзина и списки-шаблоны
@@ -93,9 +93,11 @@
 ```
 024_project_list_templates.sql — переиспользуемые списки и история импорта
 025_reconcile_realtime_publication.sql — сверка Realtime publication со frontend
+026_storage_and_allowlist_security.sql — права Storage и приватность allowlist
 ```
 
-Порядок применения и проверки: `docs/deploy-024-project-list-templates.md`.
+Порядок применения списков и Realtime: `docs/deploy-024-project-list-templates.md`.
+Настройка и проверка Storage: `docs/storage-security.md`.
 
 ---
 
@@ -117,11 +119,11 @@
 |---|--------|------|
 | 1 | `profiles` RLS: viewer видит email и роли всех | 🔴 Высокий |
 | 2 | Триггеры на `equipment_loans` и `employee_assignments`: проверять статус перед выдачей | 🔴 Высокий |
-| 3 | Валидация файлов в форме оборудования (MIME-тип, max 10MB) | 🔴 Высокий |
+| 3 | Валидация файлов (image/*, max 10 МБ) | ✅ Реализовано, проверить bucket |
 | 4 | Race condition в consumables: `FOR UPDATE` в триггере | 🔴 Высокий |
-| 5 | `allowed_emails` видны всем — ограничить до admin | 🟡 Средний |
+| 5 | `allowed_emails` доступны только admin | ✅ Миграция 026 |
 | 6 | Тихие ошибки в EquipmentDetail (loadAssignment, loadLoan) | 🟡 Средний |
-| 7 | Storage bucket: только operator+ может загружать файлы | 🟡 Средний |
+| 7 | Storage bucket: запись только operator+ | ✅ Миграция 026 |
 
 ---
 
@@ -213,3 +215,4 @@ CREATE TABLE pending_1c_items (
 | 023_composite_equipment | составные объекты оборудования |
 | 024_project_list_templates | списки-шаблоны и история импорта в проект |
 | 025_reconcile_realtime_publication | идемпотентный Realtime-контракт таблиц frontend |
+| 026_storage_and_allowlist_security | Storage только operator+, allowlist только admin |

@@ -12,6 +12,7 @@ import {
 import { supabase } from '../../services/supabase';
 import { buildRoomTree, OFFICE_LABEL } from '../../services/roomService';
 import type { Room, RoomTreeNode } from '../../services/roomService';
+import { validateEquipmentImage } from '../../services/imageValidation';
 
 // ── Категории по разделам ────────────────────────────────────────────────────
 
@@ -186,12 +187,26 @@ export function CreateEquipmentDrawer({ open, onClose, onCreated, initialEquipme
     listType: 'picture',
     maxCount: 1,
     fileList,
+    beforeUpload: (file) => {
+      const validationError = validateEquipmentImage(file);
+      if (validationError) {
+        void message.error(validationError);
+        return Upload.LIST_IGNORE;
+      }
+      return true;
+    },
     onChange: ({ fileList: newList, file }) => {
       setFileList(newList);
       if (file.status === 'removed') form.setFieldValue('image', '');
     },
     customRequest: async ({ file, onSuccess, onError }) => {
       const f = file as File;
+      const validationError = validateEquipmentImage(f);
+      if (validationError) {
+        onError?.(new Error(validationError));
+        void message.error(validationError);
+        return;
+      }
       const ext = f.name.split('.').pop() ?? 'jpg';
       const path = `${Date.now()}.${ext}`;
       const { error } = await supabase.storage
