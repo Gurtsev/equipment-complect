@@ -28,104 +28,7 @@ function makeProject(equipmentIds: string[]) {
   });
 }
 
-/** Настраивает mockFrom для projectService.update.
- *  Порядок вызовов from() внутри update:
- *  1. projects → UPDATE
- *  2. project_equipment → SELECT (текущие ids)
- *  3. project_equipment → DELETE (если есть что удалить)
- *  4. project_equipment → INSERT (если есть что добавить)
- */
-function setupUpdateMocks(currentIds: string[]) {
-  const deleteInSpy = vi.fn().mockResolvedValue({ error: null });
-  const insertSpy = vi.fn().mockResolvedValue({ error: null });
-
-  mockFrom
-    .mockReturnValueOnce({
-      // 1. projects UPDATE
-      update: vi.fn().mockReturnValue({
-        eq: vi.fn().mockResolvedValue({ data: null, error: null }),
-      }),
-    })
-    .mockReturnValueOnce({
-      // 2. project_equipment SELECT
-      select: vi.fn().mockReturnValue({
-        eq: vi.fn().mockResolvedValue({
-          data: currentIds.map((id) => ({ equipment_id: id })),
-          error: null,
-        }),
-      }),
-    })
-    .mockReturnValue({
-      // 3 и 4. DELETE и/или INSERT (порядок зависит от логики)
-      delete: vi.fn().mockReturnValue({
-        eq: vi.fn().mockReturnValue({ in: deleteInSpy }),
-      }),
-      insert: insertSpy,
-    });
-
-  return { deleteInSpy, insertSpy };
-}
-
 // ── Тесты ──────────────────────────────────────────────────────────────────
-
-describe('projectService.update — diff-синхронизация оборудования', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    mockRpc.mockResolvedValue({ error: { code: 'PGRST202', message: 'not found' } });
-  });
-
-  it('удаляет только убранные id, не трогает оставшиеся', async () => {
-    const { deleteInSpy, insertSpy } = setupUpdateMocks(['eq1', 'eq2', 'eq3']);
-
-    await projectService.update(makeProject(['eq1', 'eq2'])); // eq3 убран
-
-    expect(deleteInSpy).toHaveBeenCalledOnce();
-    expect(deleteInSpy).toHaveBeenCalledWith('equipment_id', ['eq3']);
-    expect(insertSpy).not.toHaveBeenCalled();
-  });
-
-  it('вставляет только новые id, не дублирует существующие', async () => {
-    const { deleteInSpy, insertSpy } = setupUpdateMocks(['eq1', 'eq2']);
-
-    await projectService.update(makeProject(['eq1', 'eq2', 'eq3'])); // eq3 добавлен
-
-    expect(insertSpy).toHaveBeenCalledOnce();
-    expect(insertSpy).toHaveBeenCalledWith([
-      { project_id: 'PRJ-001', equipment_id: 'eq3' },
-    ]);
-    expect(deleteInSpy).not.toHaveBeenCalled();
-  });
-
-  it('не вызывает delete если ничего не убрано', async () => {
-    const { deleteInSpy } = setupUpdateMocks(['eq1', 'eq2']);
-
-    await projectService.update(makeProject(['eq1', 'eq2'])); // без изменений
-
-    expect(deleteInSpy).not.toHaveBeenCalled();
-  });
-
-  it('не вызывает insert если ничего не добавлено', async () => {
-    const { insertSpy } = setupUpdateMocks(['eq1', 'eq2', 'eq3']);
-
-    await projectService.update(makeProject(['eq1', 'eq2'])); // eq3 убран, ничего не добавлено
-
-    expect(insertSpy).not.toHaveBeenCalled();
-  });
-
-  it('обрабатывает полную замену комплекта', async () => {
-    const { deleteInSpy, insertSpy } = setupUpdateMocks(['eq1', 'eq2']);
-
-    await projectService.update(makeProject(['eq3', 'eq4'])); // eq1,eq2 убраны, eq3,eq4 добавлены
-
-    expect(deleteInSpy).toHaveBeenCalledWith('equipment_id', expect.arrayContaining(['eq1', 'eq2']));
-    expect(insertSpy).toHaveBeenCalledWith(
-      expect.arrayContaining([
-        { project_id: 'PRJ-001', equipment_id: 'eq3' },
-        { project_id: 'PRJ-001', equipment_id: 'eq4' },
-      ]),
-    );
-  });
-});
 
 describe('projectService — atomic project RPC', () => {
   beforeEach(() => {
@@ -169,7 +72,7 @@ describe('projectService — atomic project RPC', () => {
     expect(mockFrom).not.toHaveBeenCalled();
   });
 
-  it('не скрывает серверный конфликт проекта через legacy fallback', async () => {
+  it('не скрывает серверный конфликт проекта', async () => {
     const error = { code: 'P0001', message: 'INVENTORY_PROJECT_PERIOD_CONFLICT' };
     mockRpc.mockResolvedValue({ error });
 
@@ -195,17 +98,19 @@ describe('projectService — atomic project RPC', () => {
     });
   });
 
-  it('сигнализирует UI использовать fallback, если RPC 030 отсутствует', async () => {
-    mockRpc.mockResolvedValue({ error: { code: 'PGRST202', message: 'not found' } });
+  it('не обходит атомарный контракт, если RPC 030 отсутствует', async () => {
+    const error = { code: 'PGRST202', message: 'not found' };
+    mockRpc.mockResolvedValue({ error });
 
     await expect(projectService.removeEquipmentAtomic('PRJ-001', ['eq1']))
-      .resolves.toBe(false);
+      .rejects.toBe(error);
+    expect(mockFrom).not.toHaveBeenCalled();
   });
 
   it('переводит статус проекта одной серверной операцией', async () => {
     mockRpc.mockResolvedValue({ error: null });
 
-    await expect(projectService.transitionAtomic('PRJ-001', 'Активен')).resolves.toBe(true);
+    await expect(projectService.transitionAtomic('PRJ-001', 'Активен')).resolves.toBeUndefined();
     expect(mockRpc).toHaveBeenCalledWith('transition_project', {
       p_project_id: 'PRJ-001',
       p_target_status: 'Активен',

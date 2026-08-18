@@ -1,8 +1,6 @@
 import { supabase } from './supabase';
-import { historyService } from './historyService';
-import type { EquipmentStatus, EquipmentLocation } from '../models/Equipment';
+import type { EquipmentLocation } from '../models/Equipment';
 import { unwrapSingleRelation } from './supabaseRelations';
-import { isMissingRpcFunction } from './rpcFallback';
 
 export type LoanType = 'employee';
 
@@ -132,43 +130,14 @@ export const loanService = {
       p_due_date: params.dueDate ?? null,
       p_notes: params.notes ?? '',
     });
-    if (!rpcError) return;
-    if (!isMissingRpcFunction(rpcError)) throw rpcError;
-
-    // Rolling-deploy fallback until migration 029 is applied.
-    const { error } = await supabase.from('equipment_loans').insert({
-      equipment_id: params.equipmentId,
-      loan_type: params.loanType,
-      to_profile_id: params.toProfileId ?? null,
-      start_date: params.startDate ?? null,
-      project_id: params.projectId ?? null,
-      due_date: params.dueDate ?? null,
-      notes: params.notes?.trim() || null,
-    });
-    if (error) throw error;
-
-    const now = new Date();
-    const startDate = params.startDate ? new Date(params.startDate) : now;
-    if (startDate <= now) {
-      const status: EquipmentStatus = 'Выдан';
-      await historyService.addEntry(params.equipmentId, status, params.currentLocation, '');
-    }
+    if (rpcError) throw rpcError;
   },
 
-  async returnLoan(loanId: string, equipmentId: string): Promise<void> {
+  async returnLoan(loanId: string): Promise<void> {
     const { error: rpcError } = await supabase.rpc('return_equipment_loan', {
       p_loan_id: loanId,
     });
-    if (!rpcError) return;
-    if (!isMissingRpcFunction(rpcError)) throw rpcError;
-
-    // Rolling-deploy fallback until migration 029 is applied.
-    const { error } = await supabase
-      .from('equipment_loans')
-      .update({ returned_at: new Date().toISOString() })
-      .eq('id', loanId);
-    if (error) throw error;
-    await historyService.addEntry(equipmentId, 'На Складе', 'Склад', '');
+    if (rpcError) throw rpcError;
   },
 
   async getAllActiveLoans(): Promise<Record<string, Loan>> {

@@ -34,9 +34,8 @@ import {
   CheckCircleOutlined,
   UnorderedListOutlined,
 } from '@ant-design/icons';
-import { Project, ProjectData, ProjectStatus } from '../../models/Project';
+import { Project, ProjectStatus } from '../../models/Project';
 import { Equipment, EquipmentLocation, EquipmentStatus } from '../../models/Equipment';
-import { historyService } from '../../services/historyService';
 import { projectService } from '../../services/projectService';
 import { getProjectErrorMessage } from '../../services/projectErrors';
 import { projectHistoryService, ProjectHistoryEntry } from '../../services/projectHistoryService';
@@ -245,15 +244,9 @@ export function ProjectDetail({
     setListImportLoading(true);
     try {
       const toAdd = importableRows.map((row) => row.equipment!);
-      const loansToClose = toAdd
-        .map((eq) => activeLoans[eq.id])
-        .filter(Boolean) as Loan[];
-      const addStatus: EquipmentStatus = project.status === 'Активен' ? 'В Работе' : 'Забронировано';
-      const addLocation = project.status === 'Активен' ? project.location : undefined;
       const newEquipmentIds = [...new Set([...project.equipmentIds, ...toAdd.map((eq) => eq.id)])];
-      const updated = new Project({ ...project, equipmentIds: newEquipmentIds } as ProjectData);
 
-      const closedLoanCount = await projectService.addEquipmentAtomic(
+      await projectService.addEquipmentAtomic(
         project.id,
         toAdd.map((eq) => eq.id),
         {
@@ -262,29 +255,6 @@ export function ProjectDetail({
           skippedCount: listImportRows.length - toAdd.length,
         },
       );
-
-      if (closedLoanCount === null) {
-        // Rolling-deploy fallback until migration 030 is applied.
-        await Promise.all(loansToClose.map((loan) => loanService.returnLoan(loan.id, loan.equipmentId)));
-        await Promise.all([
-          ...toAdd.map((eq) =>
-            historyService.addEntry(eq.id, addStatus, addLocation ?? eq.currentLocation, project.responsible),
-          ),
-          ...toAdd.map((eq) =>
-            projectHistoryService.addEntry(project.id, 'equipment_added', {
-              equipmentId: eq.id,
-              equipmentName: eq.model,
-            }),
-          ),
-          projectService.update(updated),
-          projectHistoryService.addEntry(project.id, 'list_imported', {
-            listId: selectedList.id,
-            listName: selectedList.name,
-            importedCount: toAdd.length,
-            skippedCount: listImportRows.length - toAdd.length,
-          }),
-        ]);
-      }
 
       project.equipmentIds = newEquipmentIds;
       onUpdate(project);
@@ -309,17 +279,7 @@ export function ProjectDetail({
       cancelText: 'Отмена',
       onOk: async () => {
         try {
-          const handled = await projectService.transitionAtomic(project.id, 'Активен');
-          if (!handled) {
-            const activated = new Project({ ...project, status: 'Активен' } as ProjectData);
-            await Promise.all([
-              ...projectEquipment.map((eq) =>
-                historyService.addEntry(eq.id, 'В Работе', project.location, project.responsible),
-              ),
-              projectService.update(activated),
-              projectHistoryService.addEntry(project.id, 'activated'),
-            ]);
-          }
+          await projectService.transitionAtomic(project.id, 'Активен');
           projectEquipment.forEach((eq) =>
             eq.addHistoryEntry('В Работе', project.location as EquipmentLocation, project.responsible),
           );
@@ -346,17 +306,7 @@ export function ProjectDetail({
       cancelText: 'Отмена',
       onOk: async () => {
         try {
-          const handled = await projectService.transitionAtomic(project.id, 'Завершён');
-          if (!handled) {
-            const finished = new Project({ ...project, status: 'Завершён', equipmentIds: [] } as ProjectData);
-            await Promise.all([
-              ...projectEquipment.map((eq) =>
-                historyService.addEntry(eq.id, 'На Складе', 'Склад', project.responsible),
-              ),
-              projectService.update(finished),
-              projectHistoryService.addEntry(project.id, 'finished'),
-            ]);
-          }
+          await projectService.transitionAtomic(project.id, 'Завершён');
           projectEquipment.forEach((eq) =>
             eq.addHistoryEntry('На Складе', 'Склад', project.responsible),
           );
@@ -379,20 +329,7 @@ export function ProjectDetail({
     try {
       const needsHistory = eq.currentStatus === 'Забронировано' || eq.currentStatus === 'В Работе';
       const newEquipmentIds = project.equipmentIds.filter((id) => id !== eq.id);
-      const handled = await projectService.removeEquipmentAtomic(project.id, [eq.id]);
-      if (!handled) {
-        const updated = new Project({ ...project, equipmentIds: newEquipmentIds } as ProjectData);
-        if (needsHistory) {
-          await historyService.addEntry(eq.id, 'На Складе', 'Склад', project.responsible);
-        }
-        await Promise.all([
-          projectService.update(updated),
-          projectHistoryService.addEntry(project.id, 'equipment_removed', {
-            equipmentId: eq.id,
-            equipmentName: eq.model,
-          }),
-        ]);
-      }
+      await projectService.removeEquipmentAtomic(project.id, [eq.id]);
       if (needsHistory) {
         eq.addHistoryEntry('На Складе', 'Склад', project.responsible);
       }
@@ -413,38 +350,18 @@ export function ProjectDetail({
       return;
     }
     const toAdd = allEquipment.filter((e) => pickerSelected.includes(e.id));
-    // Закрываем активные займы для добавляемого оборудования
-    const loansToClose = toAdd
-      .map((eq) => activeLoans[eq.id])
-      .filter(Boolean) as import('../../services/loanService').Loan[];
     const addStatus: EquipmentStatus = project.status === 'Активен' ? 'В Работе' : 'Забронировано';
     const addLocation = project.status === 'Активен' ? project.location : undefined;
     const newEquipmentIds = [...new Set([...project.equipmentIds, ...pickerSelected])];
-    const updated = new Project({ ...project, equipmentIds: newEquipmentIds } as ProjectData);
     try {
       const closedLoanCount = await projectService.addEquipmentAtomic(
         project.id,
         toAdd.map((eq) => eq.id),
       );
-      if (closedLoanCount === null) {
-        await Promise.all([
-          ...loansToClose.map((loan) => loanService.returnLoan(loan.id, loan.equipmentId)),
-          ...toAdd.map((eq) =>
-            historyService.addEntry(eq.id, addStatus, addLocation ?? eq.currentLocation, project.responsible),
-          ),
-          ...toAdd.map((eq) =>
-            projectHistoryService.addEntry(project.id, 'equipment_added', {
-              equipmentId: eq.id,
-              equipmentName: eq.model,
-            }),
-          ),
-          projectService.update(updated),
-        ]);
-      }
       toAdd.forEach((eq) =>
         eq.addHistoryEntry(
           addStatus,
-          (addLocation ?? (closedLoanCount !== null && activeLoans[eq.id] ? 'Склад' : eq.currentLocation)) as EquipmentLocation,
+          (addLocation ?? (activeLoans[eq.id] ? 'Склад' : eq.currentLocation)) as EquipmentLocation,
           project.responsible,
         ),
       );
@@ -454,8 +371,7 @@ export function ProjectDetail({
       void reloadHistory();
       setPickerSelected([]);
       setPickerOpen(false);
-      const actualClosedCount = closedLoanCount ?? loansToClose.length;
-      const closedMsg = actualClosedCount > 0 ? `, займов закрыто: ${actualClosedCount}` : '';
+      const closedMsg = closedLoanCount > 0 ? `, займов закрыто: ${closedLoanCount}` : '';
       void message.success(`Добавлено ${toAdd.length} ед. оборудования${closedMsg}`);
     } catch (error) {
       void message.error(getProjectErrorMessage(error, 'Не удалось добавить оборудование в проект'));

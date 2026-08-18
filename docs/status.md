@@ -67,7 +67,7 @@
 - Self-hosted Supabase (перенесён из облака, 2026-06-04)
 - Realtime: обновления у всех пользователей без перезагрузки (дебаунс 300 мс)
 - GitHub Actions CI/CD: quality gate → immutable Docker image по commit SHA → production VDS → HTTP smoke-check
-- Vitest: 13 тестов сервисной логики
+- Vitest: 48 тестов сервисной логики
 - Процесс выпуска и отката: `docs/release-process.md`
 
 ### Корзина и списки-шаблоны
@@ -110,6 +110,8 @@
 Поля `project_history` из миграции 024 дополнительно подтверждены через production
 PostgREST OpenAPI. RPC миграций 029–030 корректно скрыты от роли `anon`; их
 authenticated smoke-check выполняется через пользовательские сценарии.
+Frontend считает эти RPC обязательным production-контрактом и не откатывается
+к неатомарным клиентским запросам при ошибке schema cache.
 
 ---
 

@@ -1,6 +1,5 @@
 import { supabase } from './supabase';
 import { Project } from '../models/Project';
-import { isMissingRpcFunction } from './rpcFallback';
 
 interface ProjectRow {
   id: string;
@@ -60,29 +59,7 @@ export const projectService = {
       'create_project_with_equipment',
       toProjectRpcParams(project),
     );
-    if (!rpcError) return;
-    if (!isMissingRpcFunction(rpcError)) throw rpcError;
-
-    // Rolling-deploy fallback until migration 030 is applied.
-    const { error: projErr } = await supabase.from('projects').insert({
-      id: project.id,
-      name: project.name,
-      client: project.client,
-      start_date: project.startDate.toISOString(),
-      end_date: project.endDate.toISOString(),
-      location: project.location,
-      responsible: project.responsible,
-      status: project.status,
-      notes: project.notes,
-    });
-    if (projErr) throw projErr;
-
-    if (project.equipmentIds.length > 0) {
-      const { error: peErr } = await supabase.from('project_equipment').insert(
-        project.equipmentIds.map((eid) => ({ project_id: project.id, equipment_id: eid })),
-      );
-      if (peErr) throw peErr;
-    }
+    if (rpcError) throw rpcError;
   },
 
   async update(project: Project): Promise<void> {
@@ -90,59 +67,14 @@ export const projectService = {
       'update_project_with_equipment',
       toProjectRpcParams(project),
     );
-    if (!rpcError) return;
-    if (!isMissingRpcFunction(rpcError)) throw rpcError;
-
-    // Rolling-deploy fallback until migration 030 is applied.
-    const { error: projErr } = await supabase
-      .from('projects')
-      .update({
-        name: project.name,
-        client: project.client,
-        start_date: project.startDate.toISOString(),
-        end_date: project.endDate.toISOString(),
-        location: project.location,
-        responsible: project.responsible,
-        status: project.status,
-        notes: project.notes,
-      })
-      .eq('id', project.id);
-    if (projErr) throw projErr;
-
-    // Diff-синхронизация: удалять только убранные, добавлять только новые
-    const { data: current, error: fetchErr } = await supabase
-      .from('project_equipment')
-      .select('equipment_id')
-      .eq('project_id', project.id);
-    if (fetchErr) throw fetchErr;
-
-    const currentIds = new Set((current ?? []).map((r) => r.equipment_id as string));
-    const newIds = new Set(project.equipmentIds);
-
-    const toDelete = [...currentIds].filter((id) => !newIds.has(id));
-    if (toDelete.length > 0) {
-      const { error } = await supabase
-        .from('project_equipment')
-        .delete()
-        .eq('project_id', project.id)
-        .in('equipment_id', toDelete);
-      if (error) throw error;
-    }
-
-    const toInsert = [...newIds].filter((id) => !currentIds.has(id));
-    if (toInsert.length > 0) {
-      const { error } = await supabase.from('project_equipment').insert(
-        toInsert.map((eid) => ({ project_id: project.id, equipment_id: eid })),
-      );
-      if (error) throw error;
-    }
+    if (rpcError) throw rpcError;
   },
 
   async addEquipmentAtomic(
     projectId: string,
     equipmentIds: string[],
     listImport?: { listId: string; listName: string; skippedCount: number },
-  ): Promise<number | null> {
+  ): Promise<number> {
     const { data, error } = await supabase.rpc('add_project_equipment', {
       p_project_id: projectId,
       p_equipment_ids: [...new Set(equipmentIds)],
@@ -150,32 +82,27 @@ export const projectService = {
       p_list_name: listImport?.listName ?? '',
       p_skipped_count: listImport?.skippedCount ?? 0,
     });
-    if (!error) return Number(data ?? 0);
-    if (isMissingRpcFunction(error)) return null;
-    throw error;
+    if (error) throw error;
+    return Number(data ?? 0);
   },
 
-  async removeEquipmentAtomic(projectId: string, equipmentIds: string[]): Promise<boolean> {
+  async removeEquipmentAtomic(projectId: string, equipmentIds: string[]): Promise<void> {
     const { error } = await supabase.rpc('remove_project_equipment', {
       p_project_id: projectId,
       p_equipment_ids: [...new Set(equipmentIds)],
     });
-    if (!error) return true;
-    if (isMissingRpcFunction(error)) return false;
-    throw error;
+    if (error) throw error;
   },
 
   async transitionAtomic(
     projectId: string,
     targetStatus: 'Активен' | 'Завершён',
-  ): Promise<boolean> {
+  ): Promise<void> {
     const { error } = await supabase.rpc('transition_project', {
       p_project_id: projectId,
       p_target_status: targetStatus,
     });
-    if (!error) return true;
-    if (isMissingRpcFunction(error)) return false;
-    throw error;
+    if (error) throw error;
   },
 
   async remove(id: string): Promise<void> {

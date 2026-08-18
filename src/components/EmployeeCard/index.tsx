@@ -68,7 +68,7 @@ export function EmployeeCard({ profile, open, onClose, canEdit, allEquipment, on
 
   const handleReturn = async (a: ProfileAssignment) => {
     try {
-      await assignmentService.returnEquipment(a.id, a.equipmentId);
+      await assignmentService.returnEquipment(a.id);
       void reload();
       onChanged();
       void message.success(`${a.equipmentModel} возвращено`);
@@ -83,7 +83,7 @@ export function EmployeeCard({ profile, open, onClose, canEdit, allEquipment, on
     if (!eq) return;
     setPickerLoading(true);
     try {
-      await assignmentService.assign(eq.id, profile.id, profile.name, eq.currentLocation, pickerNotes || undefined);
+      await assignmentService.assign(eq.id, profile.id, eq.currentLocation, pickerNotes || undefined);
       setPickerOpen(false);
       setPickerValue(undefined);
       setPickerNotes('');

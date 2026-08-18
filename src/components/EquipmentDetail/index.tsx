@@ -379,7 +379,7 @@ export function EquipmentDetail({ equipment, canEdit, isAdmin, onEdit, onDelete,
               icon={<UserOutlined />}
               onClick={async () => {
                 try {
-                  await assignmentService.returnEquipment(assignment.id, equipment.id);
+                  await assignmentService.returnEquipment(assignment.id);
                   void loadAssignment();
                   void message.success('Оборудование возвращено на склад');
                 } catch {
@@ -446,7 +446,7 @@ export function EquipmentDetail({ equipment, canEdit, isAdmin, onEdit, onDelete,
             {canEdit && (
               <Button size="small" danger onClick={async () => {
                 try {
-                  await loanService.returnLoan(activeLoan.id, equipment.id);
+                  await loanService.returnLoan(activeLoan.id);
                   void loadOpenLoans();
                   void message.success('Займ закрыт, оборудование на складе');
                 } catch {
@@ -477,7 +477,7 @@ export function EquipmentDetail({ equipment, canEdit, isAdmin, onEdit, onDelete,
                 {canEdit && (
                   <Button size="small" type="text" danger onClick={async () => {
                     try {
-                      await loanService.returnLoan(loan.id, equipment.id);
+                      await loanService.returnLoan(loan.id);
                       void loadOpenLoans();
                     } catch { void message.error('Ошибка'); }
                   }}>Отменить</Button>
@@ -704,7 +704,7 @@ export function EquipmentDetail({ equipment, canEdit, isAdmin, onEdit, onDelete,
           if (!profile) return;
           setAssignLoading(true);
           try {
-            await assignmentService.assign(equipment.id, assignProfileId, profile.name, equipment.currentLocation, assignNotes || undefined);
+            await assignmentService.assign(equipment.id, assignProfileId, equipment.currentLocation, assignNotes || undefined);
             setAssignOpen(false);
             void loadAssignment();
             void message.success(`Выдано: ${profile.name}`);

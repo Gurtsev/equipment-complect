@@ -1,8 +1,6 @@
 import { supabase } from './supabase';
-import { historyService } from './historyService';
 import { EquipmentLocation } from '../models/Equipment';
 import { unwrapSingleRelation } from './supabaseRelations';
-import { isMissingRpcFunction } from './rpcFallback';
 
 export interface Assignment {
   id: string;
@@ -72,7 +70,6 @@ export const assignmentService = {
   async assign(
     equipmentId: string,
     profileId: string,
-    profileName: string,
     currentLocation: EquipmentLocation,
     notes?: string,
   ): Promise<void> {
@@ -82,32 +79,13 @@ export const assignmentService = {
       p_current_location: currentLocation,
       p_notes: notes ?? '',
     });
-    if (!rpcError) return;
-    if (!isMissingRpcFunction(rpcError)) throw rpcError;
-
-    // Rolling-deploy fallback until migration 029 is applied.
-    const { error } = await supabase.from('employee_assignments').insert({
-      equipment_id: equipmentId,
-      user_id: profileId,
-      notes: notes ?? null,
-    });
-    if (error) throw error;
-    await historyService.addEntry(equipmentId, 'Выдан', currentLocation, profileName);
+    if (rpcError) throw rpcError;
   },
 
-  async returnEquipment(assignmentId: string, equipmentId: string): Promise<void> {
+  async returnEquipment(assignmentId: string): Promise<void> {
     const { error: rpcError } = await supabase.rpc('return_equipment_assignment', {
       p_assignment_id: assignmentId,
     });
-    if (!rpcError) return;
-    if (!isMissingRpcFunction(rpcError)) throw rpcError;
-
-    // Rolling-deploy fallback until migration 029 is applied.
-    const { error } = await supabase
-      .from('employee_assignments')
-      .update({ returned_at: new Date().toISOString() })
-      .eq('id', assignmentId);
-    if (error) throw error;
-    await historyService.addEntry(equipmentId, 'На Складе', 'Склад', '');
+    if (rpcError) throw rpcError;
   },
 };

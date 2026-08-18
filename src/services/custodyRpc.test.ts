@@ -24,7 +24,7 @@ describe('custody RPC operations', () => {
   it('assigns equipment through one RPC without legacy writes', async () => {
     rpcMock.mockResolvedValue({ error: null });
 
-    await assignmentService.assign('eq-1', 'user-1', 'Иван', 'Офис', 'Камера');
+    await assignmentService.assign('eq-1', 'user-1', 'Офис', 'Камера');
 
     expect(rpcMock).toHaveBeenCalledWith('assign_equipment', {
       p_equipment_id: 'eq-1',
@@ -35,28 +35,32 @@ describe('custody RPC operations', () => {
     expect(fromMock).not.toHaveBeenCalled();
   });
 
-  it('uses the legacy assignment path only when migration 029 is unavailable', async () => {
-    rpcMock.mockResolvedValue({ error: { code: 'PGRST202', message: 'not found' } });
-    const insertMock = vi.fn().mockResolvedValue({ error: null });
-    fromMock.mockImplementation((table: string) => {
-      if (table === 'employee_assignments' || table === 'equipment_history') {
-        return { insert: insertMock };
-      }
-      throw new Error(`Unexpected table: ${table}`);
-    });
+  it('fails closed without legacy writes when migration 029 RPC is unavailable', async () => {
+    const error = { code: 'PGRST202', message: 'not found' };
+    rpcMock.mockResolvedValue({ error });
 
-    await assignmentService.assign('eq-1', 'user-1', 'Иван', 'Офис');
-
-    expect(fromMock).toHaveBeenNthCalledWith(1, 'employee_assignments');
-    expect(fromMock).toHaveBeenNthCalledWith(2, 'equipment_history');
+    await expect(assignmentService.assign('eq-1', 'user-1', 'Офис'))
+      .rejects.toBe(error);
+    expect(fromMock).not.toHaveBeenCalled();
   });
 
-  it('does not hide an application error behind the legacy path', async () => {
+  it('propagates an application error without extra writes', async () => {
     const error = { code: 'P0001', message: 'INVENTORY_ACTIVE_ASSIGNMENT_EXISTS' };
     rpcMock.mockResolvedValue({ error });
 
-    await expect(assignmentService.assign('eq-1', 'user-1', 'Иван', 'Офис'))
+    await expect(assignmentService.assign('eq-1', 'user-1', 'Офис'))
       .rejects.toBe(error);
+    expect(fromMock).not.toHaveBeenCalled();
+  });
+
+  it('returns an assignment through one RPC without legacy writes', async () => {
+    rpcMock.mockResolvedValue({ error: null });
+
+    await assignmentService.returnEquipment('assignment-1');
+
+    expect(rpcMock).toHaveBeenCalledWith('return_equipment_assignment', {
+      p_assignment_id: 'assignment-1',
+    });
     expect(fromMock).not.toHaveBeenCalled();
   });
 
@@ -82,6 +86,25 @@ describe('custody RPC operations', () => {
       p_due_date: '2026-08-20T09:00:00.000Z',
       p_notes: 'Смена',
     });
+    expect(fromMock).not.toHaveBeenCalled();
+  });
+
+  it('returns an equipment loan through one RPC without legacy writes', async () => {
+    rpcMock.mockResolvedValue({ error: null });
+
+    await loanService.returnLoan('loan-1');
+
+    expect(rpcMock).toHaveBeenCalledWith('return_equipment_loan', {
+      p_loan_id: 'loan-1',
+    });
+    expect(fromMock).not.toHaveBeenCalled();
+  });
+
+  it('fails closed without legacy loan writes when migration 029 RPC is unavailable', async () => {
+    const error = { code: 'PGRST202', message: 'not found' };
+    rpcMock.mockResolvedValue({ error });
+
+    await expect(loanService.returnLoan('loan-1')).rejects.toBe(error);
     expect(fromMock).not.toHaveBeenCalled();
   });
 });
