@@ -232,7 +232,7 @@
 Архитектурное решение: `docs/decisions/001-reusable-equipment-list-templates.md`.
 Миграция: `024_project_list_templates.sql`.
 
-**Статус: ✅ реализовано, миграция требует применения в БД**
+**Статус: ✅ реализовано, миграция применена на production 2026-08-18**
 
 ---
 

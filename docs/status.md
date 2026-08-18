@@ -88,9 +88,9 @@
 
 ---
 
-## 🔧 Требует применения в БД
+## ✅ Состояние production DB
 
-Для включения всех серверных гарантий текущего frontend требуется применить:
+По подтверждению владельца проекта 2026-08-18 на production применены:
 
 ```
 024_project_list_templates.sql — переиспользуемые списки и история импорта
@@ -107,6 +107,10 @@
 Проверка и применение ограничений целостности: `docs/deploy-027-029-integrity.md`.
 Атомарное сохранение проектов: `docs/deploy-030-atomic-project-save.md`.
 
+Поля `project_history` из миграции 024 дополнительно подтверждены через production
+PostgREST OpenAPI. RPC миграций 029–030 корректно скрыты от роли `anon`; их
+authenticated smoke-check выполняется через пользовательские сценарии.
+
 ---
 
 ## ⚠️ Известные проблемы
@@ -114,7 +118,7 @@
 | Проблема | Статус |
 |----------|--------|
 | Стартовый frontend bundle | ✅ ~260 КБ gzip после lazy loading; build-бюджет 300 КБ |
-| Миграции 024–030 ещё не подтверждены на production | Применить по runbook в `docs/deploy-024-project-list-templates.md`, `docs/storage-security.md`, `docs/deploy-027-029-integrity.md` и `docs/deploy-030-atomic-project-save.md` |
+| Authenticated smoke-check RPC 029–030 после миграции | Проверить выдачу/возврат и полный жизненный цикл тестового проекта через UI |
 
 ---
 
