@@ -141,6 +141,7 @@ export function ProjectDetail({
   const [activeLoans, setActiveLoans] = useState<Record<string, Loan>>({});
   const [projectHistory, setProjectHistory] = useState<ProjectHistoryEntry[]>([]);
   const [historyLoading, setHistoryLoading] = useState(true);
+  const [historyError, setHistoryError] = useState(false);
   const [listImportOpen, setListImportOpen] = useState(false);
   const [selectedListId, setSelectedListId] = useState<string>();
   const [listImportLoading, setListImportLoading] = useState(false);
@@ -149,8 +150,9 @@ export function ProjectDetail({
     try {
       const entries = await projectHistoryService.getForProject(project.id);
       setProjectHistory(entries);
+      setHistoryError(false);
     } catch {
-      // не блокируем UI если история не загрузилась
+      setHistoryError(true);
     } finally {
       setHistoryLoading(false);
     }
@@ -185,21 +187,26 @@ export function ProjectDetail({
     try {
       const loans = await loanService.getAllActiveLoans();
       setActiveLoans(loans);
-    } catch { setActiveLoans({}); }
+    } catch {
+      void message.error('Не удалось проверить активные займы');
+      return;
+    }
     setPickerOpen(true);
   };
 
-  const loadActiveLoans = async () => {
+  const loadActiveLoans = async (): Promise<boolean> => {
     try {
       setActiveLoans(await loanService.getAllActiveLoans());
+      return true;
     } catch {
-      setActiveLoans({});
+      void message.error('Не удалось проверить активные займы');
+      return false;
     }
   };
 
   const openListImport = async () => {
     setSelectedListId(undefined);
-    await loadActiveLoans();
+    if (!await loadActiveLoans()) return;
     setListImportOpen(true);
   };
 
@@ -682,6 +689,13 @@ export function ProjectDetail({
       <Card title="История проекта" size="small" style={{ marginTop: 16 }}>
         {historyLoading ? (
           <Flex justify="center" style={{ padding: 16 }}><Spin /></Flex>
+        ) : historyError ? (
+          <Alert
+            type="error"
+            showIcon
+            message="Не удалось загрузить историю проекта"
+            action={<Button size="small" onClick={() => void reloadHistory()}>Повторить</Button>}
+          />
         ) : projectHistory.length === 0 ? (
           <Text type="secondary">Нет записей</Text>
         ) : (
