@@ -7,6 +7,7 @@ import { supabase } from './services/supabase';
 import { equipmentService } from './services/equipmentService';
 import { historyService } from './services/historyService';
 import { projectService } from './services/projectService';
+import { getProjectErrorMessage } from './services/projectErrors';
 import { consumablesService } from './services/consumablesService';
 import { roomService } from './services/roomService';
 import type { Room } from './services/roomService';
@@ -290,8 +291,8 @@ function AppInner() {
       const { newProjects } = await loadAll();
       setSelectedProject(newProjects.find((p) => p.id === project.id) ?? null);
       setSelectedEquipment(null);
-    } catch {
-      void message.error('Ошибка при создании проекта');
+    } catch (error) {
+      void message.error(getProjectErrorMessage(error, 'Ошибка при создании проекта'));
     }
   };
 
@@ -300,8 +301,8 @@ function AppInner() {
       await projectService.update(project);
       const { newProjects } = await loadAll();
       setSelectedProject(newProjects.find((p) => p.id === project.id) ?? null);
-    } catch {
-      void message.error('Ошибка при обновлении проекта');
+    } catch (error) {
+      void message.error(getProjectErrorMessage(error, 'Ошибка при обновлении проекта'));
     }
   };
 

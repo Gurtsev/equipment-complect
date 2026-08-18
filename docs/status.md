@@ -1,6 +1,6 @@
 # Состояние проекта — Инвентаризация студии
 
-Актуально на: 2026-08-17
+Актуально на: 2026-08-18
 
 > Документ проходит актуализацию после быстрого развития проекта. Текущие решения
 > имеют приоритет над историческими разделами ниже: `CLAUDE.md`, миграции БД и
@@ -90,7 +90,7 @@
 
 ## 🔧 Требует применения в БД
 
-Перед выкладкой текущего frontend требуется применить:
+Для включения всех серверных гарантий текущего frontend требуется применить:
 
 ```
 024_project_list_templates.sql — переиспользуемые списки и история импорта
@@ -99,11 +99,13 @@
 027_consumables_stock_integrity.sql — атомарные изменения остатков расходников
 028_equipment_custody_integrity.sql — серверная целостность выдач и займов
 029_atomic_custody_operations.sql — транзакционные выдачи/возвраты вместе с историей
+030_atomic_project_save.sql — атомарный жизненный цикл проекта и серверные конфликты
 ```
 
 Порядок применения списков и Realtime: `docs/deploy-024-project-list-templates.md`.
 Настройка и проверка Storage: `docs/storage-security.md`.
 Проверка и применение ограничений целостности: `docs/deploy-027-029-integrity.md`.
+Атомарное сохранение проектов: `docs/deploy-030-atomic-project-save.md`.
 
 ---
 
@@ -112,8 +114,7 @@
 | Проблема | Статус |
 |----------|--------|
 | Стартовый frontend bundle | ✅ ~260 КБ gzip после lazy loading; build-бюджет 300 КБ |
-| Многошаговые операции проектов не транзакционны | Перенести создание и синхронизацию состава в PostgreSQL RPC |
-| Миграции 024–029 ещё не подтверждены на production | Применить по runbook в `docs/deploy-024-project-list-templates.md`, `docs/storage-security.md` и `docs/deploy-027-029-integrity.md` |
+| Миграции 024–030 ещё не подтверждены на production | Применить по runbook в `docs/deploy-024-project-list-templates.md`, `docs/storage-security.md`, `docs/deploy-027-029-integrity.md` и `docs/deploy-030-atomic-project-save.md` |
 
 ---
 
@@ -134,22 +135,11 @@
 ---
 
 ### Приоритет 3 — Составные объекты (4.12, нужен для 1С)
-Иерархия «родитель — компоненты» для ПК и других комплектов.
 
-**Что нужно в БД:**
-```sql
-ALTER TABLE equipment ADD COLUMN parent_id uuid REFERENCES equipment(id);
-ALTER TABLE equipment ADD COLUMN synced_with_1c boolean DEFAULT false;
-CREATE TABLE pending_1c_items (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  inv_number text NOT NULL UNIQUE,
-  name_1c text NOT NULL,
-  received_at timestamptz DEFAULT now(),
-  matched_equipment_id uuid REFERENCES equipment(id)
-);
-```
-
-**Новые статусы:** «Комплектуется», «Готов к сверке»
+Иерархия «родитель — компоненты» уже реализована миграцией 023: `parent_id text`,
+`assembly_status`, UI сборки и статусы «Комплектуется»/«Готов к сверке». Для
+этапа 5 остаётся спроектировать очередь `pending_1c_items` и серверный контракт
+сверки; эти сущности нельзя добавлять до согласования формата обмена с 1С.
 
 ---
 
@@ -225,3 +215,4 @@ CREATE TABLE pending_1c_items (
 | 027_consumables_stock_integrity | блокировка остатка и атомарный отказ при недостатке расходника |
 | 028_equipment_custody_integrity | взаимное исключение выдач и займов, контроль пересечения периодов |
 | 029_atomic_custody_operations | атомарные выдачи, займы, возвраты и история оборудования |
+| 030_atomic_project_save | атомарный жизненный цикл проекта, состав, статусы и аудит |

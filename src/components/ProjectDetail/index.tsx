@@ -38,6 +38,7 @@ import { Project, ProjectData, ProjectStatus } from '../../models/Project';
 import { Equipment, EquipmentLocation, EquipmentStatus } from '../../models/Equipment';
 import { historyService } from '../../services/historyService';
 import { projectService } from '../../services/projectService';
+import { getProjectErrorMessage } from '../../services/projectErrors';
 import { projectHistoryService, ProjectHistoryEntry } from '../../services/projectHistoryService';
 import { loanService, Loan } from '../../services/loanService';
 import type { EquipmentList } from '../../services/listService';
@@ -252,27 +253,38 @@ export function ProjectDetail({
       const newEquipmentIds = [...new Set([...project.equipmentIds, ...toAdd.map((eq) => eq.id)])];
       const updated = new Project({ ...project, equipmentIds: newEquipmentIds } as ProjectData);
 
-      // Возврат пишет статус «На Складе», поэтому сначала закрываем займы и только
-      // затем записываем проектный статус — иначе параллельные записи могут поменяться местами.
-      await Promise.all(loansToClose.map((loan) => loanService.returnLoan(loan.id, loan.equipmentId)));
-      await Promise.all([
-        ...toAdd.map((eq) =>
-          historyService.addEntry(eq.id, addStatus, addLocation ?? eq.currentLocation, project.responsible),
-        ),
-        ...toAdd.map((eq) =>
-          projectHistoryService.addEntry(project.id, 'equipment_added', {
-            equipmentId: eq.id,
-            equipmentName: eq.model,
-          }),
-        ),
-        projectService.update(updated),
-        projectHistoryService.addEntry(project.id, 'list_imported', {
+      const closedLoanCount = await projectService.addEquipmentAtomic(
+        project.id,
+        toAdd.map((eq) => eq.id),
+        {
           listId: selectedList.id,
           listName: selectedList.name,
-          importedCount: toAdd.length,
           skippedCount: listImportRows.length - toAdd.length,
-        }),
-      ]);
+        },
+      );
+
+      if (closedLoanCount === null) {
+        // Rolling-deploy fallback until migration 030 is applied.
+        await Promise.all(loansToClose.map((loan) => loanService.returnLoan(loan.id, loan.equipmentId)));
+        await Promise.all([
+          ...toAdd.map((eq) =>
+            historyService.addEntry(eq.id, addStatus, addLocation ?? eq.currentLocation, project.responsible),
+          ),
+          ...toAdd.map((eq) =>
+            projectHistoryService.addEntry(project.id, 'equipment_added', {
+              equipmentId: eq.id,
+              equipmentName: eq.model,
+            }),
+          ),
+          projectService.update(updated),
+          projectHistoryService.addEntry(project.id, 'list_imported', {
+            listId: selectedList.id,
+            listName: selectedList.name,
+            importedCount: toAdd.length,
+            skippedCount: listImportRows.length - toAdd.length,
+          }),
+        ]);
+      }
 
       project.equipmentIds = newEquipmentIds;
       onUpdate(project);
@@ -281,8 +293,8 @@ export function ProjectDetail({
       setListImportOpen(false);
       setSelectedListId(undefined);
       void message.success(`Из списка «${selectedList.name}» добавлено ${toAdd.length} поз.`);
-    } catch {
-      void message.error('Не удалось добавить оборудование из списка');
+    } catch (error) {
+      void message.error(getProjectErrorMessage(error, 'Не удалось добавить оборудование из списка'));
     } finally {
       setListImportLoading(false);
     }
@@ -296,22 +308,30 @@ export function ProjectDetail({
       okText: 'Выдать',
       cancelText: 'Отмена',
       onOk: async () => {
-        const activated = new Project({ ...project, status: 'Активен' } as ProjectData);
-        await Promise.all([
-          ...projectEquipment.map((eq) =>
-            historyService.addEntry(eq.id, 'В Работе', project.location, project.responsible),
-          ),
-          projectService.update(activated),
-          projectHistoryService.addEntry(project.id, 'activated'),
-        ]);
-        projectEquipment.forEach((eq) =>
-          eq.addHistoryEntry('В Работе', project.location as EquipmentLocation, project.responsible),
-        );
-        project.status = 'Активен';
-        onUpdate(project);
-        onEquipmentChange();
-        void reloadHistory();
-        void message.success('Оборудование выдано, проект активен');
+        try {
+          const handled = await projectService.transitionAtomic(project.id, 'Активен');
+          if (!handled) {
+            const activated = new Project({ ...project, status: 'Активен' } as ProjectData);
+            await Promise.all([
+              ...projectEquipment.map((eq) =>
+                historyService.addEntry(eq.id, 'В Работе', project.location, project.responsible),
+              ),
+              projectService.update(activated),
+              projectHistoryService.addEntry(project.id, 'activated'),
+            ]);
+          }
+          projectEquipment.forEach((eq) =>
+            eq.addHistoryEntry('В Работе', project.location as EquipmentLocation, project.responsible),
+          );
+          project.status = 'Активен';
+          onUpdate(project);
+          onEquipmentChange();
+          void reloadHistory();
+          void message.success('Оборудование выдано, проект активен');
+        } catch (error) {
+          void message.error(getProjectErrorMessage(error, 'Не удалось активировать проект'));
+          throw error;
+        }
       },
     });
   };
@@ -325,50 +345,65 @@ export function ProjectDetail({
       okType: 'danger',
       cancelText: 'Отмена',
       onOk: async () => {
-        const finished = new Project({ ...project, status: 'Завершён', equipmentIds: [] } as ProjectData);
-        await Promise.all([
-          ...projectEquipment.map((eq) =>
-            historyService.addEntry(eq.id, 'На Складе', 'Склад', project.responsible),
-          ),
-          projectService.update(finished),
-          projectHistoryService.addEntry(project.id, 'finished'),
-        ]);
-        projectEquipment.forEach((eq) =>
-          eq.addHistoryEntry('На Складе', 'Склад', project.responsible),
-        );
-        project.status = 'Завершён';
-        project.equipmentIds = [];
-        onUpdate(project);
-        onEquipmentChange();
-        void reloadHistory();
-        void message.success('Проект завершён, оборудование возвращено на склад');
+        try {
+          const handled = await projectService.transitionAtomic(project.id, 'Завершён');
+          if (!handled) {
+            const finished = new Project({ ...project, status: 'Завершён', equipmentIds: [] } as ProjectData);
+            await Promise.all([
+              ...projectEquipment.map((eq) =>
+                historyService.addEntry(eq.id, 'На Складе', 'Склад', project.responsible),
+              ),
+              projectService.update(finished),
+              projectHistoryService.addEntry(project.id, 'finished'),
+            ]);
+          }
+          projectEquipment.forEach((eq) =>
+            eq.addHistoryEntry('На Складе', 'Склад', project.responsible),
+          );
+          project.status = 'Завершён';
+          project.equipmentIds = [];
+          onUpdate(project);
+          onEquipmentChange();
+          void reloadHistory();
+          void message.success('Проект завершён, оборудование возвращено на склад');
+        } catch (error) {
+          void message.error(getProjectErrorMessage(error, 'Не удалось завершить проект'));
+          throw error;
+        }
       },
     });
   };
 
   // Убрать единицу из проекта
   const handleRemoveEquipment = async (eq: Equipment) => {
-    const needsHistory = eq.currentStatus === 'Забронировано' || eq.currentStatus === 'В Работе';
-    const newEquipmentIds = project.equipmentIds.filter((id) => id !== eq.id);
-    const updated = new Project({ ...project, equipmentIds: newEquipmentIds } as ProjectData);
-    if (needsHistory) {
-      await historyService.addEntry(eq.id, 'На Складе', 'Склад', project.responsible);
+    try {
+      const needsHistory = eq.currentStatus === 'Забронировано' || eq.currentStatus === 'В Работе';
+      const newEquipmentIds = project.equipmentIds.filter((id) => id !== eq.id);
+      const handled = await projectService.removeEquipmentAtomic(project.id, [eq.id]);
+      if (!handled) {
+        const updated = new Project({ ...project, equipmentIds: newEquipmentIds } as ProjectData);
+        if (needsHistory) {
+          await historyService.addEntry(eq.id, 'На Складе', 'Склад', project.responsible);
+        }
+        await Promise.all([
+          projectService.update(updated),
+          projectHistoryService.addEntry(project.id, 'equipment_removed', {
+            equipmentId: eq.id,
+            equipmentName: eq.model,
+          }),
+        ]);
+      }
+      if (needsHistory) {
+        eq.addHistoryEntry('На Складе', 'Склад', project.responsible);
+      }
+      project.equipmentIds = newEquipmentIds;
+      onUpdate(project);
+      onEquipmentChange();
+      void reloadHistory();
+      void message.success(`${eq.model} убрано из проекта`);
+    } catch (error) {
+      void message.error(getProjectErrorMessage(error, 'Не удалось убрать оборудование из проекта'));
     }
-    await Promise.all([
-      projectService.update(updated),
-      projectHistoryService.addEntry(project.id, 'equipment_removed', {
-        equipmentId: eq.id,
-        equipmentName: eq.model,
-      }),
-    ]);
-    if (needsHistory) {
-      eq.addHistoryEntry('На Складе', 'Склад', project.responsible);
-    }
-    project.equipmentIds = newEquipmentIds;
-    onUpdate(project);
-    onEquipmentChange();
-    void reloadHistory();
-    void message.success(`${eq.model} убрано из проекта`);
   };
 
   // Добавить оборудование: подтверждение в пикере
@@ -386,30 +421,45 @@ export function ProjectDetail({
     const addLocation = project.status === 'Активен' ? project.location : undefined;
     const newEquipmentIds = [...new Set([...project.equipmentIds, ...pickerSelected])];
     const updated = new Project({ ...project, equipmentIds: newEquipmentIds } as ProjectData);
-    await Promise.all([
-      ...loansToClose.map((loan) => loanService.returnLoan(loan.id, loan.equipmentId)),
-      ...toAdd.map((eq) =>
-        historyService.addEntry(eq.id, addStatus, addLocation ?? eq.currentLocation, project.responsible),
-      ),
-      ...toAdd.map((eq) =>
-        projectHistoryService.addEntry(project.id, 'equipment_added', {
-          equipmentId: eq.id,
-          equipmentName: eq.model,
-        }),
-      ),
-      projectService.update(updated),
-    ]);
-    toAdd.forEach((eq) =>
-      eq.addHistoryEntry(addStatus, (addLocation ?? eq.currentLocation) as EquipmentLocation, project.responsible),
-    );
-    project.equipmentIds = newEquipmentIds;
-    onUpdate(project);
-    onEquipmentChange();
-    void reloadHistory();
-    setPickerSelected([]);
-    setPickerOpen(false);
-    const closedMsg = loansToClose.length > 0 ? `, займов закрыто: ${loansToClose.length}` : '';
-    void message.success(`Добавлено ${toAdd.length} ед. оборудования${closedMsg}`);
+    try {
+      const closedLoanCount = await projectService.addEquipmentAtomic(
+        project.id,
+        toAdd.map((eq) => eq.id),
+      );
+      if (closedLoanCount === null) {
+        await Promise.all([
+          ...loansToClose.map((loan) => loanService.returnLoan(loan.id, loan.equipmentId)),
+          ...toAdd.map((eq) =>
+            historyService.addEntry(eq.id, addStatus, addLocation ?? eq.currentLocation, project.responsible),
+          ),
+          ...toAdd.map((eq) =>
+            projectHistoryService.addEntry(project.id, 'equipment_added', {
+              equipmentId: eq.id,
+              equipmentName: eq.model,
+            }),
+          ),
+          projectService.update(updated),
+        ]);
+      }
+      toAdd.forEach((eq) =>
+        eq.addHistoryEntry(
+          addStatus,
+          (addLocation ?? (closedLoanCount !== null && activeLoans[eq.id] ? 'Склад' : eq.currentLocation)) as EquipmentLocation,
+          project.responsible,
+        ),
+      );
+      project.equipmentIds = newEquipmentIds;
+      onUpdate(project);
+      onEquipmentChange();
+      void reloadHistory();
+      setPickerSelected([]);
+      setPickerOpen(false);
+      const actualClosedCount = closedLoanCount ?? loansToClose.length;
+      const closedMsg = actualClosedCount > 0 ? `, займов закрыто: ${actualClosedCount}` : '';
+      void message.success(`Добавлено ${toAdd.length} ед. оборудования${closedMsg}`);
+    } catch (error) {
+      void message.error(getProjectErrorMessage(error, 'Не удалось добавить оборудование в проект'));
+    }
   };
 
   const pickerFiltered = allEquipment.filter((e) => {
