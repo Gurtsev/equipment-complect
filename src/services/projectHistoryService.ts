@@ -24,10 +24,8 @@ export interface ProjectHistoryEntry {
   recordedAt: Date;
 }
 
-const BASE_HISTORY_COLUMNS =
-  'id, project_id, user_id, action, equipment_id, equipment_name, recorded_at';
 const LIST_IMPORT_COLUMNS =
-  `${BASE_HISTORY_COLUMNS}, list_id, list_name, imported_count, skipped_count`;
+  'id, project_id, user_id, action, equipment_id, equipment_name, recorded_at, list_id, list_name, imported_count, skipped_count';
 
 interface HistoryRow {
   id: string;
@@ -44,65 +42,15 @@ interface HistoryRow {
 }
 
 export const projectHistoryService = {
-  async addEntry(
-    projectId: string,
-    action: ProjectHistoryAction,
-    options?: {
-      equipmentId?: string;
-      equipmentName?: string;
-      listId?: string;
-      listName?: string;
-      importedCount?: number;
-      skippedCount?: number;
-    },
-  ): Promise<void> {
-    const payload: Record<string, unknown> = {
-      project_id: projectId,
-      action,
-      equipment_id: options?.equipmentId ?? null,
-      equipment_name: options?.equipmentName ?? null,
-    };
-    if (action === 'list_imported') {
-      payload.list_id = options?.listId ?? null;
-      payload.list_name = options?.listName ?? null;
-      payload.imported_count = options?.importedCount ?? 0;
-      payload.skipped_count = options?.skippedCount ?? 0;
-    }
-    const { error } = await supabase.from('project_history').insert(payload);
-    if (error) throw error;
-  },
-
-  async supportsListImports(): Promise<boolean> {
-    const { error } = await supabase
-      .from('project_history')
-      .select('list_id')
-      .limit(1);
-    return !error;
-  },
-
   async getForProject(projectId: string): Promise<ProjectHistoryEntry[]> {
-    const extendedResult = await supabase
+    const { data, error } = await supabase
       .from('project_history')
       .select(LIST_IMPORT_COLUMNS)
       .eq('project_id', projectId)
       .order('recorded_at', { ascending: false })
       .limit(100);
-
-    // Во время rolling deploy frontend может обновиться раньше миграции 024.
-    // В этом случае сохраняем доступ к прежней истории проекта.
-    let rows: HistoryRow[];
-    if (extendedResult.error) {
-      const legacyResult = await supabase
-        .from('project_history')
-        .select(BASE_HISTORY_COLUMNS)
-        .eq('project_id', projectId)
-        .order('recorded_at', { ascending: false })
-        .limit(100);
-      if (legacyResult.error) throw legacyResult.error;
-      rows = (legacyResult.data ?? []) as unknown as HistoryRow[];
-    } else {
-      rows = (extendedResult.data ?? []) as unknown as HistoryRow[];
-    }
+    if (error) throw error;
+    const rows = (data ?? []) as unknown as HistoryRow[];
 
     const userIds = [...new Set(rows.map((r) => r.user_id).filter(Boolean))] as string[];
     const nameById = new Map<string, string>();

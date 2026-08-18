@@ -21,44 +21,46 @@ function historyQuery(result: { data: unknown; error: unknown }) {
   };
 }
 
-describe('projectHistoryService compatibility', () => {
+describe('projectHistoryService', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockRpc.mockResolvedValue({ data: [], error: null });
   });
 
-  it('не отправляет колонки миграции 024 для обычного действия', async () => {
-    const insert = vi.fn().mockResolvedValue({ error: null });
-    mockFrom.mockReturnValue({ insert });
+  it('не скрывает ошибку production-контракта миграции 024', async () => {
+    const error = { code: '42703', message: 'column list_id does not exist' };
+    mockFrom.mockReturnValueOnce(historyQuery({ data: null, error }));
 
-    await projectHistoryService.addEntry('PRJ-1', 'updated');
-
-    expect(insert).toHaveBeenCalledWith({
-      project_id: 'PRJ-1',
-      action: 'updated',
-      equipment_id: null,
-      equipment_name: null,
-    });
+    await expect(projectHistoryService.getForProject('PRJ-1')).rejects.toBe(error);
+    expect(mockFrom).toHaveBeenCalledOnce();
   });
 
-  it('использует старый набор колонок, если миграция 024 ещё не применена', async () => {
-    const row = {
-      id: 'history-1',
-      project_id: 'PRJ-1',
-      user_id: null,
-      action: 'updated',
-      equipment_id: null,
-      equipment_name: null,
-      recorded_at: '2026-08-17T10:00:00Z',
-    };
-    mockFrom
-      .mockReturnValueOnce(historyQuery({ data: null, error: { code: '42703' } }))
-      .mockReturnValueOnce(historyQuery({ data: [row], error: null }));
+  it('читает расширенную историю импорта списка', async () => {
+    mockFrom.mockReturnValueOnce(historyQuery({
+      data: [{
+        id: 'history-1',
+        project_id: 'PRJ-1',
+        user_id: null,
+        action: 'list_imported',
+        equipment_id: null,
+        equipment_name: null,
+        list_id: 'list-1',
+        list_name: 'Камеры',
+        imported_count: 3,
+        skipped_count: 1,
+        recorded_at: '2026-08-18T10:00:00Z',
+      }],
+      error: null,
+    }));
 
     const result = await projectHistoryService.getForProject('PRJ-1');
 
-    expect(mockFrom).toHaveBeenCalledTimes(2);
-    expect(result[0]).toMatchObject({ id: 'history-1', action: 'updated' });
+    expect(result[0]).toMatchObject({
+      action: 'list_imported',
+      listId: 'list-1',
+      listName: 'Камеры',
+      importedCount: 3,
+      skippedCount: 1,
+    });
   });
 });
-
