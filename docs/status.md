@@ -121,9 +121,9 @@ Frontend считает эти RPC обязательным production-конт�
 Frontend создаёт карточку оборудования и первую запись истории одним
 вызовом `create_equipment_with_history`; legacy-вставок нет.
 
-Миграция `032_atomic_assembly_status.sql` подготовлена, но ещё не подтверждена на production.
-Она атомарно связывает смену `assembly_status` с историей. Frontend пока
-использует совместимый контракт миграции 023.
+Миграция `032_atomic_assembly_status.sql` применена на production.
+Frontend меняет `assembly_status` и добавляет запись истории одним вызовом
+`set_equipment_assembly_status`; legacy-последовательности из двух запросов нет.
 
 ---
 
@@ -133,7 +133,6 @@ Frontend создаёт карточку оборудования и перву�
 |----------|--------|
 | Стартовый frontend bundle | ✅ ~260 КБ gzip после lazy loading; build-бюджет 300 КБ |
 | Authenticated smoke-check RPC 029–030 после миграции | Проверить выдачу/возврат и полный жизненный цикл тестового проекта через UI |
-| Migration-first 032 | Применить по `docs/deploy-032-atomic-assembly-status.md`, затем перевести frontend на RPC |
 
 ---
 

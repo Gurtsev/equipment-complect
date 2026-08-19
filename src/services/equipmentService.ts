@@ -118,6 +118,14 @@ export const equipmentService = {
     if (error) throw error;
   },
 
+  async setAssemblyStatus(id: string, status: AssemblyStatus): Promise<void> {
+    const { error } = await supabase.rpc('set_equipment_assembly_status', {
+      p_equipment_id: id,
+      p_assembly_status: status,
+    });
+    if (error) throw error;
+  },
+
   async update(equipment: Equipment): Promise<void> {
     const { error } = await supabase
       .from('equipment')

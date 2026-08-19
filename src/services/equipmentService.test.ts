@@ -37,7 +37,7 @@ function makeEquipment() {
   });
 }
 
-describe('equipmentService — atomic equipment creation RPC', () => {
+describe('equipmentService — atomic equipment RPCs', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -73,6 +73,27 @@ describe('equipmentService — atomic equipment creation RPC', () => {
     mockRpc.mockResolvedValue({ data: null, error });
 
     await expect(equipmentService.add(makeEquipment())).rejects.toBe(error);
+    expect(mockFrom).not.toHaveBeenCalled();
+  });
+
+  it('меняет статус сборки и историю одним RPC', async () => {
+    mockRpc.mockResolvedValue({ data: null, error: null });
+
+    await expect(equipmentService.setAssemblyStatus('EQ-032', 'assembling'))
+      .resolves.toBeUndefined();
+
+    expect(mockRpc).toHaveBeenCalledWith('set_equipment_assembly_status', {
+      p_equipment_id: 'EQ-032',
+      p_assembly_status: 'assembling',
+    });
+    expect(mockFrom).not.toHaveBeenCalled();
+  });
+
+  it('не обходит RPC 032 при ошибке', async () => {
+    const error = { code: 'PGRST202', message: 'RPC not found' };
+    mockRpc.mockResolvedValue({ data: null, error });
+
+    await expect(equipmentService.setAssemblyStatus('EQ-032', 'ready')).rejects.toBe(error);
     expect(mockFrom).not.toHaveBeenCalled();
   });
 });
