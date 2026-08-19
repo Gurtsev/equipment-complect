@@ -1,8 +1,8 @@
-import { lazy, Suspense, useState, useEffect, useCallback, useRef } from 'react';
-import { Layout, App as AntApp, Spin, Button, Typography, Grid, Form, Input, Badge, Drawer } from 'antd';
+import { lazy, Suspense, useState, useEffect, useCallback, useRef, type ReactNode } from 'react';
+import { Layout, App as AntApp, Spin, Button, Typography, Grid, Form, Input, Badge, Drawer, ConfigProvider } from 'antd';
 import { LogoutOutlined, ShoppingCartOutlined } from '@ant-design/icons';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
-import logo from './data/мм.webp';
+import inventoryLogo from '../megapolis-platform/brand/logos/inventory.svg';
 import { supabase } from './services/supabase';
 import { equipmentService } from './services/equipmentService';
 import { historyService } from './services/historyService';
@@ -53,6 +53,27 @@ const ROLE_LABEL: Record<string, string> = {
   operator: 'Оператор',
   viewer: 'Наблюдатель',
 };
+
+function BrandLockup({ compact = false }: { compact?: boolean }) {
+  return (
+    <div className={`brand-lockup${compact ? ' brand-lockup--compact' : ''}`}>
+      <img className="brand-lockup__icon" src={inventoryLogo} alt="" aria-hidden="true" />
+      <div className="brand-lockup__copy">
+        <span className="brand-lockup__product">Inventory</span>
+        <span className="brand-lockup__company">Megapolis</span>
+      </div>
+    </div>
+  );
+}
+
+function BrandState({ children }: { children: ReactNode }) {
+  return (
+    <main className="brand-state">
+      <BrandLockup />
+      <div className="brand-state__content">{children}</div>
+    </main>
+  );
+}
 
 
 function AppInner() {
@@ -368,10 +389,10 @@ function AppInner() {
 
   if (authLoading) {
     return (
-      <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
+      <BrandState>
         <Spin size="large" />
         <Typography.Text type="secondary">Загрузка...</Typography.Text>
-      </div>
+      </BrandState>
     );
   }
 
@@ -383,28 +404,29 @@ function AppInner() {
     );
     window.location.replace(`${NEXUS_LOGIN_URL}?redirect=${redirect}`);
     return (
-      <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
+      <BrandState>
         <Spin size="large" />
         <Typography.Text type="secondary">Перенаправление на вход...</Typography.Text>
-      </div>
+      </BrandState>
     );
   }
 
   if (!user && recoveryError) {
     return (
-      <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16 }}>
+      <BrandState>
         <Typography.Text type="warning">{recoveryError}</Typography.Text>
         <Button type="primary" href={NEXUS_LOGIN_URL}>
           Перейти на страницу входа
         </Button>
-      </div>
+      </BrandState>
     );
   }
 
   if (isRecovery) {
     return (
-      <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f5f7fa' }}>
-        <div style={{ width: 360, background: '#fff', borderRadius: 8, padding: 32, boxShadow: '0 4px 24px rgba(0,0,0,0.08)' }}>
+      <div className="brand-state brand-state--form">
+        <div className="brand-state__panel">
+          <BrandLockup compact />
           <Typography.Title level={4} style={{ marginTop: 0, marginBottom: 20, textAlign: 'center' }}>
             Новый пароль
           </Typography.Title>
@@ -453,28 +475,28 @@ function AppInner() {
 
   if (!!user && dataLoading) {
     return (
-      <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
+      <BrandState>
         <Spin size="large" />
         <Typography.Text type="secondary">Загрузка...</Typography.Text>
-      </div>
+      </BrandState>
     );
   }
 
   if (user && !role) {
     return (
-      <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16 }}>
+      <BrandState>
         <Typography.Title level={4} style={{ margin: 0 }}>Доступ запрещён</Typography.Title>
         <Typography.Text type="secondary">
           Ваш email не входит в список разрешённых. Обратитесь к администратору.
         </Typography.Text>
         <Button onClick={() => signOut()}>Выйти</Button>
-      </div>
+      </BrandState>
     );
   }
 
   if (loadError && items.length === 0) {
     return (
-      <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16 }}>
+      <BrandState>
         <Typography.Text type="secondary">Не удалось загрузить данные</Typography.Text>
         <Button
           type="primary"
@@ -488,7 +510,7 @@ function AppInner() {
         >
           Повторить
         </Button>
-      </div>
+      </BrandState>
     );
   }
 
@@ -635,57 +657,33 @@ function AppInner() {
 
   // ── Header (desktop + mobile) ──────────────────────────────────────
   const navTabs = (scrollable?: boolean) => (
-    <div style={{
-      display: 'flex',
-      overflowX: scrollable ? 'auto' : 'visible',
-      flexShrink: 0,
-    }}>
+    <nav className="brand-nav" style={{ overflowX: scrollable ? 'auto' : 'visible' }} aria-label="Основные разделы">
       {tabs.map(({ tabKey, label }) => {
         const isActive = activeTab === tabKey;
         return (
-          <div
+          <button
+            type="button"
             key={tabKey}
             onClick={() => setActiveTab(tabKey)}
-            style={{
-              padding: '0 16px',
-              height: 48,
-              display: 'flex',
-              alignItems: 'center',
-              cursor: 'pointer',
-              fontSize: 13,
-              fontWeight: isActive ? 600 : 400,
-              color: isActive ? '#1677ff' : '#595959',
-              borderBottom: `2px solid ${isActive ? '#1677ff' : 'transparent'}`,
-              whiteSpace: 'nowrap',
-              userSelect: 'none',
-              transition: 'color 0.15s',
-              flexShrink: 0,
-            }}
+            className={`brand-nav__item${isActive ? ' brand-nav__item--active' : ''}`}
+            aria-current={isActive ? 'page' : undefined}
           >
             {label}
-          </div>
+          </button>
         );
       })}
-    </div>
+    </nav>
   );
 
   const header = (
-    <div style={{
-      height: 48,
-      background: '#fff',
-      borderBottom: '1px solid #f0f0f0',
-      display: 'flex',
-      alignItems: 'stretch',
-      flexShrink: 0,
-      overflow: 'hidden',
-    }}>
-      <div style={{ display: 'flex', alignItems: 'center', padding: '0 12px', borderRight: '1px solid #f0f0f0', flexShrink: 0, cursor: 'pointer' }} onClick={() => setDashboardOpen(true)}>
-        <img src={logo} alt="Логотип" style={{ height: 32, width: 'auto', display: 'block' }} />
-      </div>
-      <div style={{ flex: 1, overflowX: 'auto', display: 'flex', scrollbarWidth: 'none' }}>
+    <header className="brand-header">
+      <button type="button" className="brand-header__home" onClick={() => setDashboardOpen(true)} aria-label="Открыть обзор инвентаря">
+        <BrandLockup />
+      </button>
+      <div className="brand-header__nav no-scrollbar">
         {navTabs()}
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 12px', flexShrink: 0, borderLeft: '1px solid #f0f0f0' }}>
+      <div className="brand-header__account">
         {canEdit && (
           <Badge count={cartItems.length} size="small">
             <Button size="small" icon={<ShoppingCartOutlined />} onClick={() => setCartOpen(true)} title="Корзина" />
@@ -697,17 +695,17 @@ function AppInner() {
         </div>
         <Button size="small" icon={<LogoutOutlined />} onClick={() => void signOut()} title="Выйти" />
       </div>
-    </div>
+    </header>
   );
 
   // ── Mobile ──────────────────────────────────────────────────────────
   if (isMobile) {
     const showDetail = !!selectedEquipment || !!selectedProject;
     return (
-      <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', background: '#fff' }}>
+      <div className="app-shell app-shell--mobile">
         {/* Compact header on mobile */}
-        <div style={{ height: 48, background: '#fff', borderBottom: '1px solid #f0f0f0', display: 'flex', alignItems: 'center', padding: '0 16px', flexShrink: 0, gap: 8 }}>
-          <div style={{ flex: 1, cursor: 'pointer' }} onClick={() => setDashboardOpen(true)}><img src={logo} alt="Логотип" style={{ height: 28, width: 'auto', display: 'block' }} /></div>
+        <div className="brand-mobile-header">
+          <button type="button" className="brand-mobile-header__home" onClick={() => setDashboardOpen(true)} aria-label="Открыть обзор инвентаря"><BrandLockup compact /></button>
           <Text type="secondary" style={{ fontSize: 11 }}>{ROLE_LABEL[role ?? ''] ?? role}</Text>
           {canEdit && (
             <Badge count={cartItems.length} size="small">
@@ -717,24 +715,24 @@ function AppInner() {
           <Button size="small" icon={<LogoutOutlined />} onClick={() => void signOut()} />
         </div>
         {!showDetail && (
-          <div className="no-scrollbar" style={{ borderBottom: '1px solid #f0f0f0', overflowX: 'auto', flexShrink: 0 }}>
+          <div className="brand-mobile-nav no-scrollbar">
             {navTabs(true)}
           </div>
         )}
         <Suspense fallback={contentFallback}>{showDetail ? (
-          <div style={{ flex: 1, overflow: 'auto', background: '#f5f7fa' }}>{rightPane}</div>
+          <div className="brand-content">{rightPane}</div>
         ) : activeTab === 'users' ? (
-          <div style={{ flex: 1, overflow: 'auto', background: '#f5f7fa' }}><UsersPage canEdit={canEdit} allEquipment={items} onEquipmentChanged={handleEquipmentChange} /></div>
+          <div className="brand-content"><UsersPage canEdit={canEdit} allEquipment={items} onEquipmentChanged={handleEquipmentChange} /></div>
         ) : activeTab === 'calendar' ? (
-          <div style={{ flex: 1, overflow: 'auto', background: '#f5f7fa' }}><CalendarView {...calendarProps} /></div>
+          <div className="brand-content"><CalendarView {...calendarProps} /></div>
         ) : activeTab === 'consumables' ? (
-          <div style={{ flex: 1, overflow: 'auto', background: '#f5f7fa' }}><ConsumablesPage consumables={consumables} canEdit={canEdit} onChanged={() => void loadAll()} /></div>
+          <div className="brand-content"><ConsumablesPage consumables={consumables} canEdit={canEdit} onChanged={() => void loadAll()} /></div>
         ) : activeTab === 'rooms' ? (
-          <div style={{ flex: 1, overflow: 'hidden', background: '#fff' }}><RoomsPage rooms={rooms} allEquipment={items} canEdit={canEdit} selectedRoom={selectedRoom} onRoomSelect={setSelectedRoom} onRoomsChanged={handleRoomsChanged} /></div>
+          <div className="brand-content brand-content--fixed"><RoomsPage rooms={rooms} allEquipment={items} canEdit={canEdit} selectedRoom={selectedRoom} onRoomSelect={setSelectedRoom} onRoomsChanged={handleRoomsChanged} /></div>
         ) : activeTab === 'lists' ? (
-          <div style={{ flex: 1, overflow: 'auto', background: '#f5f7fa' }}><ListsPage lists={lists} allEquipment={items} canEdit={canEdit} onListsChanged={handleListsChanged} /></div>
+          <div className="brand-content"><ListsPage lists={lists} allEquipment={items} canEdit={canEdit} onListsChanged={handleListsChanged} /></div>
         ) : activeTab === 'catalog' ? (
-          <div style={{ flex: 1, overflow: 'hidden', background: '#f5f7fa' }}>
+          <div className="brand-content brand-content--fixed">
             <CatalogGrid
               items={catalogFilteredItems ?? items}
               canEdit={canEdit}
@@ -764,19 +762,20 @@ function AppInner() {
 
   // ── Desktop ─────────────────────────────────────────────────────────
   return (
-    <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <div className="app-shell">
       {header}
       <Layout style={{ flex: 1, overflow: 'hidden' }}>
         {showSider && (
           <Sider
             width={320}
             theme="light"
-            style={{ borderRight: '1px solid #f0f0f0', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}
+            className="brand-sider"
+            style={{ overflow: 'hidden', display: 'flex', flexDirection: 'column' }}
           >
             {tabContent}
           </Sider>
         )}
-        <Content style={{ overflow: 'auto', background: '#f5f7fa', height: '100%' }}>
+        <Content className="brand-content" style={{ height: '100%' }}>
           <Suspense fallback={contentFallback}>
           {activeTab === 'users' ? <UsersPage canEdit={canEdit} allEquipment={items} onEquipmentChanged={handleEquipmentChange} /> :
            activeTab === 'calendar' ? <CalendarView {...calendarProps} /> :
@@ -817,10 +816,39 @@ function AppInner() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <AntApp>
-        <AppInner />
-      </AntApp>
-    </AuthProvider>
+    <ConfigProvider
+      theme={{
+        token: {
+          colorPrimary: '#017038',
+          colorInfo: '#017038',
+          colorSuccess: '#019247',
+          colorLink: '#017038',
+          colorText: '#1A1A2E',
+          colorTextSecondary: '#69736D',
+          colorBorder: '#D9E2DC',
+          colorBorderSecondary: '#E8EEEA',
+          colorBgLayout: '#F3F7F4',
+          colorBgContainer: '#FFFFFF',
+          borderRadius: 10,
+          borderRadiusLG: 16,
+          controlHeight: 38,
+          fontFamily: 'Steppe, Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+          boxShadowSecondary: '0 18px 50px rgba(22, 49, 34, 0.12)',
+        },
+        components: {
+          Button: { primaryShadow: '0 8px 20px rgba(1, 112, 56, 0.18)' },
+          Card: { headerBg: '#FFFFFF' },
+          Layout: { bodyBg: '#F3F7F4', siderBg: '#FFFFFF', headerBg: '#FFFFFF' },
+          Table: { headerBg: '#F5F8F6', headerColor: '#3F4B45', rowHoverBg: '#F4FAF6' },
+          Tabs: { itemSelectedColor: '#017038', inkBarColor: '#017038' },
+        },
+      }}
+    >
+      <AuthProvider>
+        <AntApp>
+          <AppInner />
+        </AntApp>
+      </AuthProvider>
+    </ConfigProvider>
   );
 }

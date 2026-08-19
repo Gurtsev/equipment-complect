@@ -1,3 +1,358 @@
+/* Megapolis Inventory brand system. Source: megapolis-platform/brand/BRAND.md */
+:root {
+  font-family: Steppe, Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: #1a1a2e;
+  background: #f3f7f4;
+  --brand-green-700: #017038;
+  --brand-green-600: #019247;
+  --brand-green-100: #e8f5ed;
+  --brand-green-50: #f4faf6;
+  --brand-ink: #1a1a2e;
+  --brand-muted: #69736d;
+  --brand-line: #e0e8e3;
+  --brand-bg: #f3f7f4;
+  --brand-surface: #ffffff;
+  --brand-shadow: 0 12px 36px rgba(22, 49, 34, 0.08);
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  min-width: 320px;
+  min-height: 100%;
+  margin: 0;
+  background: var(--brand-bg);
+}
+
+body {
+  color: var(--brand-ink);
+  -webkit-font-smoothing: antialiased;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+.app-shell {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 88% 0%, rgba(1, 146, 71, 0.07), transparent 28rem),
+    var(--brand-bg);
+}
+
+.brand-header {
+  min-height: 72px;
+  display: flex;
+  align-items: stretch;
+  flex-shrink: 0;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.96);
+  border-bottom: 1px solid var(--brand-line);
+  box-shadow: 0 4px 18px rgba(22, 49, 34, 0.05);
+  backdrop-filter: blur(16px);
+  z-index: 10;
+}
+
+.brand-header__home,
+.brand-mobile-header__home {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  color: inherit;
+  cursor: pointer;
+}
+
+.brand-header__home {
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  border-right: 1px solid var(--brand-line);
+  flex-shrink: 0;
+}
+
+.brand-header__home:focus-visible,
+.brand-mobile-header__home:focus-visible,
+.brand-nav__item:focus-visible {
+  outline: 3px solid rgba(1, 112, 56, 0.22);
+  outline-offset: -3px;
+}
+
+.brand-lockup {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  text-align: left;
+}
+
+.brand-lockup__icon {
+  width: 48px;
+  height: 48px;
+  display: block;
+  flex-shrink: 0;
+}
+
+.brand-lockup__copy {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1;
+}
+
+.brand-lockup__product {
+  color: var(--brand-ink);
+  font-size: 20px;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+}
+
+.brand-lockup__company {
+  margin-top: 7px;
+  color: #9090a8;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.brand-lockup--compact {
+  gap: 10px;
+}
+
+.brand-lockup--compact .brand-lockup__icon {
+  width: 36px;
+  height: 36px;
+}
+
+.brand-lockup--compact .brand-lockup__product {
+  font-size: 16px;
+}
+
+.brand-lockup--compact .brand-lockup__company {
+  margin-top: 5px;
+  font-size: 7px;
+}
+
+.brand-header__nav {
+  flex: 1;
+  display: flex;
+  overflow-x: auto;
+}
+
+.brand-nav {
+  display: flex;
+  align-items: stretch;
+  flex-shrink: 0;
+}
+
+.brand-nav__item {
+  position: relative;
+  min-height: 48px;
+  padding: 0 15px;
+  border: 0;
+  background: transparent;
+  color: #59645e;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 550;
+  white-space: nowrap;
+  user-select: none;
+  transition: color 160ms ease, background 160ms ease;
+}
+
+.brand-nav__item::after {
+  content: "";
+  position: absolute;
+  right: 16px;
+  bottom: 0;
+  left: 16px;
+  height: 3px;
+  border-radius: 3px 3px 0 0;
+  background: transparent;
+}
+
+.brand-nav__item:hover {
+  color: var(--brand-green-700);
+  background: var(--brand-green-50);
+}
+
+.brand-nav__item--active {
+  color: var(--brand-green-700);
+  font-weight: 700;
+}
+
+.brand-nav__item--active::after {
+  background: linear-gradient(90deg, var(--brand-green-700), var(--brand-green-600));
+}
+
+.brand-header__account {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 18px;
+  flex-shrink: 0;
+  border-left: 1px solid var(--brand-line);
+  background: #fbfcfb;
+}
+
+.brand-mobile-header {
+  min-height: 58px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 14px;
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.97);
+  border-bottom: 1px solid var(--brand-line);
+  box-shadow: 0 3px 14px rgba(22, 49, 34, 0.05);
+  z-index: 10;
+}
+
+.brand-mobile-header__home {
+  flex: 1;
+  display: flex;
+}
+
+.brand-mobile-nav {
+  overflow-x: auto;
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.96);
+  border-bottom: 1px solid var(--brand-line);
+}
+
+.brand-mobile-nav .brand-nav__item {
+  height: 48px;
+  padding: 0 14px;
+}
+
+.brand-state {
+  min-height: 100vh;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 28px;
+  padding: 32px;
+  text-align: center;
+  background:
+    radial-gradient(circle at 50% 18%, rgba(1, 146, 71, 0.12), transparent 24rem),
+    var(--brand-bg);
+}
+
+.brand-state > .brand-lockup {
+  flex-direction: column;
+  gap: 14px;
+  text-align: center;
+}
+
+.brand-state > .brand-lockup .brand-lockup__icon {
+  width: 64px;
+  height: 64px;
+}
+
+.brand-state > .brand-lockup .brand-lockup__product {
+  font-size: 22px;
+}
+
+.brand-state__content {
+  max-width: 520px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+.brand-state--form {
+  padding: 24px;
+}
+
+.brand-state__panel {
+  width: min(100%, 390px);
+  box-sizing: border-box;
+  padding: 34px;
+  border: 1px solid var(--brand-line);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: var(--brand-shadow);
+  text-align: left;
+}
+
+.brand-state__panel > .brand-lockup {
+  justify-content: center;
+  margin-bottom: 28px;
+}
+
+.brand-sider {
+  border-right: 1px solid var(--brand-line);
+  background: rgba(255, 255, 255, 0.94) !important;
+}
+
+.brand-content {
+  flex: 1;
+  overflow: auto;
+  background: transparent !important;
+}
+
+.brand-content--fixed {
+  overflow: hidden;
+}
+
+/* Unified surfaces for the existing Ant Design screens. */
+.ant-card {
+  border-color: var(--brand-line);
+  box-shadow: 0 5px 20px rgba(22, 49, 34, 0.045);
+}
+
+.ant-card-hoverable:hover {
+  border-color: rgba(1, 112, 56, 0.32) !important;
+  box-shadow: var(--brand-shadow) !important;
+}
+
+.ant-btn:not(.ant-btn-text):not(.ant-btn-link),
+.ant-input,
+.ant-input-affix-wrapper,
+.ant-select-selector,
+.ant-picker,
+.ant-input-number {
+  box-shadow: none;
+}
+
+.ant-btn-primary {
+  background: linear-gradient(135deg, var(--brand-green-700), var(--brand-green-600));
+  border-color: transparent;
+}
+
+.ant-btn-primary:hover {
+  background: linear-gradient(135deg, #015f30, #01833f) !important;
+}
+
+.ant-table-wrapper .ant-table {
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.ant-drawer .ant-drawer-header,
+.ant-modal .ant-modal-header {
+  border-bottom-color: var(--brand-line);
+}
+
+.ant-drawer .ant-drawer-content,
+.ant-modal .ant-modal-content {
+  background: #fcfdfc;
+}
+
+.ant-layout {
+  background: transparent;
+}
+
 /* Скрытый скроллбар с сохранением прокрутки */
 .no-scrollbar {
   scrollbar-width: none;
@@ -23,4 +378,25 @@
 .ant-typography {
   word-break: normal !important;
   overflow-wrap: break-word !important;
+}
+
+@media (max-width: 767px) {
+  .ant-card {
+    border-radius: 12px;
+  }
+
+  .brand-mobile-header .brand-lockup__copy {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
 }

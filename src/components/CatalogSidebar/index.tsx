@@ -336,7 +336,7 @@ export function CatalogSidebar({ items, selected, canEdit, onSelect, onAdd, onAd
     fontSize: 12,
     cursor: 'pointer',
     userSelect: 'none',
-    background: sectionFilter === val ? '#1677ff' : '#f0f0f0',
+    background: sectionFilter === val ? '#017038' : '#eef3f0',
     color: sectionFilter === val ? '#fff' : '#595959',
     transition: 'all 0.15s',
     flexShrink: 0,
@@ -488,15 +488,15 @@ export function CatalogSidebar({ items, selected, canEdit, onSelect, onAdd, onAd
                 alignItems: 'center',
                 padding: '5px 16px',
                 cursor: 'pointer',
-                background: isActive ? '#e6f4ff' : 'transparent',
-                borderLeft: `3px solid ${isActive ? '#1677ff' : 'transparent'}`,
+                background: isActive ? '#e8f5ed' : 'transparent',
+                borderLeft: `3px solid ${isActive ? '#017038' : 'transparent'}`,
                 transition: 'background 0.15s',
               }}
             >
               <Text
                 style={{
                   fontSize: 13,
-                  color: isActive ? '#1677ff' : undefined,
+                  color: isActive ? '#017038' : undefined,
                   fontWeight: isActive ? 500 : 400,
                 }}
               >
@@ -534,8 +534,8 @@ export function CatalogSidebar({ items, selected, canEdit, onSelect, onAdd, onAd
               style={{
                 cursor: 'pointer',
                 padding: '10px 16px',
-                background: isSelected ? '#e6f4ff' : 'transparent',
-                borderLeft: `3px solid ${isSelected ? '#1677ff' : 'transparent'}`,
+                background: isSelected ? '#e8f5ed' : 'transparent',
+                borderLeft: `3px solid ${isSelected ? '#017038' : 'transparent'}`,
                 transition: 'background 0.15s',
                 alignItems: 'flex-start',
               }}

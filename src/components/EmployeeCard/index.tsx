@@ -153,7 +153,7 @@ export function EmployeeCard({ profile, open, onClose, canEdit, allEquipment, on
       {/* Profile header */}
       <div style={{ padding: '24px 24px 16px', borderBottom: '1px solid #f0f0f0' }}>
         <Flex gap={16} align="center">
-          <Avatar size={48} icon={<UserOutlined />} style={{ background: '#1677ff', flexShrink: 0 }} />
+          <Avatar size={48} icon={<UserOutlined />} style={{ background: '#017038', flexShrink: 0 }} />
           <div style={{ minWidth: 0 }}>
             <Title level={5} style={{ margin: 0, wordBreak: 'normal', overflowWrap: 'break-word' }}>
               {profile.name}

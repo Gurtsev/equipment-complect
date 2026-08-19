@@ -632,10 +632,10 @@ export function ProjectDetail({
                   padding: '8px 12px',
                   borderRadius: 6,
                   cursor: disabled ? 'not-allowed' : 'pointer',
-                  background: isSelected ? '#e6f4ff' : disabled ? '#fafafa' : 'transparent',
+                  background: isSelected ? '#e8f5ed' : disabled ? '#fafafa' : 'transparent',
                   opacity: disabled ? 0.5 : 1,
                   marginBottom: 4,
-                  border: `1px solid ${isSelected ? '#1677ff' : '#f0f0f0'}`,
+                  border: `1px solid ${isSelected ? '#017038' : '#f0f0f0'}`,
                   transition: 'all 0.15s',
                 }}
               >
@@ -662,7 +662,7 @@ export function ProjectDetail({
                       <Text type="secondary" style={{ fontSize: 11 }}>выдано сотруднику</Text>
                     )}
                     {activeLoan && (
-                      <Text style={{ fontSize: 11, color: '#1677ff' }}>
+                      <Text style={{ fontSize: 11, color: '#017038' }}>
                         займ до {activeLoan.dueDate
                           ? activeLoan.dueDate.toLocaleDateString('ru-RU')
                           : 'б/д'} — будет закрыт
@@ -670,7 +670,7 @@ export function ProjectDetail({
                     )}
                   </Flex>
                 </div>
-                {isSelected && <CheckOutlined style={{ color: '#1677ff', flexShrink: 0 }} />}
+                {isSelected && <CheckOutlined style={{ color: '#017038', flexShrink: 0 }} />}
               </div>
             );
 

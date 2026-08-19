@@ -75,8 +75,8 @@ export function ProjectsSidebar({ projects, selected, canEdit, onSelect, onAdd }
               style={{
                 cursor: 'pointer',
                 padding: '10px 16px',
-                background: isSelected ? '#e6f4ff' : 'transparent',
-                borderLeft: `3px solid ${isSelected ? '#1677ff' : 'transparent'}`,
+                background: isSelected ? '#e8f5ed' : 'transparent',
+                borderLeft: `3px solid ${isSelected ? '#017038' : 'transparent'}`,
                 transition: 'background 0.15s',
                 flexDirection: 'column',
                 alignItems: 'flex-start',

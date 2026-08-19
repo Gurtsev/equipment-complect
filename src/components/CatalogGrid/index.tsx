@@ -191,7 +191,7 @@ function ModelCard({ group, onClick, onAddToCart }: {
       </div>
 
       {group.length > 1 && (
-        <div style={{ padding: '6px 12px', borderTop: '1px solid #f5f5f5', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 4, fontSize: 12, color: '#1677ff' }}>
+        <div style={{ padding: '6px 12px', borderTop: '1px solid #f5f5f5', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 4, fontSize: 12, color: '#017038' }}>
           Все единицы <RightOutlined style={{ fontSize: 10 }} />
         </div>
       )}
@@ -214,9 +214,9 @@ function ModelCard({ group, onClick, onAddToCart }: {
 const chipStyle = (active: boolean): React.CSSProperties => ({
   padding: '3px 12px',
   borderRadius: 14,
-  border: `1px solid ${active ? '#1677ff' : '#d9d9d9'}`,
-  background: active ? '#e6f4ff' : '#fff',
-  color: active ? '#1677ff' : '#595959',
+  border: `1px solid ${active ? '#017038' : '#d9e2dc'}`,
+  background: active ? '#e8f5ed' : '#fff',
+  color: active ? '#017038' : '#595959',
   fontWeight: active ? 600 : 400,
   fontSize: 12,
   cursor: 'pointer',
