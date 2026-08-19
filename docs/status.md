@@ -117,6 +117,10 @@ Frontend считает эти RPC обязательным production-конт�
 Прямых frontend-записей в `project_history` нет: аудит формируют RPC в той же
 транзакции, что и основное изменение.
 
+Миграция `031_atomic_equipment_create.sql` подготовлена, но ещё не подтверждена на production.
+Она добавляет атомарное создание карточки и первой записи истории. Runbook:
+`docs/deploy-031-atomic-equipment-create.md`. Текущий frontend на RPC ещё не переключен.
+
 ---
 
 ## ⚠️ Известные проблемы
@@ -125,6 +129,7 @@ Frontend считает эти RPC обязательным production-конт�
 |----------|--------|
 | Стартовый frontend bundle | ✅ ~260 КБ gzip после lazy loading; build-бюджет 300 КБ |
 | Authenticated smoke-check RPC 029–030 после миграции | Проверить выдачу/возврат и полный жизненный цикл тестового проекта через UI |
+| Migration-first 031 | Применить по `docs/deploy-031-atomic-equipment-create.md`, затем перевести frontend на RPC |
 
 ---
 
@@ -226,3 +231,4 @@ Frontend считает эти RPC обязательным production-конт�
 | 028_equipment_custody_integrity | взаимное исключение выдач и займов, контроль пересечения периодов |
 | 029_atomic_custody_operations | атомарные выдачи, займы, возвраты и история оборудования |
 | 030_atomic_project_save | атомарный жизненный цикл проекта, состав, статусы и аудит |
+| 031_atomic_equipment_create | атомарное создание карточки оборудования и начальной истории |
