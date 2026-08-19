@@ -92,37 +92,25 @@ export const equipmentService = {
   },
 
   async add(equipment: Equipment): Promise<void> {
-    const { error: eqErr } = await supabase.from('equipment').insert({
-      id: equipment.id,
-      model: equipment.model,
-      subtitle: equipment.subtitle,
-      category: equipment.category,
-      section: equipment.section,
-      description: equipment.description,
-      image: equipment.image,
-      inv_number: equipment.invNumber || null,
-      serial_number: equipment.serialNumber,
-      responsible: equipment.responsible,
-      accessories: equipment.accessories,
-      room_id: equipment.roomId ?? null,
-      attributes: equipment.attributes ?? null,
-      quantity: equipment.quantity ?? null,
-      parent_id: equipment.parentId ?? null,
-      assembly_status: equipment.assemblyStatus ?? null,
+    const { error } = await supabase.rpc('create_equipment_with_history', {
+      p_id: equipment.id,
+      p_model: equipment.model,
+      p_subtitle: equipment.subtitle,
+      p_category: equipment.category,
+      p_section: equipment.section,
+      p_description: equipment.description,
+      p_image: equipment.image,
+      p_inv_number: equipment.invNumber,
+      p_serial_number: equipment.serialNumber,
+      p_responsible: equipment.responsible,
+      p_accessories: equipment.accessories,
+      p_room_id: equipment.roomId ?? null,
+      p_attributes: equipment.attributes ?? null,
+      p_quantity: equipment.quantity ?? null,
+      p_parent_id: equipment.parentId ?? null,
+      p_assembly_status: equipment.assemblyStatus ?? null,
     });
-    if (eqErr) throw eqErr;
-
-    if (equipment.history.length > 0) {
-      const h = equipment.history[0];
-      const { error: hErr } = await supabase.from('equipment_history').insert({
-        equipment_id: equipment.id,
-        status: h.status,
-        location: h.location,
-        responsible: h.responsible,
-        recorded_at: h.date.toISOString(),
-      });
-      if (hErr) throw hErr;
-    }
+    if (error) throw error;
   },
 
   async remove(id: string): Promise<void> {
