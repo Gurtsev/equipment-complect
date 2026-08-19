@@ -4,7 +4,7 @@ import 'antd/dist/reset.css';
 import './global.css';
 import './print.css';
 import App from './App';
-import inventoryLogo from '../megapolis-platform/brand/logos/inventory.svg';
+import inventoryLogo from './assets/inventory.svg';
 
 const favicon = document.createElement('link');
 favicon.rel = 'icon';

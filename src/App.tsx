@@ -2,7 +2,7 @@ import { lazy, Suspense, useState, useEffect, useCallback, useRef, type ReactNod
 import { Layout, App as AntApp, Spin, Button, Typography, Grid, Form, Input, Badge, Drawer, ConfigProvider } from 'antd';
 import { LogoutOutlined, ShoppingCartOutlined } from '@ant-design/icons';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
-import inventoryLogo from '../megapolis-platform/brand/logos/inventory.svg';
+import inventoryLogo from './assets/inventory.svg';
 import { supabase } from './services/supabase';
 import { equipmentService } from './services/equipmentService';
 import { historyService } from './services/historyService';
