@@ -7,7 +7,7 @@
 node_modules
 dist
 coverage
-megapolis-platform
+megapolis-platform/**
+!megapolis-platform/brand/logos/inventory.svg
 docs
 *.log
-
