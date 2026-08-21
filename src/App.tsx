@@ -34,6 +34,7 @@ const ConsumablesPage = lazy(() => import('./components/ConsumablesPage').then((
 const RoomsPage = lazy(() => import('./components/RoomsPage').then((module) => ({ default: module.RoomsPage })));
 const CartDrawer = lazy(() => import('./components/CartDrawer').then((module) => ({ default: module.CartDrawer })));
 const ListsPage = lazy(() => import('./components/ListsPage').then((module) => ({ default: module.ListsPage })));
+const InventoryPage = lazy(() => import('./components/InventoryPage').then((module) => ({ default: module.InventoryPage })));
 
 const { Sider, Content } = Layout;
 const { Text } = Typography;
@@ -44,7 +45,7 @@ const contentFallback = (
   </div>
 );
 
-type ActiveTab = 'catalog' | 'projects' | 'users' | 'calendar' | 'consumables' | 'rooms' | 'lists';
+type ActiveTab = 'catalog' | 'projects' | 'users' | 'calendar' | 'consumables' | 'rooms' | 'lists' | 'inventory';
 
 const NEXUS_LOGIN_URL = 'https://nexus.knzteam.ru/login';
 
@@ -575,6 +576,7 @@ function AppInner() {
       ),
     }] : []),
     ...(canEdit ? [{ key: 'lists' as ActiveTab, tabKey: 'lists' as ActiveTab, label: 'Списки' }] : []),
+    ...(canEdit ? [{ key: 'inventory' as ActiveTab, tabKey: 'inventory' as ActiveTab, label: 'Инвентаризация' }] : []),
     ...(role === 'admin' ? [{ key: 'users' as ActiveTab, tabKey: 'users' as ActiveTab, label: 'Пользователи' }] : []),
   ];
 
@@ -731,6 +733,8 @@ function AppInner() {
           <div className="brand-content brand-content--fixed"><RoomsPage rooms={rooms} allEquipment={items} canEdit={canEdit} selectedRoom={selectedRoom} onRoomSelect={setSelectedRoom} onRoomsChanged={handleRoomsChanged} /></div>
         ) : activeTab === 'lists' ? (
           <div className="brand-content"><ListsPage lists={lists} allEquipment={items} canEdit={canEdit} onListsChanged={handleListsChanged} /></div>
+        ) : activeTab === 'inventory' ? (
+          <div className="brand-content brand-content--fixed"><InventoryPage rooms={rooms} equipment={items} canEdit={canEdit} /></div>
         ) : activeTab === 'catalog' ? (
           <div className="brand-content brand-content--fixed">
             <CatalogGrid
@@ -782,6 +786,7 @@ function AppInner() {
            activeTab === 'consumables' ? <ConsumablesPage consumables={consumables} canEdit={canEdit} onChanged={() => void loadAll()} /> :
            activeTab === 'rooms' ? <RoomsPage rooms={rooms} allEquipment={items} canEdit={canEdit} selectedRoom={selectedRoom} onRoomSelect={setSelectedRoom} onRoomsChanged={handleRoomsChanged} /> :
            activeTab === 'lists' ? <ListsPage lists={lists} allEquipment={items} canEdit={canEdit} onListsChanged={handleListsChanged} /> :
+           activeTab === 'inventory' ? <InventoryPage rooms={rooms} equipment={items} canEdit={canEdit} /> :
            activeTab === 'catalog' ? (
              <CatalogGrid
                items={catalogFilteredItems ?? items}
