@@ -116,4 +116,13 @@ describe('projectService — atomic project RPC', () => {
       p_target_status: 'Активен',
     });
   });
+
+  it('удаляет проект одним серверным RPC без прямого DELETE', async () => {
+    mockRpc.mockResolvedValue({ data: 2, error: null });
+
+    await expect(projectService.remove('PRJ-001')).resolves.toBeUndefined();
+
+    expect(mockRpc).toHaveBeenCalledWith('delete_project', { p_project_id: 'PRJ-001' });
+    expect(mockFrom).not.toHaveBeenCalled();
+  });
 });

@@ -106,7 +106,7 @@ export const projectService = {
   },
 
   async remove(id: string): Promise<void> {
-    const { error } = await supabase.from('projects').delete().eq('id', id);
+    const { error } = await supabase.rpc('delete_project', { p_project_id: id });
     if (error) throw error;
   },
 };

@@ -115,6 +115,7 @@ interface Props {
   allEquipment: Equipment[];
   canEdit: boolean;
   onEdit: () => void;
+  onDelete: () => Promise<void>;
   onUpdate: (project: Project) => void;
   onEquipmentChange: () => void;
   getEquipmentProject: (equipmentId: string) => Project | undefined;
@@ -127,6 +128,7 @@ export function ProjectDetail({
   allEquipment,
   canEdit,
   onEdit,
+  onDelete,
   onUpdate,
   onEquipmentChange,
   getEquipmentProject,
@@ -136,6 +138,7 @@ export function ProjectDetail({
   const { message, modal } = App.useApp();
   const isMobile = !Grid.useBreakpoint().md;
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [pickerSearch, setPickerSearch] = useState('');
   const [pickerSelected, setPickerSelected] = useState<string[]>([]);
   const [activeLoans, setActiveLoans] = useState<Record<string, Loan>>({});
@@ -322,6 +325,30 @@ export function ProjectDetail({
     });
   };
 
+  const handleDelete = () => {
+    modal.confirm({
+      title: `Удалить проект «${project.name}»?`,
+      content: project.status === 'Планируется'
+        ? 'Резерв оборудования будет снят, а проект и его история удалены без возможности восстановления.'
+        : 'Проект и его история будут удалены без возможности восстановления.',
+      okText: 'Удалить',
+      okType: 'danger',
+      cancelText: 'Отмена',
+      onOk: async () => {
+        setDeleting(true);
+        try {
+          await onDelete();
+          void message.success('Проект удалён');
+        } catch (error) {
+          void message.error(getProjectErrorMessage(error, 'Не удалось удалить проект'));
+          throw error;
+        } finally {
+          setDeleting(false);
+        }
+      },
+    });
+  };
+
   // Убрать единицу из проекта
   const handleRemoveEquipment = async (eq: Equipment) => {
     try {
@@ -492,6 +519,19 @@ export function ProjectDetail({
               <Button danger icon={<CheckOutlined />} onClick={handleFinish}>
                 Завершить проект
               </Button>
+            )}
+            {canEdit && (
+              <Tooltip title={project.status === 'Активен' ? 'Сначала завершите активный проект' : undefined}>
+                <Button
+                  danger
+                  icon={<DeleteOutlined />}
+                  disabled={project.status === 'Активен'}
+                  loading={deleting}
+                  onClick={handleDelete}
+                >
+                  Удалить проект
+                </Button>
+              </Tooltip>
             )}
           </Flex>
         </div>

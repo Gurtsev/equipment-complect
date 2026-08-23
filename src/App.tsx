@@ -331,6 +331,14 @@ function AppInner() {
     }
   };
 
+  const handleProjectDelete = async () => {
+    if (!selectedProject) return;
+    await projectService.remove(selectedProject.id);
+    await loadAll();
+    setSelectedProject(null);
+    setProjectDrawerMode(null);
+  };
+
   const handleProjectClick = (project: Project) => {
     setSelectedProject(project);
     setSelectedEquipment(null);
@@ -527,6 +535,7 @@ function AppInner() {
       allEquipment={items}
       canEdit={canEdit}
       onEdit={() => setProjectDrawerMode('edit')}
+      onDelete={handleProjectDelete}
       onUpdate={handleProjectUpdate}
       onEquipmentChange={handleEquipmentChange}
       getEquipmentProject={getEquipmentProject}

@@ -5,6 +5,7 @@ const PROJECT_ERROR_MESSAGES: Array<[string, string]> = [
   ['INVENTORY_INVALID_PROJECT_PERIOD', 'Дата окончания должна быть позже даты начала'],
   ['INVENTORY_PROJECT_EQUIPMENT_NOT_FOUND', 'Часть оборудования больше не существует'],
   ['INVENTORY_PROJECT_NOT_FOUND', 'Проект больше не существует'],
+  ['INVENTORY_PROJECT_DELETE_ACTIVE', 'Активный проект сначала нужно завершить'],
   ['INVENTORY_PROJECT_ALREADY_FINISHED', 'Завершённый проект нельзя изменять'],
   ['INVENTORY_PROJECT_INVALID_TRANSITION', 'Статус проекта уже изменился — обновите данные'],
   ['INVENTORY_PROJECT_EMPTY', 'Нельзя активировать проект без оборудования'],
